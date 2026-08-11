@@ -17,9 +17,14 @@ v4 contracts define the boundary between any LLM and the PPT Smith engine. They 
 | `presentation-ir.schema.json` | frozen 4.0.0 | LLM → engine content contract |
 | `examples/presentation-ir-minimal.json` | reference | The weak-model floor: titles + anchored facts/lists |
 | `examples/presentation-ir-enriched.json` | reference | Full enrichment: metrics, relations, insights, hints |
-| `style-contract-v4.schema.json` | planned | User-authorable visual-system data pack (tokens + skins + hard bounds + distribution metadata) |
-| `decision-trace.schema.json` | planned | Engine decision log: evidence, candidates, confidence, chosen archetype, autonomy tier |
-| `render-plan.schema.json` | planned | Engine → builder geometry contract |
+| `style-contract-v4.schema.json` | frozen 4.0.0 | User-authorable visual-system data pack: L1 tokens (free within hard floors), L2 skins (token references only — raw colors rejected), bounded `layout_knobs`, `pack` distribution metadata for open and commercial packs |
+| `examples/style-editorial-v4.json` | reference | The v3 `editorial-knowledge` style migrated to pack format |
+| `decision-trace.schema.json` | frozen 4.0.0 | Engine decision log: dual evidence (structural + semantic) as content-free features, candidates with confidence, chosen-by attribution (rule / advisor / proposal / override / fallback), degradation outcomes |
+| `examples/decision-trace-example.json` | reference | A three-decision trace with L1 advisor pick and rule decisions |
+| `render-plan.schema.json` | frozen 4.0.0 | Engine → builder geometry contract: integer EMU + centipoints, resolved colors, native connector rules; builders execute, never design |
+| `examples/render-plan-example.json` | reference | One slide: title, two KPI cards, bound causal connector |
+
+Validation: `scripts/validate_contracts.py --strict --presentation-ir <f> --style-v4 <f> --decision-trace <f> --render-plan <f>` (stdlib-only), cross-checked against `jsonschema` Draft 2020-12 in the test suite.
 
 ## Differences from v3 `ppt-ir.schema.json`
 

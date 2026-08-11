@@ -43,6 +43,11 @@ SCHEMA_FILES = {
     "task-route": "task-route.schema.json",
     "visual-plan": "visual-plan.schema.json",
     "visual-revision-request": "visual-revision-request.schema.json",
+    # v4 contracts (schemas/v4/); see schemas/v4/README.md
+    "presentation-ir": "v4/presentation-ir.schema.json",
+    "style-v4": "v4/style-contract-v4.schema.json",
+    "decision-trace": "v4/decision-trace.schema.json",
+    "render-plan": "v4/render-plan.schema.json",
 }
 ORDINARY_COMPONENTS = {
     "judgment_title",
@@ -164,6 +169,9 @@ def validate_schema_subset(
     if isinstance(data, str) and schema.get("minLength") is not None and len(data) < schema["minLength"]:
         errors.append(issue(file, pointer, "MIN_LENGTH_INVALID", data, f">= {schema['minLength']}", "Use a non-empty value."))
 
+    if isinstance(data, str) and schema.get("maxLength") is not None and len(data) > schema["maxLength"]:
+        errors.append(issue(file, pointer, "MAX_LENGTH_INVALID", data, f"<= {schema['maxLength']}", "Shorten the string value."))
+
     if isinstance(data, str) and schema.get("pattern") and not re.match(schema["pattern"], data):
         errors.append(issue(file, pointer, "PATTERN_INVALID", data, schema["pattern"], "Match the required string pattern."))
 
@@ -172,6 +180,15 @@ def validate_schema_subset(
 
     if isinstance(data, (int, float)) and schema.get("maximum") is not None and data > schema["maximum"]:
         errors.append(issue(file, pointer, "MAXIMUM_INVALID", data, f"<= {schema['maximum']}", "Decrease the numeric value."))
+
+    if isinstance(data, (int, float)) and schema.get("exclusiveMinimum") is not None and data <= schema["exclusiveMinimum"]:
+        errors.append(issue(file, pointer, "EXCLUSIVE_MINIMUM_INVALID", data, f"> {schema['exclusiveMinimum']}", "Increase the numeric value."))
+
+    if isinstance(data, (int, float)) and schema.get("exclusiveMaximum") is not None and data >= schema["exclusiveMaximum"]:
+        errors.append(issue(file, pointer, "EXCLUSIVE_MAXIMUM_INVALID", data, f"< {schema['exclusiveMaximum']}", "Decrease the numeric value."))
+
+    if isinstance(data, (int, float)) and schema.get("multipleOf") and not isinstance(data, bool) and (data % schema["multipleOf"]) != 0:
+        errors.append(issue(file, pointer, "MULTIPLE_OF_INVALID", data, f"multiple of {schema['multipleOf']}", "Use a permitted step value."))
 
     if isinstance(data, list):
         if "minItems" in schema and len(data) < schema["minItems"]:
@@ -722,6 +739,10 @@ def main() -> int:
     parser.add_argument("--visual-plan", type=Path)
     parser.add_argument("--visual-revision", type=Path)
     parser.add_argument("--page-design-intent", type=Path, action="append", default=[])
+    parser.add_argument("--presentation-ir", type=Path, help="v4 Presentation IR document")
+    parser.add_argument("--style-v4", type=Path, help="v4 style contract (visual-system data pack)")
+    parser.add_argument("--decision-trace", type=Path, help="v4 decision trace document")
+    parser.add_argument("--render-plan", type=Path, help="v4 render plan document")
     parser.add_argument("--schema-dir", type=Path, default=Path(__file__).resolve().parents[1] / "schemas")
     parser.add_argument("--allow-v1", action="store_true")
     parser.add_argument("--strict", action="store_true")
@@ -742,6 +763,10 @@ def main() -> int:
         "task-route": args.task_route,
         "visual-plan": args.visual_plan,
         "visual-revision-request": args.visual_revision,
+        "presentation-ir": args.presentation_ir,
+        "style-v4": args.style_v4,
+        "decision-trace": args.decision_trace,
+        "render-plan": args.render_plan,
     }
     page_design_intent_inputs = args.page_design_intent or []
 
@@ -757,6 +782,10 @@ def main() -> int:
                 "task-route",
                 "visual-plan",
                 "visual-revision-request",
+                "presentation-ir",
+                "style-v4",
+                "decision-trace",
+                "render-plan",
             } and detect_v1(data)
             if is_v1 and not args.allow_v1:
                 errors.append(issue(path, "/", "V1_CONTRACT_DEPRECATED", data.get("schema_version"), "2.0", "Run scripts/migrate_manifest_v1_to_v2.py or pass --allow-v1 for a transition-only check."))
