@@ -1,15 +1,19 @@
-"""CLI for the P2 engine stages. This is the precursor of the single
-`compile` entry (P3); each subcommand is one deterministic stage.
+"""Engine CLI.
 
 Usage:
+  python3 -m engine compile    --source id:type:path [--ir IR.json]
+                               [--style PACK.json] --output-dir DIR
+                               [--no-degrade]
   python3 -m engine parse      --source id:type:path [--json-out FILE]
   python3 -m engine extract-ir --source id:type:path [--json-out FILE]
   python3 -m engine verify     --ir IR.json --source id:type:path [...]
   python3 -m engine coverage   --ir IR.json --source id:type:path [...]
 
-`--source` takes `source_id:type:path` (type in markdown|html|text) and may
-repeat for verify/coverage. Exit codes: 0 ok, 1 findings (verify errors or
-coverage fail), 2 usage/input error.
+`compile` is the single entry (D2): parse -> validate/provenance ->
+policy -> layout -> QA -> deck.pptx + render-plan + decision-trace.
+The other subcommands expose individual stages for debugging and repair
+loops. `--source` takes `source_id:type:path` (type markdown|html|text)
+and may repeat. Exit codes: 0 ok, 1 findings/failure, 2 usage error.
 """
 
 from __future__ import annotations
@@ -58,7 +62,33 @@ def main(argv: list[str] | None = None) -> int:
         if name in ("verify", "coverage"):
             p.add_argument("--ir", required=True)
 
+    c = sub.add_parser("compile")
+    c.add_argument("--source", action="append", required=True, metavar="ID:TYPE:PATH")
+    c.add_argument("--ir")
+    c.add_argument("--style")
+    c.add_argument("--output-dir", required=True)
+    c.add_argument("--no-degrade", action="store_true",
+                   help="fail on invalid IR instead of falling back to extraction")
+
     args = parser.parse_args(argv)
+
+    if args.command == "compile":
+        from .compile import compile_deck
+        specs = []
+        for spec in args.source:
+            parts = spec.split(":", 2)
+            if len(parts) != 3:
+                print(f"error: --source expects source_id:type:path, got '{spec}'",
+                      file=sys.stderr)
+                return 2
+            specs.append(tuple(parts))
+        report = compile_deck(sources=specs, ir_path=args.ir, style_path=args.style,
+                              output_dir=args.output_dir,
+                              degrade_on_error=not args.no_degrade)
+        print(json.dumps({k: report[k] for k in
+                          ("ok", "ir_origin", "slide_count", "pptx", "stage")
+                          if k in report}, ensure_ascii=False, indent=2))
+        return 0 if report.get("ok") else 1
     try:
         docs, meta = _load_sources(args.source)
     except (OSError, ValueError) as exc:
