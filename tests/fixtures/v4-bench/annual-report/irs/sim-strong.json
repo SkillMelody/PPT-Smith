@@ -1,0 +1,114 @@
+{
+ "schema_version": "4.0.0",
+ "deck": {
+  "title": "2025 年度经营回顾",
+  "language": "zh",
+  "purpose": "解释增长来源与毛利风险",
+  "narrative_intent": "report"
+ },
+ "sources": [
+  {
+   "source_id": "doc",
+   "type": "markdown",
+   "path": "tests/fixtures/v4-bench/annual-report/source.md"
+  }
+ ],
+ "slides": [
+  {
+   "id": "s1",
+   "title": "增长由海外业务驱动，但毛利承压",
+   "message": "收入 +36%，海外是主引擎，代价是毛利率",
+   "blocks": [
+    {
+     "id": "m1",
+     "role": "metric",
+     "label": "总收入",
+     "value": "+36%",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "para_2"
+     }
+    },
+    {
+     "id": "m2",
+     "role": "metric",
+     "label": "海外业务",
+     "value": "+52%",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "list_1"
+     }
+    },
+    {
+     "id": "m3",
+     "role": "metric",
+     "label": "国内业务",
+     "value": "+8%",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "list_1"
+     }
+    },
+    {
+     "id": "r1",
+     "role": "risk",
+     "text": "毛利率下降 2.8 个百分点，价格策略是主因",
+     "source_refs": [
+      {
+       "source_id": "doc",
+       "loc": "para_3"
+      }
+     ]
+    },
+    {
+     "id": "i1",
+     "role": "insight",
+     "text": "增长结构已切换到海外，可持续性取决于产能与汇率对冲"
+    }
+   ],
+   "relations": [
+    {
+     "type": "causal",
+     "from": "m2",
+     "to": "m1",
+     "label": "主要驱动"
+    }
+   ],
+   "hints": {
+    "emphasis_block_ids": [
+     "m1",
+     "r1"
+    ],
+    "tone": "professional"
+   }
+  },
+  {
+   "id": "s2",
+   "title": "分区域收入明细",
+   "blocks": [
+    {
+     "role": "table",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "table_1"
+     },
+     "caption": "分区域收入与同比"
+    }
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "管理层的判断",
+   "blocks": [
+    {
+     "role": "quote",
+     "text": "管理层认为价格策略是主因。",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "blockquote_1"
+     }
+    }
+   ]
+  }
+ ]
+}
