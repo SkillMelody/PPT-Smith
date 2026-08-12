@@ -1,0 +1,107 @@
+{
+ "schema_version": "4.0.0",
+ "deck": {
+  "title": "星轨协作平台发布方案",
+  "language": "zh",
+  "narrative_intent": "product"
+ },
+ "sources": [
+  {
+   "source_id": "doc",
+   "type": "markdown",
+   "path": "tests/fixtures/v4-bench/product-launch/source.md"
+  }
+ ],
+ "slides": [
+  {
+   "id": "s1",
+   "title": "三阶段发布节奏",
+   "blocks": [
+    {
+     "role": "list",
+     "semantics": "stages",
+     "items": [
+      {
+       "text": "内测：50 家种子客户",
+       "source_ref": {
+        "source_id": "doc",
+        "loc": "list_1"
+       }
+      },
+      {
+       "text": "公测：开放注册并接入计费",
+       "source_ref": {
+        "source_id": "doc",
+        "loc": "list_1"
+       }
+      },
+      {
+       "text": "正式发布：启动渠道合作",
+       "source_ref": {
+        "source_id": "doc",
+        "loc": "list_1"
+       }
+      }
+     ]
+    },
+    {
+     "role": "quote",
+     "text": "我们的目标不是功能最多，而是把核心流程做到最顺。",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "blockquote_1"
+     }
+    }
+   ]
+  },
+  {
+   "id": "s2",
+   "title": "定价与首年目标",
+   "message": "首年目标收入 720 万元，专业版是主力",
+   "blocks": [
+    {
+     "role": "table",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "table_1"
+     },
+     "caption": "三档定价与目标客户数"
+    },
+    {
+     "role": "metric",
+     "label": "首年目标收入",
+     "value": "720 万元",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "para_3"
+     }
+    },
+    {
+     "role": "metric",
+     "label": "专业版贡献占比",
+     "value": "55%",
+     "source_ref": {
+      "source_id": "doc",
+      "loc": "para_3"
+     }
+    }
+   ]
+  },
+  {
+   "id": "s3",
+   "title": "渠道进度是首要风险",
+   "blocks": [
+    {
+     "role": "risk",
+     "text": "渠道招募若滞后两个月，将影响 15% 的首年目标",
+     "source_refs": [
+      {
+       "source_id": "doc",
+       "loc": "para_4"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
