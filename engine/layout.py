@@ -70,7 +70,8 @@ class SlideLayout:
         title_levels = [style.size_cpt("title", "slide"), 2000, 1800, 1600]
         title_size = fit_size_cpt(title, self.width - 182880,
                                   TITLE_H - (0 if not message else 350000),
-                                  title_levels, 110) or 1600
+                                  title_levels, 110,
+                                  family=style.font("editorial")) or 1600
         paras = [_para([_run(title, style, title_size,
                              weight=style.weight("semibold", 600),
                              font=style.font("editorial"))],
@@ -132,10 +133,12 @@ class SlideLayout:
                                          inner_w) > inner_h:
                     block = {"role": "fact",
                              "text": truncate_to_fit(items[0]["text"], size,
-                                                     inner_w, inner_h)}
+                                                     inner_w, inner_h,
+                                                     family=style.font())}
             else:
                 block = dict(block, text=truncate_to_fit(
-                    block.get("text", ""), size, inner_w, inner_h))
+                    block.get("text", ""), size, inner_w, inner_h,
+                    family=style.font()))
                 self.degrade("content_truncation",
                              f"block_truncated_{block.get('role', 'text')}")
         elif size != levels[0]:
@@ -218,6 +221,19 @@ class SlideLayout:
 
     def table(self, block: dict, frame: dict, doc: SourceDoc | None = None) -> None:
         style = self.style
+        caption = block.get("caption")
+        if caption:
+            cap_h = 274320
+            self.elements.append({
+                "element_id": self.eid("caption"), "type": "textbox",
+                "frame": _frame(frame["x"], frame["y"] + frame["h"] - cap_h,
+                                frame["w"], cap_h),
+                "paragraphs": [_para([_run(caption, style, 1000,
+                                           color=style.color("text_secondary"))])],
+                "valign": "middle", "editable": True, "semantic_role": "caption",
+            })
+            frame = _frame(frame["x"], frame["y"], frame["w"],
+                           frame["h"] - cap_h - style.gap_emu() // 2)
         rows_data: list[list[str]] = []
         if doc is not None:
             parsed = parse_anchor(block.get("source_ref", {}).get("loc", ""))
@@ -312,7 +328,8 @@ def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
         size = fit_size_cpt(text, ctx.width - 2 * CARD_PAD, quote_h - 2 * CARD_PAD,
                             [style.size_cpt("body", "large") * 2 // 1,
                              style.size_cpt("body", "large"),
-                             style.size_cpt("body", "normal")]) \
+                             style.size_cpt("body", "normal")],
+                            130, family=style.font("editorial")) \
             or style.size_cpt("body", "normal")
         ctx.elements.append({
             "element_id": ctx.eid("quote"), "type": "textbox",
