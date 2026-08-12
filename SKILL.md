@@ -1,1071 +1,127 @@
 ---
 name: "article-html-to-ppt"
-description: "Build and QA editable PPT decks locally; probes required tools/fonts, runs subprocess renderers in isolated work/output folders, and uses cloud export only with explicit consent."
+description: "Compile articles (Markdown/HTML/text) into professional, editable PPTX decks via a deterministic local engine. The model's only job: optionally write a content-only Presentation IR, then run one command. Layout, styling, and QA are engine-owned."
 metadata:
   display_name: "MeowClaw PPT Smith"
-  english_alias: "MeowClaw PPT Smith"
+  english_alias: "MeowClaw PPTSmith"
   public_slug: "meowclaw-pptsmith"
-  version: "3.0.0"
+  version: "4.0.0-alpha"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
-# MeowClaw PPT Smith
+# MeowClaw PPT Smith v4 — Model-Agnostic Presentation Compiler
 
-Convert articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, design specs, and review-approved manuscripts into polished, low-rework, persona-fit slide decks.
+Turn an article into a deck by doing exactly two things:
 
-Public identity:
+1. (Recommended) Write a **Presentation IR** — a content-only JSON describing what each slide says.
+2. Run **one command**. The engine does everything visual: archetype selection, layout, styling, text fitting, QA, and the PPTX build — deterministically.
 
-- Display name: `MeowClaw 夜猫 PPT 工坊`
-- English alias: `MeowClaw PPTSmith`
-- Technical slug: `meowclaw-pptsmith`
-- Compatibility aliases: `article-html-to-ppt`, `meowclaw-decksmith`
+You never make design decisions. Do not write layout, colors, fonts, coordinates, or archetype names anywhere. The IR schema rejects them.
 
-Keep the OpenClaw skill route and directory name as `article-html-to-ppt` until all installed clients, ClawHub versions, GitHub paths, and historical workflows have migrated. Treat `article-html-to-ppt` and `meowclaw-decksmith` as backward-compatible aliases, not as the primary public name.
+## Capability and permission boundary
 
-Version `3.0.0` is **Standard production-ready on the verified macOS + LibreOffice acceptance environment**. The canonical `python_pptx` route now performs representative real rendering for Standard, promotes a successful render to the preview PDF, blocks stale render evidence on resumed runs, and enforces structural checks for severe overflow, low text/background contrast, arrow text safety, semantic footnotes, and editable-content coverage. It also adds presentation-scale covers, full-canvas single charts/tables, editable metric walls, and native source footers. Version 3.0.0 additionally passes macOS renderer paths through `osascript` arguments, contains fixture cleanup to its fixed test directory, discloses only required-font availability, and loads fixture safety checks through a normal static import. **Never present this as universal Premium final readiness:** Premium still requires a compatible real renderer, readback, zero QA errors, rubric pass, and disclosed fallbacks on the target environment. See `docs/v3.0.0-release-notes.md` for the v1.2.0-to-v3.0.0 architecture boundary and model/path evidence.
+- Read only the source files and this skill's own files; write only inside the output directory you choose.
+- The engine runs locally, stdlib + python-pptx only, no network. Never upload content anywhere without explicit user consent.
+- Requires `python3` (3.9+) and `python-pptx`. Optional: LibreOffice for PDF preview.
 
-### Capability and Permission Boundary
+## The protocol
 
-- Read only the source files, contracts, style assets, and local runtime files required for the requested deck.
-- Write only to the explicitly supplied isolated `.ppt-work` and output directories; these directories are recreated during guarded runs, so never point them at a workspace root or an unrelated folder.
-- Run local subprocesses only for declared builders, schema/QA tools, and user-approved desktop renderers such as LibreOffice or Microsoft PowerPoint.
-- The capability probe records tool availability and only the availability of fonts required by the active style. Keep its report local.
-- The bundled PptxGenJS runtime consumes the validated local build plan, performs no network fetches, and is expected to write only `deck.pptx` and `runtime-result.json` inside the selected output directory.
-- Network or Feishu/Lark export is off by default and requires explicit user intent plus the pre-upload privacy summary.
+All commands run from this skill's root directory.
 
-### 2.0.7 Connector Compatibility Contract
+### Step 1 — Stage the source
 
-Version 2.1 extends the 2.0.7 connector guarantees; it does not replace them:
+Save the article as a file (UTF-8): `source.md`, `source.html`, or `source.txt`.
 
-- A process arrow is one native connector object with its arrowhead on the line. Never fake it with an independent arrowhead shape.
-- Connector endpoints must be bound to their source and target shapes when the selected Builder supports endpoint binding.
-- `python_pptx` supports declared `straight`, `orthogonal`, and `curved` connector routes.
-- PptxGenJS supports the verified `straight` route only and must fail closed for `orthogonal` or `curved` requests.
-- Generic visual layouts, Visual Planner output, and revision actions must preserve these routing constraints.
-- Use `references/connector-routing-and-topology-gate.md` and `references/native-connector-and-visual-quality-gate.md` as the authoritative compatibility gates.
+### Step 2 — See the anchors
 
-Default delivery is `hybrid editable`: polished material/background layers may be raster, SVG, or generated image components, while message-bearing content remains editable PowerPoint objects. Avoid both extremes: screenshot-only decks that cannot be edited, and pure native-object decks that look like rough wireframes.
-
-## Core Standard
-
-Optimize in this order:
-
-1. Content truth and source boundaries.
-2. Storyline and slide-level judgment clarity.
-3. Audience/persona-fit structure and proof style.
-4. Expression mode: text, cards, table, data visual, relationship visual, conceptual scene, or hybrid panel.
-5. Page architecture and one primary anchor.
-6. Design intent fidelity, not blind spec literalism.
-7. Master-level visual design language and component craft.
-8. Editability of core text, cards, diagrams, tables, simple charts, and labels.
-9. Production profile fit: `fast`, `standard`, or `premium`.
-10. Render/readback verification before final handoff.
-11. Benchmark-calibrated rubric scoring for serious changes.
-12. Honest reporting of rasterized layers, conversion limits, and trusted delivery status.
-
-## Standard Production Chain
-
-Use this chain for serious decks. For the v2 one-command Standard route, run `scripts/run_pipeline.py` with `--builder auto|python_pptx|pptxgenjs`, `--profile standard`, isolated `--work-dir`, and a unique `--output-dir`. Production runs select one Builder; do not routinely generate two user finals. The dual-Builder execution is acceptance/regression evidence only, with `python_pptx` as the canonical accepted deck.
-
-```text
-source/article/design brief
--> resolve production profile
--> content analysis and evidence inventory
--> slide storyline and judgment titles
--> expression mode gate
--> slide_manifest.json with expression plan
--> style selection and page archetype mapping
--> STYLE & PALETTE CONFIRMATION GATE (confirm with user OR match reference)
--> detailed design specification
--> visual priority map + deletion/noise budget
--> capability probe for builders/renderers/fonts
--> component registry lookup + delivery-plan route resolution
--> builder adapter selection with capability report
--> high-fidelity reference for key pages when polish matters
--> editable/hybrid PPT implementation
--> render/readback QA
--> rubric scoring + benchmark calibration where relevant
--> revision loop
--> package user-facing delivery + delivery-manifest.json
-```
-
-## Generation Path: Code vs IR (User Choice)
-
-Two paths, one decision. The user controls which path is used.
-
-### Path A: Code Path（精细化 / 高定模式）
-
-LLM writes a standalone Python build script (`build_deck.py`) using python-pptx directly.
-Best for: important presentations, board decks, investor pitches, anything where visual
-refinement matters more than reproducibility.
-
-**Trigger**: User says 「精细做」「高定模式」「手写代码生成」「和之前 State of AI 一样」「质量优先」
-
-**Execution**:
 ```bash
-python3 build_deck.py
+python3 -m engine parse --source doc:markdown:source.md --json-out parsed.json
 ```
 
-**Quality**: Highest visual quality — full control over spacing, colors, positioning.
-No pipeline overhead. But: one-shot execution, no QA gate, no fallback.
+This prints every element with its **anchor**: `para_12`, `h2_3`, `list_1`, `table_2`, `img_1`, `blockquote_1`. Anchors are the only valid values for `source_ref.loc` in your IR. Types: `markdown`, `html`, `text`.
 
-**Template**: Use the consulting-light palette (`#051C2C` primary, `#2251FF` accent, white bg).
-Slide dimensions: 13.333×7.5 inches (16:9). Reference patterns:
-- Cover: dark navy bg + accent bar + title/subtitle/meta
-- Data slide: action title + left chart + right insight callout
-- KPI cards: large number + label + trend arrow
-- Every slide: source footnote + page number
-- Chart: data labels on bars, no unnecessary axis clutter
-- Table: dark header + zebra stripes
+### Step 3 — Write the IR (skip to Step 4 to ship without it)
 
-### Path B: IR Path（标准路径 / Pipeline）
+Contract: `schemas/v4/presentation-ir.schema.json`. Full examples: `schemas/v4/examples/presentation-ir-minimal.json` (the floor) and `presentation-ir-enriched.json` (metrics, relations, hints).
 
-LLM generates `ppt-ir.json`, then `run_pipeline.py` builds, validates, and delivers.
-Best for: batch generation, complex components (diagrams, PMO, PRD), standardized output,
-scenarios requiring QA traceability.
-
-**Trigger**: Default path. User says 「快速生成」「标准模式」「流水线模式」
-
-**Execution**:
-```bash
-python3 scripts/run_pipeline.py --ppt-ir ppt-ir.json --style style-contract.json \
-  --profile standard --builder python_pptx --work-dir .ppt-work --output-dir final/
-```
-
-**Quality**: Structurally guaranteed only after the IR completeness gate passes (contract validation, source traceability, QA gates, fallback chains). A sparse IR does **not** become professional merely by rendering: it must carry source-bound primary data and independently source-bound evidence, or pipeline delivery stops with named blockers.
-
-For each non-navigation data/judgment slide, write `supporting_evidence` explicitly in `ppt-ir.json`. Each item needs non-duplicate `content` plus its own non-empty `source_refs`; this is the only permitted deterministic enrichment input. Never turn `title`, `message`, or `judgment` into evidence automatically. Start from `templates/ppt-ir-source-bound-evidence-template.json` when authoring Path B IR for a lower-capability model.
-
-Visual quality remains limited by builder rendering capabilities.
-
-### Selection Rule
-
-- User explicitly says 「精细/手写/高定/代码」→ Path A
-- User explicitly says 「快速/标准/流水线」→ Path B
-- Default → Path B (IR Path)
-- When Path A: do NOT ask for confirmation, just generate the code and execute
-- When Path B: relay the `PPTSMITH_PROFILE_NOTICE`, continue without waiting
-
-## Layered Quality Guarantee 分层质量保障
-
-高配模型走 Path A（代码路径），低配模型走 Path B（IR 路径）。两路径都有 builder 保障底线质量。
-
-| 层级 | 保障内容 | 高配模型 | 低配模型 |
-|---|---|---|---|
-| **LLM 层** | 内容规划、数据密度、叙事结构 | 模型能力强 → 质量上限高 | 模型能力弱 → IR 密度可能不足 |
-| **Builder 层** | 封面、图表、表格、卡片渲染 | 代码直接控制 → 精细排版 | IR → builder 动态布局 → 稳定质量 |
-| **Pipeline 层** | 合约校验、QA 门禁、渲染回读 | 无（代码路径跳过） | 全量 QA + 视觉修订 |
-
-**核心保障**：低配模型的稀疏 IR 不能被 Builder 的配色、斑马纹或字号调整“补救”为专业交付。数据页必须含来源绑定的主数据对象与独立证据；判断页必须含独立来源证据；图表类别与数列必须自洽。否则 Pipeline 在 `ir_quality_floor` 以命名 blocker 停止，绝不输出 `verified`。封面根据 visual plan 的 professional_route 自动选择风格（战略决策→navy hero，研究报告→minimal light）。尾页自动生成感谢页。
-
-## PMO Production Route (Auto-Routing)
-
-When the user's request matches PMO/governance signals, **automatically route to the PMO builder** (`private-pmo-pack/scripts/build_pmo_deck.py`) instead of the generic pipeline.
-
-### Trigger Signals (LLM-level): match ≥2 to auto-route
-
-| Category | Signals |
-|---|---|
-| **Keywords** | 周报、月报、项目状态、里程碑、RAID、RACI、风险矩阵、决策记录、指导委员会、SteerCo、干系人、燃尽图、Sprint Review、站会、项目治理、项目管理、PMO |
-| **Material type** | 项目计划、RAID log、状态报告、Sprint 数据、里程碑清单 |
-| **User intent** | 「帮我做个项目周报」「生成 PMO dashboard」「项目管理汇报」 |
-| **Audience** | 项目赞助人、PMO、指导委员会、项目经理 |
-
-### Override
-
-- User says 「用 PMO 格式」→ force PMO
-- User says 「做咨询风格」「不要 PMO」「通用格式」→ force generic
-- User says nothing → LLM auto-judges based on signals above
-
-### PMO Input
-
-Generate a PMO domain JSON conforming to `private-pmo-pack/schemas/pmo-input.schema.json`, then run:
-```bash
-python3 private-pmo-pack/scripts/build_pmo_deck.py --input pmo-input.json --output deck.pptx
-```
-
-The PMO builder produces 11 standard page types: Cover, Executive Dashboard, Roadmap, Milestones, RAID Log, Workstreams, RACI Matrix, Risk Heat Map, Decision Page, KPI Dashboard, Action Tracker.
-
-### Quality Disclaimer (ALL routes)
-
-Every generated deck MUST include a final quality-disclaimer page as the last slide. This page must contain:
-
-- **Title**: 「关于本报告」或「质量声明」
-- **Body**: 说明本 PPT 由 MeowClaw PPT Smith 自动生成，因源文档质量差异可能导致内容不完整或数据提取不足
-- **Feedback channels**:
-  - GitHub Issues: `github.com/MeowClawLab` （技术问题/功能请求）
-  - 公众号「夜猫子弦月」留言（内容建议/商务合作）
-
-This page should be auto-appended by the builder; the LLM must not generate it as part of the IR.
-
-## Visual Narrative Pipeline (Recommended Path)
-
-**DO NOT directly generate ppt-ir.json.** Instead, generate content-analysis + storyline, then let the visual narrative pipeline plan the IR.
-
-### Step 1: Analyze the document → `content-analysis.json`
+Minimal shape:
 
 ```json
 {
-  "title": "文档标题",
-  "summary": "一句话摘要",
-  "evidence_types": ["statistics", "comparison", "trend", "case_study"],
-  "relationship_types": ["adoption_gap", "cause_effect", "heatmap"],
-  "project_governance_terms": [],
-  "audience": "目标受众描述",
-  "key_findings": ["发现1", "发现2", ...]
-}
-```
-
-- `evidence_types`: pick from statistics, comparison, trend, case_study, forecast, benchmark, survey
-- `relationship_types`: pick from adoption_gap, cause_effect, heatmap, capability_maturity, system_boundary, data_flow, dependency, layer, comparison, trend
-- `project_governance_terms`: non-empty triggers PMO route; typical values: ["steering committee", "milestone", "RAID", "RACI", "workstream"]
-- `key_findings`: 3-8 items; the most important conclusions from the document
-
-### Step 2: Plan the story → `storyline.json`
-
-```json
-{
-  "title": "PPT 标题",
+  "schema_version": "4.0.0",
+  "deck": {"title": "…", "language": "zh"},
+  "sources": [{"source_id": "doc", "type": "markdown", "path": "source.md"}],
   "slides": [
-    {
-      "id": "S01",
-      "role": "cover",
-      "message": "核心信息或标题",
-      "audience_question": "这页回答受众的什么问题？",
-      "evidence_refs": ["src-K1"],
-      "priority": "key"
-    },
-    ...
+    {"id": "s1", "title": "判断句标题",
+     "message": "这一页的唯一结论（可选但强烈建议）",
+     "blocks": [
+       {"role": "fact", "text": "原文中的事实", "source_ref": {"source_id": "doc", "loc": "para_2"}},
+       {"role": "metric", "label": "总收入", "value": "+36%", "source_ref": {"source_id": "doc", "loc": "para_2"}},
+       {"role": "list", "items": [{"text": "要点", "source_ref": {"source_id": "doc", "loc": "list_1"}}]},
+       {"role": "table", "source_ref": {"source_id": "doc", "loc": "table_1"}},
+       {"role": "insight", "text": "你的综合判断", "source_refs": [{"source_id": "doc", "loc": "para_3"}]}
+     ]}
   ]
 }
 ```
 
-**Page count rule**: information density × audience context = page count. Not fixed at 12.
-- Light doc (2-3 key findings, simple data): 6-8 pages
-- Medium doc (5-8 findings, multi-dimension): 10-14 pages  
-- Dense doc (10+ findings, complex relationships): 15-20 pages
+Block roles: `fact` / `quote` (verbatim-ish, `source_ref` **required**), `metric` (`label`+`value`, `source_ref` **required**, numbers must exist in the anchored element), `table` (references the source table — never retype cells), `image` (`asset_ref`: an `img_N` anchor), `list` (optional `semantics`: `steps|stages|options|criteria|findings`), and synthesized `insight` / `risk` / `recommendation` / `context` (optional `source_refs`).
 
-**Slide roles** (pick the most specific that fits):
-- `cover` — title + subtitle + date/source
-- `data` — chart, table, or data visualization
-- `judgment` — key insight or management conclusion
-- `comparison` — side-by-side or before/after
-- `evidence` — supporting proof or case study
-- `roadmap` — timeline, phases, or sequence
-- `decision` — options + recommendation
-- `closing` — summary + next steps
+Rules the engine enforces:
 
-**priority**: `key` for critical slides, `supporting` for supplementary
+- **Select, don't invent.** Every fact/metric/quote/table is verified against the anchored source element. Fabricated numbers and dangling anchors are rejected with machine-readable errors.
+- **Cover the source.** The engine checks section/table coverage. Don't read half the article and stop.
+- **Content only.** No visual fields. The only presentation influence you have is `slides[].hints` (`emphasis_block_ids`, `tone`).
+- Optional enrichment (better decks, never required): `message`, `relations` (`causal|comparison|sequence|hierarchy|dependency|contrast` between block ids), `slide_role`, `deck.narrative_intent`, `x_semantics`.
 
-### Step 3: Generate source-context-brief → `source-context-brief.json`
-
-```json
-{
-  "schema_version": "1.0",
-  "source_id": "简短标识",
-  "primary_audience": ["executive", "management"],
-  "delivery_objective": "decide",
-  "source_material_type": "research_report",
-  "evidence_profile": ["statistics", "trend"],
-  "delivery_scenario": "strategy_review"
-}
-```
-
-- `primary_audience`: executive, management, analyst, investor, engineer, public
-- `delivery_objective`: decide, inform, recommend, align, teach
-- `source_material_type`: research_report, strategy_memo, project_plan, prd, pitch_deck, article
-- `delivery_scenario`: strategy_review, board_meeting, client_pitch, status_review, training
-
-### Step 4: Run the pipeline
+### Step 4 — Compile
 
 ```bash
-python3 scripts/run_pipeline.py \
-  --requirements requirements.json \
-  --ppt-ir ppt-ir.json \
-  --style style-contract.json \
-  --content-analysis content-analysis.json \
-  --storyline storyline.json \
-  --source-context-brief source-context-brief.json \
-  --profile standard \
-  --builder python_pptx \
-  --work-dir .ppt-work \
-  --output-dir final/
+# with your IR (preferred):
+python3 -m engine compile --source doc:markdown:source.md --ir ir.json \
+  --no-degrade --output-dir out/
+
+# without an IR (engine builds the deck from the source alone):
+python3 -m engine compile --source doc:markdown:source.md --output-dir out/
 ```
 
-The pipeline will:
-1. Route audience → select professional route (strategic_decision, research_insight, etc.)
-2. Route task → determine task type
-3. Plan visual narrative → generate visual-plan.json with page intents, expressions, layouts
-4. Compile visual plan → merge into final ppt-ir.json
-5. Build → verify → deliver
+Optional: `--style styles/<pack>.json` — available packs: `editorial-knowledge` (default), `consulting-light`, `technical-blueprint`, `product-report`, `consulting-blueprint-hybrid`. Ask the user which they want when it matters; validate custom packs with `python3 -m engine style-validate --style pack.json`.
 
-### Fallback: Direct IR
+Outputs in `out/`: `deck.pptx`, `render-plan.json`, `decision-trace.json`, `ir.json`, `compile-result.json`.
 
-If visual narrative pipeline is not available or the topic is too simple, fall back to directly generating `ppt-ir.json` with the generic cover/data/judgment/closing structure. But always prefer the visual narrative path for professional-quality output.
+### Step 5 — Repair loop (max 3 rounds)
 
-The critical rules are:
+If compile with `--no-degrade` fails, `compile-result.json` contains `errors` with `stage`, `code`, `path` (slide-addressable), and the offending value:
 
-- Do not choose layout before knowing what the audience must understand or decide.
-- Do not send a detailed design spec directly into PPT production unless the deck is low-risk and visually simple.
-- Do not treat image generation as only a late-stage rescue. For relationship-heavy or conceptual slides, bounded visual components can be the correct planned delivery route.
-- Do not treat the deck as final when only `deck.pptx` exists.
-- Do not scatter process files into the user's final directory. Internal artifacts belong under `.ppt-work/`.
-- Do not mark Premium `final` without real render evidence, readback, zero QA errors, and rubric pass.
+- `LOC_NOT_FOUND` / `LOC_MALFORMED` — fix the anchor (re-check `parsed.json`).
+- `QUOTE_MISMATCH` — your quote is not verbatim; copy the source text exactly or drop `quote`.
+- `METRIC_VALUE_NOT_IN_SOURCE` — the number is not in the anchored element; fix the value or the anchor.
+- Schema codes (`REQUIRED_FIELD_MISSING`, `ADDITIONAL_PROPERTY`, …) — fix the JSON shape; `ADDITIONAL_PROPERTY` usually means you wrote a visual field. Delete it.
 
-### Production Profile Gate
+Fix the IR, recompile. After 3 failed rounds, drop `--no-degrade` and recompile: the engine ships a verified extractive deck built from the source itself and records the fallback. Never hand-edit the output files; never bypass the engine to write PPTX yourself.
 
-Resolve the profile before artifact planning:
+### Step 6 — Deliver honestly
 
-```bash
-python3 scripts/resolve_production_profile.py \
-  --requirements requirements.json \
-  --ppt-ir .ppt-work/contracts/ppt-ir.json \
-  --output .ppt-work/contracts/production-profile.json
-```
+Read `compile-result.json` and report to the user:
 
-Use only the artifacts required by the selected profile:
+- the deck path and slide count;
+- `ir_origin` (`provided` / `extractive` / `extractive_fallback` — the last means your IR was rejected; say so and why);
+- `degradations` (truncations, font step-downs, image placeholders, KPI overflow) — every one is a bound the engine applied to guarantee delivery;
+- coverage status, and which source sections were left uncovered.
 
-- `fast`: internal draft / content validation / simple article / explicit speed request.
-- `standard`: formal internal report or ordinary client/product/technical/business deck.
-- `premium`: public release, high-value client, template asset, strong brand requirement, complex diagrams, or explicit full validation request.
+Do not present a degraded or extractive deck as if it were fully IR-driven. The decision trace (`decision-trace.json`) explains every layout choice if the user asks why a slide looks the way it does.
 
-User override wins. Record the override and reason codes. Keep all internal work under `.ppt-work/`; deliver only the user-facing package plus `delivery-manifest.json`. Preserve `.ppt-work/` on failure. Premium should preserve it by default.
+## Quality expectations
 
-### Style Contract Gate
+- Slide titles should be judgments, not topics ("增长由海外驱动" not "收入情况"), carried in `title` + `message`.
+- Group content so each slide makes one point; use `metric` blocks for numbers, `relations` for causality/comparison — they drive better archetypes.
+- 3–8 blocks per slide is the sweet spot; the schema caps at 12.
+- The engine guarantees the floor (no blank pages, no overflow, verified content). The ceiling — sharp selection, insight, narrative — is your contribution.
 
-`style_id` alone is too abstract. The same style name produces visibly different decks across models because style descriptions only encode mood (e.g. "restrained color"). Every serious deck must resolve a complete `style-contract.json` before build. The contract is the source of truth for color, typography, grid, spacing, shape, shadows, cards, tables, charts, diagrams, images, icons, footer, density limits, effects, and forbidden drift.
+## Autonomy tiers (protocol extension slot)
 
-Before building, do one of:
+This version runs every model at tier **L0**: zero visual authority, rules pick every archetype. Tiers **L1** (choose among engine-proposed archetype candidates) and **L2** (constrained composition proposals, QA-gated) are reserved protocol extensions; their activation and the behavioral probe that grants them will be documented here when enabled. Nothing in the current protocol changes when they arrive.
 
-- **(a) Confirm with the user.** Present the candidate style(s), legacy palette aliases, and resulting token contract. Let the user pick `style_id` or an alias. If the user does not pick, fall back to the default fixture for the recommended style.
-- **(b) Match a reference.** If the user supplied a reference image, brand deck, or explicit brand colors, extract the dominant primary / accent / background and pick the closest palette (or derive a new named palette and document it explicitly). Do not silently substitute.
+## Legacy v3 route
 
-Record the chosen `style_id`, compatibility alias or legacy palette source, and the resolved tokens in `style-contract.json` before any visual implementation. The build must read design parameters from this contract; do not invent hex values, font sizes, margins, radius values, table styles, chart colors, connector widths, crop modes, or footer styles at build time.
-
-The contract must contain:
-
-```json
-{
-  "schema_version": "2.0",
-  "style_id": "consulting-light|product-report|technical-blueprint|consulting-blueprint-hybrid|editorial-knowledge",
-  "display_name": "<human-readable name>",
-  "colors": {
-    "primary": "#RRGGBB",
-    "accent": "#RRGGBB",
-    "background": "#RRGGBB",
-    "surface_1": "#RRGGBB",
-    "surface_2": "#RRGGBB",
-    "text_primary": "#RRGGBB",
-    "text_secondary": "#RRGGBB",
-    "border": "#RRGGBB"
-  },
-  "typography": {},
-  "grid": {},
-  "spacing": {},
-  "card_tokens": {},
-  "table_tokens": {},
-  "chart_tokens": {},
-  "diagram_tokens": {},
-  "image_tokens": {},
-  "footer_tokens": {},
-  "density_limits": {}
-}
-```
-
-Validate with:
-
-```bash
-python3 scripts/validate_contracts.py --style .ppt-work/contracts/style-contract.json --strict
-```
-
-### Component Delivery Route Gate
-
-Before build, run Capability Probe and Component Registry resolution. The probe answers what this machine can actually do; the registry answers what each component is, which routes are allowed, which Builder levels are acceptable, what must remain editable, whether raster/SVG/generated output is allowed, and which QA checks are required.
-
-Default registry:
-
-```text
-references/component-registry.json
-```
-
-Generate a capability report:
-
-```bash
-python3 scripts/capability_probe.py \
-  --style .ppt-work/contracts/style-contract.json \
-  --registry references/component-registry.json \
-  --output .ppt-work/capability-report.json \
-  --strict
-```
-
-Generate a delivery plan:
-
-```bash
-python3 scripts/resolve_component_delivery.py \
-  --ppt-ir .ppt-work/contracts/ppt-ir.json \
-  --style .ppt-work/contracts/style-contract.json \
-  --registry references/component-registry.json \
-  --capabilities .ppt-work/capability-report.json \
-  --profile premium \
-  --builder auto \
-  --output .ppt-work/contracts/delivery-plan.json \
-  --strict
-```
-
-Then validate:
-
-```bash
-python3 scripts/validate_contracts.py \
-  --ppt-ir .ppt-work/contracts/ppt-ir.json \
-  --style .ppt-work/contracts/style-contract.json \
-  --component-registry references/component-registry.json \
-  --delivery .ppt-work/contracts/delivery-plan.json \
-  --strict
-```
-
-Never choose component routes ad hoc during drawing. Ordinary text, cards, tables, matrices, metric cards, and simple charts must remain native/editable. Complex diagrams may fall back to `hybrid_overlay` or `svg_component`; conceptual scenes may use `generated_image` with native title/caption/source overlay. `native_required` objects must not silently downgrade to SVG or image.
-
-Before selecting a builder:
-
-1. Run Capability Probe.
-2. Match Component Registry against actual environment capabilities.
-3. Select the builder with the highest editable-core coverage.
-4. Do not use a visual-only adapter for native-required objects.
-5. Record the requested builder, selected builder, version, selection score/reasons, and capability report path in the Build Manifest.
-6. If no valid builder exists, stop at contracts and visual references.
-
-Forbidden:
-
-- assuming a Builder or Renderer exists because it is mentioned in the Skill
-- continuing Premium when support is `unknown`
-- using Visual Only output as if it were Native
-- claiming Final without a real renderer for Premium
-
-## Production Artifact Contract
-
-For non-trivial decks, create only the artifacts required by the resolved profile. Internal artifacts go under `.ppt-work/`; user-facing output goes into the delivery folder.
-
-Profile matrix:
-
-| Artifact | Fast | Standard | Premium |
-|---|---:|---:|---:|
-| Content Lock | Required | Required | Required |
-| Storyboard | Optional | Required | Required |
-| PPT IR | Required | Required | Required |
-| Style Contract | Required | Required | Required |
-| Asset Manifest | If used | Required if used | Required |
-| Delivery Plan | Required | Required | Required |
-| Build Manifest | Required | Required | Required |
-| Full Render | Optional | Representative | Required |
-| QA Report | Basic | Required | Required |
-| Benchmark Score | No | Optional | Required |
-| Verification Report | No | Required | Required |
-| Delivery Manifest | Required | Required | Required |
-
-User-facing defaults:
-
-- Fast: `deck.pptx`, `delivery-manifest.json`.
-- Standard: `deck.pptx`, `deck-preview.pdf`, `verification-report.md`, `delivery-manifest.json`.
-- Premium: Standard package plus optional `assets/` and `source-package/` only when intended for the recipient.
-
-Use `templates/ppt-production-artifact-checklist.md` to confirm completeness.
-
-## Master Design Language Gate
-
-Before implementing a serious deck, load the references that match the deck's risk and style needs:
-
-- `references/master-presentation-design-language.md`: overall design hierarchy and hybrid-editable principles.
-- `references/expression-mode-gate.md`: mandatory when creating storyboard or slide manifest.
-- `references/premium-page-archetypes.md`: mandatory when selecting page archetypes.
-- `references/five-style-master-systems.md`: mandatory when choosing a style system. **This file is now the source of truth for palette hex values; do not derive colors elsewhere.**
-- `references/spec-to-deck-visual-priority-gate.md`: mandatory when a detailed spec, coordinates, or placeholder map is provided.
-- `references/component-craft-checklist.md`: mandatory before scoring or handoff.
-- `references/component-registry.md`: mandatory before building; explains Component Registry and Delivery Plan routing.
-- `references/builder-adapters.md`: mandatory before selecting a builder; explains capability reports, support levels, and adapter contracts.
-- `references/diagram-ir-and-layout.md`: mandatory for `relationship_visual`; explains Diagram IR semantics, layout choice, complexity analysis, and delivery guidance.
-- `references/diagram-auto-repair.md`: read when Diagram IR validation reports broken paths, unknown nodes, connector web risk, or type mismatch.
-- `references/master-ppt-design-rubric.md`: mandatory for formal decks and final QA.
-- `references/component-raster-fallback.md`: mandatory when using raster/SVG/generated visual components.
-- `references/production-profiles.md`: mandatory before artifact planning or packaging.
-- `references/production-readiness-gates.md`: mandatory for non-trivial decks.
-- `references/anti-regression-examples.md`: read when quality regresses into bullets, connector webs, literal spec execution, or raster overuse.
-- `references/benchmark-methodology.md`: read when running formal rubric scoring, comparing tool/prompt changes, or adding regression fixtures.
-
-Templates:
-
-- `templates/slide-manifest-template.json`
-- `templates/style-contract-example.json`
-- `templates/component-registry-example.json`
-- `templates/capability-report-example.json`
-- `templates/delivery-plan-example.json`
-- `templates/delivery-manifest-example.json`
-- `templates/diagram-ir-example.json`
-- `templates/design-language-schema.json` (deprecated pointer only)
-- `templates/spec-implementation-priority-schema.json`
-- `templates/visual-qa-gate-template.json`
-- `templates/content-lock-template.md`
-- `templates/storyboard-template.md`
-- `templates/benchmark-case-example.json`
-- `templates/rubric-score-example.json`
-
-Move in this order: content semantics -> expression mode -> Diagram IR for relationship visuals -> page architecture -> visual priority/deletion -> visual grammar -> delivery implementation -> verification and scoring.
-
-## Readiness Gates
-
-### Gate 1: Content Lock
-
-Pass only when:
-
-- each slide has a judgment title, not a topic title
-- every major claim is sourced, inferred, or explicitly marked as an assumption
-- no important source section is silently dropped
-- dense paragraphs are transformed into structure, not copied as walls of text
-
-Fail if the title could fit any generic deck, bullets are copied without prioritization, evidence and conclusion disconnect, or the slide would misrepresent the source.
-
-### Gate 2: Expression Mode Lock
-
-Run this before finalizing `slide_manifest.json`.
-
-Every slide must choose exactly one `expression_mode`:
-
-- `textual_argument`: answer-first title plus short support.
-- `structured_cards`: parallel ideas or grouped examples.
-- `table_matrix`: precise comparison, scoring, checklist, or coverage lookup.
-- `data_visual`: magnitude, trend, ranking, contrast, distribution, or composition.
-- `relationship_visual`: architecture, ecosystem, flow, causal chain, dependency, flywheel, stakeholder map, ownership boundary, trust boundary, or operating model.
-- `conceptual_scene`: editorial illustration, IP/persona scene, metaphor, or abstract visual hook.
-- `hybrid_panel`: one primary visual component plus concise interpretation.
-
-Classify as `relationship_visual` when the source contains one strong trigger or two medium triggers from `references/expression-mode-gate.md`.
-
-Pass only when every slide records:
-
-- `expression_mode`
-- `expression_mode_reason`
-- `audience_question`
-- `primary_anchor`
-- `visual_component_plan` when the mode is `relationship_visual`, `conceptual_scene`, or visual-heavy `hybrid_panel`
-- `visual_component_delivery` when the bounded component may be `native_ppt`, `svg_html_render`, `generated_image`, or `hybrid_generated_component`
-
-Fail if relationship, flow, system boundary, feedback loop, ecosystem, causal chain, or spatial metaphor content remains pure prose or generic cards without deliberate simplification.
-
-### Gate 3: Architecture Lock
-
-Pass only when:
-
-- every slide has exactly one primary anchor
-- every slide has one page archetype
-- density label matches actual content
-- high-density pages have a structural reason to be dense
-- tables/dashboards are not used as dumping grounds
-
-Fail if two diagrams compete, a slide tries to explain workflow/metrics/risks at once, or layout is chosen before message.
-
-### Gate 4: Spec Priority Lock
-
-Use whenever the user provides a detailed design spec, coordinates, placeholder map, brand template, or page-by-page layout description.
-
-A design spec is not a command to draw every listed object at full strength. Treat it as design intent plus candidate inventory.
-
-Before PPT implementation, create `spec_implementation_plan.json` with:
-
-- slide intent
-- one primary visual anchor
-- object roles and priorities
-- keep/merge/weaken/move/delete decisions
-- connector, icon, grid, table, and callout budgets
-- editable core and material layers
-- delivery route for complex visual components
-
-Fail if detailed coordinates are executed literally, background or technical decoration competes with content, or connector webs appear.
-
-### Gate 5: Visual Reference Lock
-
-Use when the user expects polish, formal quality, style exploration, template creation, or public/client-facing delivery.
-
-Pass only when:
-
-- at least cover + one representative content page are previewed
-- preview demonstrates typography, spacing, component style, and density
-- preview is clearly labeled as non-final when not editable
-- the direction can be reconstructed as hybrid-editable PPT
-
-Fail if a final deck is built without seeing visual direction for a polish-sensitive request.
-
-### Gate 6: PPT Implementation Lock
-
-Pass only when:
-
-- message-bearing content is editable
-- material/raster layers are allowed and disclosed
-- localized raster/SVG/generated components are bounded and intentional
-- all key text fits within boxes
-- representative slides render nonblank
-- package/object counts match expected structure
-- visual parameters used in implementation match `style-contract.json` exactly (no invented hex, type sizes, spacing, radius, table, chart, diagram, image, or footer values)
-
-Fail if the deck is screenshot-only without explicit user acceptance, text clips, media is missing, or final report overclaims editability.
-
-## Style Systems
-
-Use style systems as complete design languages, not skins. **Every style is now bound to a strict Style Contract fixture** — see `tests/fixtures/styles/` and `references/five-style-master-systems.md`. The skill is no longer compatible with style descriptions that only encode mood; a model that invents its own colors or component parameters will produce off-contract output and fail the Style Contract Gate.
-
-Default options (5 styles):
-
-1. `consulting-light`: formal boardroom, evidence-heavy, answer-first. Palettes: `mckinsey` (default), `bcg`.
-2. `product-report`: product strategy, metrics, roadmap, tradeoffs. Palettes: `linear` (default), `stripe`.
-3. `technical-blueprint`: precise engineering workflow/architecture/runbook. Palette: `ibm-whitepaper` (default).
-4. `consulting-blueprint-hybrid`: consulting hierarchy with restrained technical accents. Palette: `deep-amber` (default).
-5. `editorial-knowledge`: premium knowledge deck for longform ideas. Palette: `warm-paper` (default).
-
-For Agent systems, automation workflows, architecture, toolchains, permissions, failure modes, observability, OpenClaw/Codex workflows, or engineering strategy decks, prefer `consulting-blueprint-hybrid` unless the audience is purely implementation-focused.
-
-## Production Template Packs
-
-For a reusable v2 production starting point, select one validated pack before mapping slides:
-
-- `references/template-packs/editorial-knowledge.json`: longform explainers, newsletters, courses, personal IP, and knowledge products.
-- `references/template-packs/technical-blueprint.json`: implementation-focused architecture, workflow, runbook, and engineering evidence decks.
-
-Validate packs against `schemas/template-pack.schema.json`. Each pack binds a v2 Style Contract to exactly six production roles (cover, judgment, evidence/data, process/relationship, comparison/implementation, and closing), current `primary_expression` modes, named Component Registry types, allowed delivery routes, editable-core policy, forbidden patterns, and truthful delivery constraints.
-
-A template pack is **not** a screenshot library or dead master deck. It is reusable Style Contract plus archetype/component-routing policy. Resolve its component policies through `references/component-registry.json` and the normal Delivery Plan gate; do not treat a preferred route as proof that the active builder supports it. Keep message-bearing titles, arguments, data, labels, tables, diagrams, source notes, and actions editable as declared. Any bounded SVG, raster, background, or generated component must preserve the required native overlay and be disclosed. Pack selection does not waive render/readback/QA requirements or justify a Premium `final` claim without evidence.
-
-## Technical Blueprint Refinement
-
-Technical blueprint style must not become raw blueprint/wireframe. For client-facing or high-stakes technical decks:
-
-- consulting-grade whitespace and answer-first titles
-- technical diagrams as proof layer
-- restrained grid/blueprint accents only when meaningful
-- visible security, ownership, trust, failure, and observability boundaries when relevant
-- minimal meaningful connectors
-- precise labels, not label noise
-
-Default technical noise budgets:
-
-- background grid opacity: 4%-10%, or omit on dense pages
-- connector lines: 3-9 meaningful lines
-- decorative marks: max 3 per slide
-- primary nodes: max 8 before grouping/splitting
-- dashboard cards: max 4 KPI cards + 3 charts for ordinary slides
-- tables: max 5 rows x 6 columns unless table is the single anchor
-
-If a technical slide exceeds budget, group, split, move details to appendix/notes, or choose SVG/HTML/generated bounded component.
-
-## Two-Lane Production Model
-
-### Lane A: High-Fidelity Visual Reference
-
-Use HTML/CSS, code-rendered references, screenshots, or contact sheets to calibrate typography, material/background systems, layout rhythm, component style, and density.
-
-This lane may use browser-level craft, but do not pretend the screenshot is editable PPT.
-
-### Lane B: Editable Delivery Reconstruction
-
-Build final PPTX from structured manifest or generation code.
-
-Keep editable as native PPT objects:
-
-- slide titles, subtitles, body text
-- captions and source notes
-- cards and callout boxes
-- tables and simple charts
-- flow diagrams, issue trees, timelines, matrices, and simple architecture diagrams
-- meaningful connectors and labels
-
-Allow raster/SVG/generated layers for material backgrounds, photos, illustrations, IP character art, complex relationship maps, conceptual scenes, ecosystem maps, dense architecture murals, or soft-boundary components.
-
-## Component Raster And Generated Delivery
-
-Use `references/component-raster-fallback.md` whenever considering raster/SVG/generated components.
-
-For `relationship_visual`, `conceptual_scene`, and visual-heavy `hybrid_panel`, bounded visual components are a planned delivery strategy, not merely late-stage rescue.
-
-Good candidates:
-
-- complex relationship maps with many cross-links
-- ecosystem maps or stakeholder networks
-- capability landscapes with nested regions and soft boundaries
-- conceptual metaphors or abstract spatial structures
-- dense architecture murals where visual comprehension matters more than direct editing
-- illustrated process scenes, IP illustrations, or editorial visual metaphors
-- complex textures, material backgrounds, photos, or atmospheric layers
-
-Poor candidates:
-
-- 2x2, 2x3, or 3x3 card grids
-- ordinary comparison matrices
-- tables and scorecards
-- metric cards
-- simple process lanes
-- clean issue trees or dependency trees
-- simple architecture diagrams with modest connector counts
-- already-stabilized layouts after reducing connectors, grouping, or switching to cards
-
-When using raster/SVG/generated components:
-
-- crop to the component region, not the full slide
-- keep title, interpretation line, source note, footer, legend, and key labels editable where practical
-- store prompt/source path in the project directory
-- disclose the component in `verification-report.md`
-- count media objects and confirm only intended components are rasterized
-
-## Relationship Diagram Contract
-
-When `primary_expression=relationship_visual`:
-
-1. Do not draw directly from prose.
-2. Create or reference a valid Diagram IR.
-3. Identify nodes, groups, edges, boundaries, annotations, and main paths.
-4. Validate Diagram IR before selecting a delivery route.
-5. Use relationship semantics to choose line styles.
-6. Preserve one visually dominant main path or relationship structure.
-7. Use Component Registry and Delivery Resolver.
-8. Simplify, cluster, annotate, or split before falling back to raster.
-
-Do not:
-
-- convert relationship-heavy content into generic cards by default;
-- assign equal visual priority to every edge;
-- use curves merely for decoration;
-- draw connectors through nodes;
-- place large paragraphs inside nodes;
-- rasterize the entire relationship slide;
-- claim a diagram is editable when labels and nodes are embedded in one image.
-
-## Scoring And Revision
-
-Use `references/master-ppt-design-rubric.md`. A production slide must score at least `14/18`, with no zero.
-
-Six dimensions:
-
-1. Judgment quality.
-2. Content fidelity and evidence.
-3. Expression mode and page architecture.
-4. Page composition.
-5. Component craft and style consistency.
-6. Editability and delivery hygiene.
-
-Revise before final handoff if any are true:
-
-- average score below 14/18
-- any dimension scores 0
-- more than 20% of slides have topic titles
-- more than 15% of slides have clipped or overlapping text
-- any formal deck page looks like raw wireframe/spec coverage output
-- any key technical diagram has connector web or unclear boundaries
-- any claimed editable core is rasterized
-- ordinary card/matrix/table/metric content is rasterized without explicit user approval
-- implementation visual parameters do not match `style-contract.json`
-
-## Visual QA Gate
-
-Before final handoff:
-
-1. Inspect package structure.
-2. Count editable text and media objects when possible.
-3. Run the Stage 6 verifier:
-   `python3 scripts/verify_deck.py deck.pptx --ppt-ir .ppt-work/contracts/ppt-ir.json --style .ppt-work/contracts/style-contract.json --delivery .ppt-work/contracts/delivery-plan.json --build .ppt-work/contracts/build-manifest.json --render --output .ppt-work/qa/qa-report.json`
-4. Render with PowerPoint, Keynote, LibreOffice, or another real available route. If no renderer is available, preserve `RENDER_ENGINE_UNAVAILABLE`, return/carry the unavailable status, and cap final status honestly. Do not create fake screenshots or claim visual QA passed.
-5. Inspect representative screenshots/contact sheets when they exist.
-6. Check blank slides, clipped text, overlaps, missing images, aspect ratio, private local paths, connector webs, high-contrast grids, and cramped matrices.
-7. Confirm any raster/SVG/generated component is intentional, bounded, disclosed, and not replacing ordinary editable card/table/matrix content.
-8. **Confirm every fill, stroke, text color, font size, spacing, radius, connector, table, chart, image, and footer value in the build matches `style-contract.json` exactly.** Drift from the contract is a defect, not a creative choice.
-9. For repair, use `python3 scripts/repair_deck.py deck.pptx --qa-report .ppt-work/qa/qa-report.json --output-pptx .ppt-work/qa/repaired.pptx --output-report .ppt-work/qa/repair-report.json`. Only safe deterministic repairs may be attempted; never mark visual/render issues repaired without a real render recheck.
-10. Revise and re-render if issues are found.
-11. Package the user-facing delivery with `scripts/package_delivery.py`; validate `delivery-manifest.json` and keep `.ppt-work/` if packaging fails.
-
-Final status must distinguish `planned`, `created`, `rendered`, `read_back`, `verified`, `final`, and `failed`. The status is calculated from Build Manifest, QA Report, and benchmark evidence. Builders and agents must not handwrite `final`; Premium without real render evidence is not final.
-
-## Privacy And Cloud Export
-
-Local PPTX export is the safer default for sensitive drafts, PRDs, internal metrics, automation designs, and unpublished content. Only upload/share to Feishu/Lark Slides when the user explicitly requests cloud delivery and the content is appropriate.
-
-## Default Workflow
-
-1. Resolve trigger and production profile.
-2. Analyze source and evidence.
-3. Create PPT IR.
-4. Validate title role and expression.
-5. Resolve Style Contract.
-6. Resolve component delivery routes.
-7. Build visual reference only when needed.
-8. Build PPTX through available adapter.
-9. Run verification harness.
-10. Repair and re-run when deterministic repairs are safe.
-11. Deliver trusted status and report.
-
-Keep this main workflow as routing only. Use references for detailed gates:
-`production-profiles.md`, `expression-mode-gate.md`, `design-token-contract.md`,
-`component-registry.md`, `diagram-ir-and-layout.md`, `builder-adapters.md`,
-`verification-harness.md`, and `production-readiness-gates.md`.
-
-## Lessons From Recent Trials
-
-- McKinsey-style specs work well when they encode hierarchy, restraint, and deletion-by-implication.
-- Technical blueprint specs underperform when executed literally because grids, nodes, connectors, labels, and tables compound into visual noise.
-- Detailed coordinates are not enough. A production-grade spec needs visual priority, deletion rules, density budgets, and component craft expectations.
-- For Agent/system decks, target `consulting-blueprint-hybrid`: consulting structure with technical proof components, not raw blueprint drafting.
-- Localized image generation is useful for complex relationship diagrams, ecosystem maps, conceptual visuals, and material layers; it is usually wrong for clean card grids, matrices, tables, and metric cards because it destroys useful editability without solving a structural problem.
-- Style descriptions that only encode mood ("restrained color") produce visibly different decks across models. Pin complete design tokens into each style contract and confirm them with the user before building.
-- Do not introduce a style into the enumeration until its strict style fixture validates. Half-defined styles are a defect source.
-
----
-
-## FILE: references/five-style-master-systems.md
-
-# Five Style Master Systems
-
-Use style systems as complete design languages, not skins. **Every style in this file is bound to one or more named palette contracts with exact hex values.** The build must read colors from `style_contract.json`; do not invent hex values at build time. If a style needs a new palette, add it to this file first, then update `style_contract.json` to reference it.
-
-Global color usage rules (apply to every palette):
-
-- `primary`: title bars, main color blocks, key structural elements, top-of-page header strips, large callout blocks.
-- `accent`: data highlights, single-emphasis callouts, key numbers, focused labels. **Never use accent as a large fill or as a page background.**
-- `background`: page base. The whole slide sits on this color.
-- `neutrals` (3 grays): body text, secondary text, dividers, borders, subtle fills, table strokes. Choose values that harmonize with the palette.
-- Reserve at least 70% of any slide for background + neutrals; primary and accent together should occupy at most ~30% of a slide's visual weight, with accent far less than primary.
-
----
-
-## consulting-light
-
-Boardroom, evidence-heavy, answer-first, decision-oriented. Use for formal reports, executive updates, market analysis, investor-style briefs, and McKinsey-like decks. White space, strong titles, restrained color, and clean proof components matter more than visual novelty.
-
-Available palettes:
-
-### `mckinsey` (default)
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#051C2C` | deep navy titles, header bars, primary structural blocks |
-| accent | `#2251FF` | single-emphasis data highlights, key callouts |
-| background | `#FFFFFF` | page base |
-| neutral-900 (text) | `#1F2937` | body text, judgment titles |
-| neutral-500 (muted) | `#6B7280` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#E5E7EB` | dividers, table strokes, subtle card fills |
-
-### `bcg`
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#004C2F` | deep green titles, header bars, primary structural blocks |
-| accent | `#00823B` | single-emphasis data highlights, key callouts |
-| background | `#F9F9F9` | page base |
-| neutral-900 (text) | `#1F2937` | body text, judgment titles |
-| neutral-500 (muted) | `#6B7280` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#E5E7EB` | dividers, table strokes, subtle card fills |
-
----
-
-## product-report
-
-Modern product strategy deck with metrics, roadmap, tradeoffs, operating decisions, and user/business evidence. Use for PRDs, MVP plans, retrospectives, roadmap proposals, and launch reviews.
-
-Available palettes:
-
-### `linear` (default)
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#1A1A2E` | near-black titles, header bars, primary structural blocks |
-| accent | `#7B68EE` | medium-violet single-emphasis data highlights, key callouts |
-| background | `#F7F7FB` | cool off-white page base |
-| neutral-900 (text) | `#1F2937` | body text, judgment titles |
-| neutral-500 (muted) | `#6B7280` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#E5E7EB` | dividers, table strokes, subtle card fills |
-
-### `stripe`
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#0F0F0F` | near-black titles, header bars, primary structural blocks |
-| accent | `#0055FF` | bright blue single-emphasis data highlights, key callouts |
-| background | `#FAFAFA` | page base |
-| neutral-900 (text) | `#1A1A1A` | body text, judgment titles |
-| neutral-500 (muted) | `#6B6E73` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#E6E6E9` | dividers, table strokes, subtle card fills |
-
----
-
-## technical-blueprint
-
-Precise executable engineering deck with lanes, nodes, boundaries, failure modes, observability, and runbooks. Use when implementation detail is the audience's main need. Keep diagrams disciplined and avoid raw tool-screenshot aesthetics. Light-mode, formal technical whitepaper / RFC feel, print-friendly.
-
-Available palettes:
-
-### `ibm-whitepaper` (default)
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#005A9E` | IBM blue titles, header bars, primary structural blocks, node outlines |
-| accent | `#005A9E` | single-emphasis highlights (same as primary; rely on weight and isolation rather than a second hue) |
-| background | `#FAFAFA` | page base |
-| secondary-surface | `#F0F4F8` | panel / code-block / table-header fills |
-| neutral-900 (text) | `#1F2937` | body text, judgment titles |
-| neutral-500 (muted) | `#4B5563` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#D1D5DB` | dividers, table strokes, subtle card fills |
-
-When accent and primary are identical, use neutral-700 `#374151` as the de-facto "second accent" for a second tier of emphasis (e.g. secondary nodes) so the deck does not collapse to monochrome.
-
----
-
-## consulting-blueprint-hybrid
-
-Formal consulting hierarchy with restrained technical blueprint accents. Use for Agent systems, automation workflows, architecture strategy, platform operating models, and technical decks for business audiences. The slide should feel like consulting output first and engineering blueprint second. Consulting-first, restrained amber-gold technical accent.
-
-Available palettes:
-
-### `deep-amber` (default)
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#1B2A4A` | deep navy titles, header bars, primary structural blocks |
-| accent | `#E8A838` | restrained amber-gold single-emphasis highlights, key callouts |
-| background | `#F9FAFB` | page base |
-| neutral-900 (text) | `#2D3748` | body text, judgment titles (slightly differentiated from primary navy) |
-| neutral-500 (muted) | `#4A5568` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#E2E8F0` | dividers, table strokes, subtle card fills |
-
-Use accent `#E8A838` sparingly: it is a highlight, not a fill. A small accent block, an underline beneath a number, or a single labeled arrow is enough.
-
----
-
-## editorial-knowledge
-
-Premium knowledge deck that turns longform writing into frameworks, contrasts, steps, mistakes, examples, and memorable ideas. Use for explainers, newsletters, courses, personal IP, and knowledge products. Paper texture, knowledge-blogger feel.
-
-Available palettes:
-
-### `warm-paper` (default)
-
-| Token | Hex | Use |
-| --- | --- | --- |
-| primary | `#2D2926` | warm dark titles, header bars, primary structural blocks |
-| accent | `#E8633A` | warm orange-red single-emphasis highlights, key callouts |
-| background | `#FAF7F2` | warm paper page base |
-| neutral-900 (text) | `#4A4540` | body text, judgment titles (warm dark, harmonized with primary) |
-| neutral-500 (muted) | `#7A736D` | secondary text, source notes, captions |
-| neutral-200 (border/fill) | `#E5E0D8` | dividers, table strokes, subtle card fills (warm beige) |
-
----
-
-## FILE: templates/design-language-schema.json
-
-```json
-{
-  "style_system": "consulting-light|product-report|technical-blueprint|consulting-blueprint-hybrid|editorial-knowledge",
-  "palette_name": "string (must match a named palette under the chosen style_system)",
-  "audience": "",
-  "formality": "draft|internal|executive|client|public",
-  "colors": {
-    "primary": "#RRGGBB (required, must match palette)",
-    "accent": "#RRGGBB (required, must match palette)",
-    "background": "#RRGGBB (required, must match palette)",
-    "secondary_surface": "#RRGGBB (optional, required for technical-blueprint)",
-    "neutrals": ["#RRGGBB", "#RRGGBB", "#RRGGBB"]
-  },
-  "usage_rules": {
-    "primary": "title bars, main color blocks, key structural elements",
-    "accent": "data highlights, single-emphasis callouts, never as large fill",
-    "background": "page base",
-    "neutrals": "body text, dividers, secondary fills"
-  },
-  "typography": {
-    "title_role": "judgment title",
-    "body_role": "evidence or interpretation",
-    "minimum_body_size_pt": 10
-  },
-  "layout": {
-    "grid": "",
-    "spacing_rules": [],
-    "density_limits": []
-  },
-  "components": {
-    "cards": "",
-    "tables": "",
-    "charts": "",
-    "relationship_diagrams": "",
-    "raster_layers": ""
-  },
-  "forbidden_drift": []
-}
-```
-
----
-
-## FILE: templates/slide-manifest-template.json
-
-```json
-{
-  "deck": {
-    "source": "",
-    "source_rights": "owned|licensed|external-reference|unknown",
-    "usage_boundary": "private draft|internal review|public sharing|client delivery|training|publication",
-    "export_target": "pptx|native-dynamic-pptx|html-preview|dynamic-html|feishu-slides|multi",
-    "audience": "",
-    "visual_system": "consulting-light|product-report|technical-blueprint|consulting-blueprint-hybrid|editorial-knowledge",
-    "palette_name": "string (must match a named palette under visual_system)",
-    "logical_slide_count": 0,
-    "physical_slide_count": 0,
-    "content_lock": "content_analysis.md",
-    "storyboard": "storyboard.md",
-    "style_contract": "style_contract.json",
-    "verification_report": "verification-report.md"
-  },
-  "slides": [
-    {
-      "logical_slide_id": "S01",
-      "title": "",
-      "judgment_title": "",
-      "content_lock_ref": "content_analysis.md#slide-1",
-      "physical_slide_ids": ["pptx-slide-1"],
-      "page_archetype": "claim-evidence|metric-proof|framework-map|process-lane|system-architecture|ecosystem-map|decision-matrix|risk-register|observability-dashboard|comparison-contrast|editorial-scene|closing-standard",
-      "density_label": "low|medium|high",
-      "primary_anchor": "",
-      "audience_question": "",
-      "expression_mode": "textual_argument|structured_cards|table_matrix|relationship_visual|conceptual_scene|data_visual|hybrid_panel",
-      "expression_mode_reason": "",
-      "relationship_types": [],
-      "visual_component_plan": {
-        "component_type": "none|ecosystem map|dependency graph|layered architecture|swimlane|flywheel|causal chain|stakeholder network|capability landscape|conceptual scene|chart",
-        "audience_question": "",
-        "primary_entities": [],
-        "relationship_types": [],
-        "simplification_strategy": "grouping|lanes|layers|split slide|appendix|label reduction|not needed",
-        "editable_core": [],
-        "visual_component_delivery": "native_ppt|svg_html_render|generated_image|hybrid_generated_component|none",
-        "raster_acceptance_reason": ""
-      },
-      "editable_text_objects": [],
-      "must_keep_editable_text": [],
-      "visual_objects": [],
-      "images": [],
-      "charts": [],
-      "tables": [],
-      "asset_provenance": [],
-      "source_labels": [],
-      "rasterization_tradeoff": "none|bounded_component|material_layer|full_slide_approved",
-      "score": {
-        "judgment_quality": "unknown",
-        "content_fidelity": "unknown",
-        "expression_architecture": "unknown",
-        "page_composition": "unknown",
-        "component_craft": "unknown",
-        "editability_hygiene": "unknown",
-        "total": "unknown"
-      },
-      "verification": {
-        "nonblank_render": "unknown",
-        "text_overflow": "unknown",
-        "editable_core_text": "unknown",
-        "visual_structure_preserved": "unknown",
-        "source_labels_present": "unknown",
-        "raster_component_disclosed": "unknown"
-      }
-    }
-  ]
-}
-```
+The v3 multi-contract pipeline (`scripts/run_pipeline.py`, `ppt-ir` v2 contracts) remains in-tree for compatibility and is superseded by this protocol. Do not mix the two routes in one delivery.
