@@ -62,6 +62,10 @@ def main(argv: list[str] | None = None) -> int:
         if name in ("verify", "coverage"):
             p.add_argument("--ir", required=True)
 
+    sv = sub.add_parser("style-validate")
+    sv.add_argument("--style", required=True)
+    sv.add_argument("--json-out")
+
     c = sub.add_parser("compile")
     c.add_argument("--source", action="append", required=True, metavar="ID:TYPE:PATH")
     c.add_argument("--ir")
@@ -71,6 +75,13 @@ def main(argv: list[str] | None = None) -> int:
                    help="fail on invalid IR instead of falling back to extraction")
 
     args = parser.parse_args(argv)
+
+    if args.command == "style-validate":
+        from .style_validator import validate_style_pack
+        pack = json.loads(Path(args.style).read_text(encoding="utf-8"))
+        result = validate_style_pack(pack)
+        _emit(result, args.json_out)
+        return 0 if result["status"] != "fail" else 1
 
     if args.command == "compile":
         from .compile import compile_deck

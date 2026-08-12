@@ -14,7 +14,7 @@ from pathlib import Path
 EMU_PER_PT = 12700
 EMU_PER_IN = 914400
 
-DEFAULT_PACK = Path(__file__).resolve().parents[1] / "schemas/v4/examples/style-editorial-v4.json"
+DEFAULT_PACK = Path(__file__).resolve().parents[1] / "styles/editorial-knowledge.json"
 
 _DENSITY_GAP_PT = {"airy": 16, "regular": 12, "compact": 8}
 
