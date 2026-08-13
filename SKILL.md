@@ -5,7 +5,7 @@ metadata:
   display_name: "MeowClaw PPT Smith"
   english_alias: "MeowClaw PPTSmith"
   public_slug: "meowclaw-pptsmith"
-  version: "4.0.0-alpha"
+  version: "4.1.0-alpha"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
@@ -73,6 +73,15 @@ Rules the engine enforces:
 - **Cover the source.** The engine checks section/table coverage. Don't read half the article and stop.
 - **Content only.** No visual fields. The only presentation influence you have is `slides[].hints` (`emphasis_block_ids`, `tone`).
 - Optional enrichment (better decks, never required): `message`, `relations` (`causal|comparison|sequence|hierarchy|dependency|contrast` between block ids), `slide_role`, `deck.narrative_intent`, `x_semantics`.
+
+### Optional data visuals (v4.1 — stronger decks, never required)
+
+A slide may carry one optional data payload; the engine renders it natively (chart or diagram). Weak models omit these and the engine infers an archetype from the blocks alone.
+
+- `chart` — `{type: "column"|"bar"|"line"|"pie"|"combo", data: {categories: [...], series: [{name, values}]}, source_ref}`. Numbers must come from the anchored source; series colors and chart styling are engine-owned.
+- `diagram_ir` — `{diagram_type: "causal_chain"|"phase_roadmap"|"layered_architecture"|..., nodes: [{label, priority}], edges: [{from, to, relation}], source_refs}`. Nodes/edges describe structure only — never positions, colors, or shapes.
+
+Full example: `schemas/v4/examples/presentation-ir-v41-chart-diagram.json`.
 
 ### Step 4 — Compile
 
