@@ -8,8 +8,8 @@
   "required": ["schema_version", "deck", "sources", "slides"],
   "properties": {
     "schema_version": {
-      "const": "4.0.0",
-      "description": "Contract version. Semver; breaking changes bump major."
+      "enum": ["4.0.0", "4.1.0"],
+      "description": "Contract version. 4.1.0 adds optional chart/diagram_ir on slides (stronger visuals for capable models); 4.0.0 IRs remain valid. Visual decisions stay engine-owned either way."
     },
     "deck": {
       "type": "object",
@@ -205,6 +205,106 @@
         { "$ref": "#/$defs/textBlock" }
       ]
     },
+    "chart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "data", "source_ref"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["column", "bar", "line", "pie", "combo"],
+          "description": "Chart family. combo renders a column + line overlay (dual-series)."
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["categories", "series"],
+          "properties": {
+            "categories": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 20,
+              "items": { "type": "string", "maxLength": 60 }
+            },
+            "series": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "values"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+                  "values": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "source_ref": {
+          "$ref": "#/$defs/sourceRef",
+          "description": "Anchor for the underlying data (usually a table_N or a metrics paragraph)."
+        }
+      }
+    },
+    "diagramIr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["diagram_type", "nodes"],
+      "properties": {
+        "diagram_type": {
+          "type": "string",
+          "enum": ["causal_chain", "phase_roadmap", "layered_architecture", "heat_matrix", "drill_down_stair", "interaction_storyboard", "product_ui_overview"],
+          "description": "Diagram family the engine renders natively."
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label"],
+            "properties": {
+              "id": { "$ref": "#/$defs/idSlug" },
+              "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "role": { "type": "string", "maxLength": 40 },
+              "priority": { "type": "string", "enum": ["primary", "secondary", "supporting"] },
+              "detail": { "type": "string", "maxLength": 200 }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "type": "string", "minLength": 1 },
+              "to": { "type": "string", "minLength": 1 },
+              "relation": {
+                "type": "string",
+                "enum": ["causal", "sequence", "hierarchy", "dependency", "data_flow", "feedback"]
+              },
+              "label": { "type": "string", "maxLength": 80 }
+            }
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/sourceRef" }
+        }
+      }
+    },
     "slide": {
       "type": "object",
       "additionalProperties": false,
@@ -232,6 +332,14 @@
           "type": "array",
           "maxItems": 12,
           "items": { "$ref": "#/$defs/relation" }
+        },
+        "chart": {
+          "$ref": "#/$defs/chart",
+          "description": "Optional data-visualization payload. When present the engine renders a native chart instead of an inferred archetype. Numbers must come from the source (source_ref required)."
+        },
+        "diagram_ir": {
+          "$ref": "#/$defs/diagramIr",
+          "description": "Optional relationship/process diagram. When present the engine renders a native diagram (causal chain, roadmap, architecture, matrix…). Nodes/edges describe structure only — never positions, colors, or shapes."
         },
         "hints": {
           "type": "object",
