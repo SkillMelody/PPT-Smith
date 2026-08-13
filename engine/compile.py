@@ -109,7 +109,7 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
         "schema_version": "4.0.0",
         "plan": {"plan_id": f"plan-{ir_sha[:12]}", "engine_version": __version__,
                  "ir_sha256": ir_sha, "trace_run_id": run_id,
-                 "style_pack": {"pack_id": style.pack_id, "version": style.version}},
+                 "style_pack": {"pack_id": style.pack_id, "version": style.schema_version}},
         "canvas": laid["canvas"],
         "fonts_used": laid["fonts_used"],
         "slides": laid["slides"],
@@ -131,7 +131,7 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
 
     trace = decisions_to_trace(
         decisions, run_id=run_id, engine_version=__version__, ir_sha256=ir_sha,
-        style_pack={"pack_id": style.pack_id, "version": style.version})
+        style_pack={"pack_id": style.pack_id, "version": style.schema_version})
     trace["outcomes"] = {
         "qa_error_count": qa["error_count"],
         "repair_rounds": 0,

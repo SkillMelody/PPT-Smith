@@ -146,10 +146,12 @@ class SlideLayout:
         element = {
             "element_id": self.eid("card"), "type": "shape",
             "frame": frame, "shape": "round_rect",
-            "corner_radius_emu": int(style.shape.get("card_radius_pt", 8) * EMU_PER_PT),
-            "fill": {"color": style.skin_color("card", "fill", "surface_1")},
-            "stroke": {"color": style.skin_color("card", "border_color", "border"),
-                       "width_emu": int(style.shape.get("border_width_pt", 0.8) * EMU_PER_PT)},
+            "corner_radius_emu": int(style.shape_tokens.get("card_radius_pt", 8) * EMU_PER_PT),
+            "fill": {"color": style.resolve_color_ref(
+                style.card_tokens.get("default", {}).get("fill", "surface_1"))},
+            "stroke": {"color": style.resolve_color_ref(
+                style.card_tokens.get("default", {}).get("border_color", "border")),
+                       "width_emu": int(style.shape_tokens.get("border_width_pt", 0.8) * EMU_PER_PT)},
             "paragraphs": self._block_paras(block, size),
             "editable": True, "semantic_role": block.get("role", "text"),
         }
@@ -199,7 +201,8 @@ class SlideLayout:
                             weight=style.weight("medium", 500))],
                       space_after_cpt=300),
                 _para([_run(value, style, style.size_cpt("metric", "normal"),
-                            color=style.skin_color("kpi", "value_color", "primary"),
+                            color=style.resolve_color_ref(
+                                style.card_tokens.get("metric", {}).get("number_color", "primary")),
                             weight=style.weight("bold", 700))]),
             ]
             if metric.get("baseline"):
@@ -209,10 +212,10 @@ class SlideLayout:
             self.elements.append({
                 "element_id": self.eid("kpi"), "type": "shape",
                 "frame": _frame(x, top, card_w, height), "shape": "round_rect",
-                "corner_radius_emu": int(style.shape.get("card_radius_pt", 8) * EMU_PER_PT),
+                "corner_radius_emu": int(style.shape_tokens.get("card_radius_pt", 8) * EMU_PER_PT),
                 "fill": {"color": style.color("surface_1")},
                 "stroke": {"color": style.color("border"),
-                           "width_emu": int(style.shape.get("border_width_pt", 0.8) * EMU_PER_PT)},
+                           "width_emu": int(style.shape_tokens.get("border_width_pt", 0.8) * EMU_PER_PT)},
                 "paragraphs": paras, "editable": True, "semantic_role": "metric",
             })
             x += card_w + gap
@@ -257,8 +260,10 @@ class SlideLayout:
         width = max(len(r) for r in rows_data)
         col_w = self.width // width if frame["w"] == self.width else frame["w"] // width
         size = style.size_cpt("body", "small")
-        header_fill = style.skin_color("table", "header_fill", "surface_2")
-        zebra = bool((style.skins.get("table") or {}).get("zebra"))
+        header_fill = style.resolve_color_ref(
+            style.table_tokens.get("default", {}).get("header_fill", "surface_2"))
+        # v3: table_tokens.default.alternate_row_fill
+        zebra = bool(style.table_tokens.get("default", {}).get("alternate_row_fill"))
         row_h = max(frame["h"] // max(len(rows_data), 1), 274320)
         rows = []
         for r_idx, row in enumerate(rows_data):
