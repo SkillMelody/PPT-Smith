@@ -31,7 +31,7 @@ def test_all_builtin_packs_pass_authoring_qa():
 
 def test_validator_rejects_low_contrast_palette():
     pack = _load("editorial-knowledge")
-    pack["tokens"]["colors"]["text_primary"] = "#E9DFD0"  # ~= surface tones
+    pack["colors"]["text_primary"] = "#E9DFD0"  # ~= surface tones
     result = validate_style_pack(pack)
     assert result["status"] == "fail"
     assert any(f["code"].startswith("CONTRAST_TEXT_PRIMARY") for f in result["findings"])
@@ -39,7 +39,7 @@ def test_validator_rejects_low_contrast_palette():
 
 def test_validator_warns_on_missing_cjk_stack():
     pack = _load("editorial-knowledge")
-    pack["tokens"]["typography"]["font_primary"] = ["Helvetica", "Arial"]
+    pack["typography"]["font_primary"] = ["Helvetica", "Arial"]
     result = validate_style_pack(pack)
     assert any(f["code"] == "NO_CJK_FALLBACK" for f in result["findings"])
 
@@ -84,7 +84,8 @@ def test_same_ir_multiple_styles_same_topology_different_tokens():
     colors = {name: title_color(laid) for name, laid in results.items()}
     assert len(set(colors.values())) >= 2, f"tokens did not take effect: {colors}"
 
-    margins = {name: laid["slides"][1]["elements"][0]["frame"]["x"]
-               for name, laid in results.items()}
-    assert margins["editorial-knowledge"] != margins["technical-blueprint"], \
-        "layout knobs (margin_scale) did not take effect"
+    # v3 packs carry distinct accent colors (margin/typography are fixed grid
+    # constants); assert the accent token flows into the resolved style.
+    accents = {name: load_style_pack(STYLE_DIR / f"{name}.json").color("accent")
+               for name in results}
+    assert len(set(accents.values())) >= 2, f"accent tokens did not differ: {accents}"

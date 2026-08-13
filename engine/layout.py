@@ -261,7 +261,11 @@ class SlideLayout:
         col_w = self.width // width if frame["w"] == self.width else frame["w"] // width
         size = style.size_cpt("body", "small")
         header_fill = style.resolve_color_ref(
-            style.table_tokens.get("default", {}).get("header_fill", "surface_2"))
+            style.table_tokens.get("default", {}).get("header_fill", "primary"))
+        header_text = style.resolve_color_ref(
+            style.table_tokens.get("default", {}).get("header_text", "background"))
+        body_text = style.resolve_color_ref(
+            style.table_tokens.get("default", {}).get("text_color", "text_primary"))
         # v3: table_tokens.default.alternate_row_fill
         zebra = bool(style.table_tokens.get("default", {}).get("alternate_row_fill"))
         row_h = max(frame["h"] // max(len(rows_data), 1), 274320)
@@ -269,11 +273,16 @@ class SlideLayout:
         for r_idx, row in enumerate(rows_data):
             if r_idx == 0:
                 fill = header_fill
+                text_color = header_text
             elif zebra and r_idx % 2 == 0:
-                fill = style.color("surface_1")
+                fill = style.resolve_color_ref(
+                    style.table_tokens.get("default", {}).get("alternate_row_fill", "surface_1"))
+                text_color = body_text
             else:
                 fill = style.color("background")
+                text_color = body_text
             cells = [{"paragraphs": [_para([_run(cell or " ", style, size,
+                                                 color=text_color,
                                                  weight=style.weight("semibold", 600)
                                                  if r_idx == 0 else 400)])],
                       "fill": {"color": fill}}

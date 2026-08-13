@@ -1,0 +1,5 @@
+# Local test/run artifacts
+test-runs/
+
+# v4.0 simplified packs (kept locally for rollback reference; history holds them)
+styles/v4.0-backup/

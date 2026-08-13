@@ -1,0 +1,238 @@
+#!/usr/bin/env node
+// Consume a v4 render-plan.json and render deck.pptx via PptxGenJS.
+//
+// render_plan is builder-agnostic: EMU coordinates + abstract element types
+// (textbox / shape / table / connector / image). This builder is the primary
+// renderer (matches v3 visual quality); python-pptx remains the fallback.
+//
+// Usage: node build-deck-v4.mjs <render-plan.json> <output-dir>
+
+import fs from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+import PptxGenJS from "pptxgenjs";
+
+const EMU_PER_IN = 914400;
+const EMU_PER_PT = 12700;
+
+const [planPath, outputDir] = process.argv.slice(2);
+if (!planPath || !outputDir) {
+  console.error(JSON.stringify({ ok: false, errors: [{ code: "INVALID_RUNTIME_ARGUMENTS", message: "Usage: build-deck-v4.mjs <render-plan.json> <output-dir>" }] }));
+  process.exit(2);
+}
+
+const result = { ok: false, pptx: null, warnings: [], errors: [] };
+
+const in2 = (emu) => emu / EMU_PER_IN;
+const pt2 = (cpt) => cpt / 100;
+const hex = (color) => (color || "000000").replace(/^#/, "");
+
+const SHAPE_MAP = {
+  rect: "rect",
+  round_rect: "roundRect",
+  pill: "roundRect",
+  oval: "ellipse",
+  diamond: "diamond",
+  chevron: "chevron",
+};
+const ALIGN = { left: "left", center: "center", right: "right" };
+const VALIGN = { top: "top", middle: "middle", bottom: "bottom" };
+
+// Flatten v4 paragraphs (runs) into a PptxGenJS rich-text array.
+function paragraphsToText(paragraphs) {
+  const parts = [];
+  for (const para of paragraphs || []) {
+    const runs = para.runs || [];
+    runs.forEach((run, idx) => {
+      const last = idx === runs.length - 1;
+      parts.push({
+        text: run.text ?? "",
+        options: {
+          fontFace: run.font,
+          fontSize: pt2(run.size_cpt || 1300),
+          color: hex(run.color),
+          bold: (run.weight || 400) >= 600,
+          italic: Boolean(run.italic),
+          breakLine: last && para !== (paragraphs[paragraphs.length - 1] || para),
+          bullet: para.bullet && para.bullet !== "none" ? { code: "2022", indent: 10 } : undefined,
+        },
+      });
+    });
+  }
+  return parts;
+}
+
+function textOptions(element) {
+  const f = element.frame || {};
+  return {
+    x: in2(f.x || 0),
+    y: in2(f.y || 0),
+    w: in2(f.w || 0),
+    h: in2(f.h || 0),
+    align: ALIGN[element.paragraphs?.[0]?.align] || "left",
+    valign: VALIGN[element.valign] || "top",
+    margin: 0,
+  };
+}
+
+function renderElement(slide, element, pptx, registry) {
+  const type = element.type;
+  const f = element.frame || {};
+
+  if (type === "textbox") {
+    slide.addText(paragraphsToText(element.paragraphs), textOptions(element));
+    registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
+    return { route: "native_text" };
+  }
+
+  if (type === "shape") {
+    const shapeType = SHAPE_MAP[element.shape] || "rect";
+    const opts = {
+      x: in2(f.x || 0),
+      y: in2(f.y || 0),
+      w: in2(f.w || 0),
+      h: in2(f.h || 0),
+      fill: element.fill ? { color: hex(element.fill.color) } : { type: "none" },
+    };
+    if (element.shape === "round_rect" || element.shape === "pill") {
+      const r = (element.corner_radius_emu || 0) / Math.max(f.w || 1, 1);
+      opts.rectRadius = Math.min(r, 0.5) * 100; // PptxGenJS rectRadius is 0..100
+    }
+    if (element.stroke) {
+      opts.line = { color: hex(element.stroke.color), width: (element.stroke.width_emu || EMU_PER_PT) / EMU_PER_PT };
+    } else {
+      opts.line = { type: "none" };
+    }
+    slide.addShape(pptx.ShapeType[shapeType], opts);
+    if (element.paragraphs && element.paragraphs.length) {
+      slide.addText(paragraphsToText(element.paragraphs), {
+        ...textOptions(element),
+        valign: "middle",
+        align: "center",
+        isTextBox: false,
+      });
+    }
+    registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
+    return { route: "native_shape" };
+  }
+
+  if (type === "table") {
+    const rows = element.rows || [];
+    const tableRows = rows.map((row) =>
+      (row.cells || []).map((cell) => ({
+        text: paragraphsToText(cell.paragraphs),
+        options: {
+          fill: cell.fill ? { color: hex(cell.fill.color) } : undefined,
+          valign: "middle",
+          fontFace: cell.paragraphs?.[0]?.runs?.[0]?.font,
+        },
+      }))
+    );
+    const colW = (element.col_widths_emu || []).map((w) => in2(w));
+    slide.addTable(tableRows, {
+      x: in2(f.x || 0),
+      y: in2(f.y || 0),
+      w: in2(f.w || 0),
+      colW,
+      border: { type: "solid", color: hex(element.stroke?.color || "E4E0D7"), pt: 0.5 },
+    });
+    registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
+    return { route: "native_table" };
+  }
+
+  if (type === "image") {
+    slide.addImage({
+      path: element.path,
+      x: in2(f.x || 0),
+      y: in2(f.y || 0),
+      w: in2(f.w || 0),
+      h: in2(f.h || 0),
+    });
+    registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
+    return { route: "native_image" };
+  }
+
+  if (type === "connector") {
+    // Straight connector between two registered shapes (v4 MVP).
+    const from = registry[element.from_element];
+    const to = registry[element.to_element];
+    if (!from || !to) {
+      throw new Error(`connector endpoints missing: ${element.element_id}`);
+    }
+    const x1 = from.x + from.w / 2;
+    const y1 = from.y + from.h / 2;
+    const x2 = to.x + to.w / 2;
+    const y2 = to.y + to.h / 2;
+    const x = Math.min(x1, x2);
+    const y = Math.min(y1, y2);
+    const w = Math.abs(x2 - x1);
+    const h = Math.abs(y2 - y1);
+    slide.addShape(pptx.ShapeType.line, {
+      x, y, w, h,
+      line: { color: hex(element.stroke?.color || "000000"), width: (element.stroke?.width_emu || EMU_PER_PT) / EMU_PER_PT },
+      flipH: x2 < x1,
+      flipV: y2 < y1,
+    });
+    if (element.label) {
+      const lf = element.label.frame || {};
+      slide.addText(paragraphsToText(element.label.paragraphs), {
+        x: in2(lf.x || 0), y: in2(lf.y || 0), w: in2(lf.w || 0), h: in2(lf.h || 0),
+        align: "center", valign: "middle", margin: 0,
+      });
+    }
+    return { route: "native_connector" };
+  }
+
+  throw new Error(`unsupported element type: ${type}`);
+}
+
+try {
+  const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const pptx = new PptxGenJS();
+  const widthIn = in2(plan.canvas?.width_emu || 12192000);
+  const heightIn = in2(plan.canvas?.height_emu || 6858000);
+  pptx.defineLayout({ name: "PPTSMITH_V4", width: widthIn, height: heightIn });
+  pptx.layout = "PPTSMITH_V4";
+  pptx.author = "MeowClaw PPTSmith";
+  pptx.title = plan.plan?.style_pack?.pack_id || "PPTSmith deck";
+  pptx.subject = "PptxGenJS v4 render";
+
+  const primaryFont = plan.fonts_used?.[0] || "Aptos";
+  pptx.theme = { headFontFace: primaryFont, bodyFontFace: primaryFont, lang: "en-US" };
+
+  for (const slideSpec of plan.slides || []) {
+    const slide = pptx.addSlide();
+    slide.background = slideSpec.background
+      ? { color: hex(slideSpec.background.color) }
+      : { color: "FFFFFF" };
+
+    const registry = {};
+    const connectors = [];
+    for (const element of slideSpec.elements || []) {
+      if (element.type === "connector") {
+        connectors.push(element); // render after endpoints exist
+      } else {
+        renderElement(slide, element, pptx, registry);
+      }
+    }
+    for (const connector of connectors) {
+      renderElement(slide, connector, pptx, registry);
+    }
+  }
+
+  const outFile = path.join(outputDir, "deck.pptx");
+  await pptx.writeFile({ fileName: outFile });
+  result.ok = true;
+  result.pptx = outFile;
+} catch (err) {
+  result.errors.push({ code: "RUNTIME_ERROR", message: String(err?.stack || err) });
+}
+
+await fs.writeFile(path.join(outputDir, "pptxgenjs-result.json"), JSON.stringify(result, null, 2));
+if (!result.ok) {
+  console.error(JSON.stringify(result));
+  process.exit(1);
+}
+console.log(JSON.stringify(result));

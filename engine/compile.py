@@ -22,6 +22,7 @@ from .extractive_ir import build_extractive_ir
 from .layout import layout_deck
 from .policy import decide_deck, decisions_to_trace
 from .pptx_builder import build_pptx
+from .pptxgenjs_builder import build_pptx as build_pptx_js, available as pptxgenjs_available
 from .provenance import verify_ir
 from .qa_plan import check_plan
 from .structural_parser import parse_source
@@ -157,7 +158,16 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
             json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return report
 
-    pptx_path = build_pptx(plan, out / "deck.pptx")
+    # Builder decision: PptxGenJS is the primary renderer (v3 visual parity);
+    # python-pptx is the fallback when the Node runtime is unavailable.
+    if pptxgenjs_available():
+        pptx_path = build_pptx_js(plan, out / "deck.pptx")
+        report["builder"] = "pptxgenjs"
+    else:
+        pptx_path = build_pptx(plan, out / "deck.pptx")
+        report["builder"] = "python_pptx"
+        report.setdefault("degradations", []).append(
+            {"kind": "builder_fallback", "detail_code": "pptxgenjs_unavailable"})
     report["stages"].append("build")
     report.update(ok=True, pptx=str(pptx_path),
                   slide_count=len(plan["slides"]),
