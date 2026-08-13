@@ -24,6 +24,9 @@ FOOTER_H = 274320
 
 _EDGE_TOKEN = {"insight": "accent", "risk": "negative", "recommendation": "positive"}
 
+# block role -> v3 card_tokens variant (fill/border differentiation).
+_ROLE_CARD_VARIANT = {"risk": "risk", "quote": "quote", "context": "source"}
+
 
 def _run(text: str, style: ResolvedStyle, size_cpt: int, *, color: str | None = None,
          weight: int = 400, font: str | None = None) -> dict:
@@ -143,14 +146,16 @@ class SlideLayout:
                              f"block_truncated_{block.get('role', 'text')}")
         elif size != levels[0]:
             self.degrade("font_step_down", f"body_{size}")
+        variant = _ROLE_CARD_VARIANT.get(block.get("role", ""), "default")
+        card_tok = style.card_tokens.get(variant, style.card_tokens.get("default", {}))
         element = {
             "element_id": self.eid("card"), "type": "shape",
             "frame": frame, "shape": "round_rect",
             "corner_radius_emu": int(style.shape_tokens.get("card_radius_pt", 8) * EMU_PER_PT),
             "fill": {"color": style.resolve_color_ref(
-                style.card_tokens.get("default", {}).get("fill", "surface_1"))},
+                card_tok.get("fill", "surface_1"))},
             "stroke": {"color": style.resolve_color_ref(
-                style.card_tokens.get("default", {}).get("border_color", "border")),
+                card_tok.get("border_color", "border")),
                        "width_emu": int(style.shape_tokens.get("border_width_pt", 0.8) * EMU_PER_PT)},
             "paragraphs": self._block_paras(block, size),
             "editable": True, "semantic_role": block.get("role", "text"),
@@ -209,12 +214,15 @@ class SlideLayout:
                 paras.append(_para([_run(f"vs {metric['baseline']}", style, 900,
                                          color=style.color("text_muted",
                                                            style.color("text_secondary")))]))
+            metric_tok = style.card_tokens.get("metric", style.card_tokens.get("default", {}))
             self.elements.append({
                 "element_id": self.eid("kpi"), "type": "shape",
                 "frame": _frame(x, top, card_w, height), "shape": "round_rect",
                 "corner_radius_emu": int(style.shape_tokens.get("card_radius_pt", 8) * EMU_PER_PT),
-                "fill": {"color": style.color("surface_1")},
-                "stroke": {"color": style.color("border"),
+                "fill": {"color": style.resolve_color_ref(
+                    metric_tok.get("fill", "background"))},
+                "stroke": {"color": style.resolve_color_ref(
+                    metric_tok.get("border_color", "border")),
                            "width_emu": int(style.shape_tokens.get("border_width_pt", 0.8) * EMU_PER_PT)},
                 "paragraphs": paras, "editable": True, "semantic_role": "metric",
             })
@@ -314,6 +322,30 @@ class SlideLayout:
 def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
                     doc: SourceDoc | None) -> None:
     blocks = slide.get("blocks", [])
+
+    # v4.1: chart_* / diagram_* archetypes come from policy (an explicit
+    # chart/diagram_ir payload). The payload takes the primary content
+    # region; remaining blocks stack below. Weak models omit these fields
+    # and fall through to the rule archetypes unchanged.
+    if archetype.startswith("chart_") and slide.get("chart"):
+        from .diagram import layout_chart  # deferred: avoid import cycle
+        chart_h = ctx.content_h if not blocks else ctx.content_h * 3 // 5
+        layout_chart(ctx, slide["chart"], _frame(ctx.left, ctx.content_top,
+                                                 ctx.width, chart_h))
+        if blocks:
+            top = ctx.content_top + chart_h + ctx.style.gap_emu()
+            ctx.stack(blocks, top=top, height=ctx.content_top + ctx.content_h - top)
+        return
+    if archetype.startswith("diagram_") and slide.get("diagram_ir"):
+        from .diagram import layout_diagram  # deferred: avoid import cycle
+        diagram_h = ctx.content_h if not blocks else ctx.content_h * 3 // 5
+        layout_diagram(ctx, slide["diagram_ir"],
+                       _frame(ctx.left, ctx.content_top, ctx.width, diagram_h))
+        if blocks:
+            top = ctx.content_top + diagram_h + ctx.style.gap_emu()
+            ctx.stack(blocks, top=top, height=ctx.content_top + ctx.content_h - top)
+        return
+
     if archetype == "kpi_wall":
         metrics = [b for b in blocks if b.get("role") == "metric"]
         others = [b for b in blocks if b.get("role") != "metric"]

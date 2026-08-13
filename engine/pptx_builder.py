@@ -9,7 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
+from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.shapes import MSO_SHAPE, MSO_CONNECTOR
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
@@ -166,6 +168,35 @@ def _add_connector(slide, element: dict, registry: dict) -> object:
     return connector
 
 
+def _add_chart(slide, element: dict) -> object:
+    frame = element["frame"]
+    chart_types = {
+        "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
+        "bar": XL_CHART_TYPE.BAR_CLUSTERED,
+        "line": XL_CHART_TYPE.LINE,
+        "pie": XL_CHART_TYPE.PIE,
+        "donut": XL_CHART_TYPE.DOUGHNUT,
+        "area": XL_CHART_TYPE.AREA,
+        "scatter": XL_CHART_TYPE.XY_SCATTER,
+    }
+    kind = chart_types.get(element["chart_type"])
+    if kind is None:
+        raise BuildError(f"unsupported chart type: {element.get('chart_type')}")
+
+    chart_data = CategoryChartData()
+    chart_data.categories = element.get("categories", [])
+    for series in element.get("series", []):
+        chart_data.add_series(series["name"], series["values"])
+
+    graphic = slide.shapes.add_chart(
+        kind, Emu(frame["x"]), Emu(frame["y"]), Emu(frame["w"]), Emu(frame["h"]),
+        chart_data)
+    chart = graphic.chart
+    if element.get("legend") == "none" and chart.has_legend:
+        chart.has_legend = False
+    return graphic
+
+
 def build_pptx(plan: dict, output_path: str | Path) -> Path:
     prs = Presentation()
     prs.slide_width = Emu(plan["canvas"]["width_emu"])
@@ -188,6 +219,8 @@ def build_pptx(plan: dict, output_path: str | Path) -> Path:
                 registry[element["element_id"]] = _add_shape(slide, element)
             elif etype == "table":
                 registry[element["element_id"]] = _add_table(slide, element)
+            elif etype == "chart":
+                registry[element["element_id"]] = _add_chart(slide, element)
             elif etype == "connector":
                 connectors.append(element)  # after endpoints exist
             elif etype == "image":

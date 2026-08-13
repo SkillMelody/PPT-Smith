@@ -85,13 +85,32 @@ def _candidates(f: dict) -> list[dict]:
 
 def decide_slide(slide: dict) -> Decision:
     features = _features(slide)
+    evidence = [{"feature": k, "value": v} for k, v in features.items()]
+
+    # v4.1: an explicit chart/diagram payload is the strongest signal — the
+    # model supplied structure (still content-only), the engine owns layout.
+    if slide.get("chart"):
+        choice = f"chart_{slide['chart'].get('type', 'column')}"
+        candidates = [{"choice": choice, "confidence": 0.95,
+                       "rule_id": "rule-llm-chart"}]
+        return Decision(slide_id=slide["id"], chosen=choice, confidence=0.95,
+                        chosen_by="rule", candidates=candidates,
+                        evidence=evidence + [{"feature": "chart", "value": True}])
+    if slide.get("diagram_ir"):
+        dtype = slide["diagram_ir"].get("diagram_type", "causal_chain")
+        choice = f"diagram_{dtype}"
+        candidates = [{"choice": choice, "confidence": 0.9,
+                       "rule_id": "rule-llm-diagram"}]
+        return Decision(slide_id=slide["id"], chosen=choice, confidence=0.9,
+                        chosen_by="rule", candidates=candidates,
+                        evidence=evidence + [{"feature": "diagram", "value": dtype}])
+
     candidates = _candidates(features)
     top = candidates[0]
     if top["confidence"] >= CONFIDENCE_FLOOR:
         chosen, chosen_by, confidence = top["choice"], "rule", top["confidence"]
     else:
         chosen, chosen_by, confidence = FALLBACK_ARCHETYPE, "fallback", 0.5
-    evidence = [{"feature": k, "value": v} for k, v in features.items()]
     return Decision(slide_id=slide["id"], chosen=chosen, confidence=confidence,
                     chosen_by=chosen_by, candidates=candidates, evidence=evidence)
 

@@ -152,6 +152,36 @@ function renderElement(slide, element, pptx, registry) {
     return { route: "native_image" };
   }
 
+  if (type === "chart") {
+    const CHART_TYPES = {
+      column: "bar", bar: "bar", line: "line", area: "area",
+      pie: "pie", donut: "doughnut", scatter: "scatter",
+    };
+    const chartType = CHART_TYPES[element.chart_type] || "bar";
+    const series = element.series || [];
+    const data = series.map((s) => ({
+      name: s.name,
+      labels: element.categories || [],
+      values: s.values,
+    }));
+    const opts = {
+      x: in2(f.x || 0),
+      y: in2(f.y || 0),
+      w: in2(f.w || 0),
+      h: in2(f.h || 0),
+      barDir: element.chart_type === "bar" ? "bar" : "col",
+      chartColors: series.map((s) => hex(s.color)),
+      showLegend: element.legend !== "none" && series.length > 1,
+      legendPos: element.legend === "right" ? "r" : "b",
+      showValue: false,
+      dataLabelColor: hex(element.label_color || "000000"),
+      dataLabelFontSize: pt2(element.label_size_cpt || 900),
+    };
+    slide.addChart(pptx.ChartType[chartType], data, opts);
+    registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
+    return { route: "native_chart" };
+  }
+
   if (type === "connector") {
     // Straight connector between two registered shapes (v4 MVP).
     const from = registry[element.from_element];

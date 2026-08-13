@@ -70,13 +70,16 @@ def _metric_numbers_check(block: dict, ref: dict, path: str,
     element = doc.get(f"{parsed[0]}_{parsed[1]}")
     if element is None:
         return []
-    available = element.numbers()
+    # Normalize the % sign away on both sides: it is a unit, not part of the
+    # numeric value. "88%" in a metric must match "88 percent" in the source —
+    # rejecting on the glyph alone would be a false fabrication signal.
+    available = {a.rstrip("%") for a in element.numbers()}
     errors: list[dict] = []
     for key in ("value", "delta", "baseline"):
         raw = block.get(key)
         if not raw:
             continue
-        claimed = {m.group(0).replace(",", "")
+        claimed = {m.group(0).replace(",", "").rstrip("%")
                    for m in _NUM_RE.finditer(normalize_text(raw))}
         missing = {c for c in claimed
                    if c not in available and c.lstrip("+-") not in available}
