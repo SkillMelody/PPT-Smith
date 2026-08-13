@@ -1,14 +1,17 @@
 """Diagram renderers (Phase 2b): diagram_ir -> render_plan elements.
 
-Each renderer appends builder-agnostic elements (shape / connector / textbox)
-to the SlideLayout context. Positions and colors are resolved here; the
-builder (PptxGenJS primary, python-pptx fallback) only translates elements
-into its own API. Content-free guarantees hold: nodes/edges describe
-structure, never coordinates.
+Layout algorithms are migrated from v3's visual_narrative/renderers/* and
+translated from python-pptx calls (inches) into builder-agnostic render_plan
+elements (integer EMU). Nodes/edges describe structure only — positions,
+colors and shapes are resolved here; the builder (PptxGenJS primary,
+python-pptx fallback) only translates elements into its own API.
 
-Diagram families (v4.1): causal_chain is fully native; phase_roadmap and
-layered_architecture use the same node/edge grid; anything unimplemented
-falls back to a horizontal node strip so a diagram never renders blank.
+Families (v4.1):
+  causal_chain         horizontal chain, arrow-linked, last node accent
+  phase_roadmap        staggered horizontal phases (stair), arrow-linked
+  layered_architecture vertical layers inside a boundary box, arrow-linked
+  drill_down_stair     diagonal stair (x and y step), arrow-linked
+  (others)             horizontal node strip — never blank, always ships
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from __future__ import annotations
 from .layout import _frame, _para, _run, SlideLayout
 
 EMU_PER_IN = 914400
+EMU_PER_PT = 12700
 
 
 def _color(ctx: SlideLayout, token: str, fallback: str) -> str:
@@ -38,98 +42,192 @@ def _primary_nodes(diagram_ir: dict, limit: int = 5) -> list[dict]:
     return primary[:limit]
 
 
+def _shape(ctx: SlideLayout, frame: dict, *, shape: str, fill: str | None,
+           stroke_color: str, text: str, text_color: str, size_cpt: int,
+           weight: int = 600, radius: bool = True, stroke_w_pt: float = 0.8,
+           align: str = "center") -> str:
+    """Append one shape element and return its element_id."""
+    eid = ctx.eid("diagram")
+    element = {
+        "element_id": eid, "type": "shape",
+        "shape": "round_rect" if radius else "rect",
+        "frame": _frame(frame["x"], frame["y"], frame["w"], frame["h"]),
+        "stroke": {"color": stroke_color,
+                   "width_emu": int(stroke_w_pt * EMU_PER_PT)},
+        "paragraphs": [_para([_run(text, ctx.style, size_cpt, color=text_color,
+                                   weight=weight)], align=align,
+                             line_height_pct=120)],
+        "editable": True, "semantic_role": "diagram_node",
+    }
+    if radius:
+        element["corner_radius_emu"] = int(0.08 * EMU_PER_IN)
+    if fill is None:
+        element.pop("fill", None)
+    else:
+        element["fill"] = {"color": fill}
+    ctx.elements.append(element)
+    return eid
+
+
+def _conn(ctx: SlideLayout, from_id: str, to_id: str, *, color: str,
+          width_pt: float = 1.8, arrow: str = "end") -> None:
+    ctx.elements.append({
+        "element_id": ctx.eid("diagram-conn"), "type": "connector",
+        "from_element": from_id, "to_element": to_id, "route": "straight",
+        "stroke": {"color": color, "width_emu": int(width_pt * EMU_PER_PT)},
+        "arrowhead": arrow,
+    })
+
+
+def _palette(ctx: SlideLayout) -> dict[str, str]:
+    return {
+        "accent": ctx.style.color("accent"),
+        "primary": ctx.style.color("primary"),
+        "surface": ctx.style.resolve_color_ref(
+            ctx.style.card_tokens.get("default", {}).get("fill", "surface_1")),
+        "background": ctx.style.color("background"),
+        "text": ctx.style.color("text_primary"),
+        "muted": ctx.style.color("text_secondary"),
+        "border": ctx.style.color("border"),
+    }
+
+
 # ---- causal_chain -----------------------------------------------------------
 
 def _causal_chain(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
     style = ctx.style
     nodes = _primary_nodes(diagram_ir, limit=5)
+    c = _palette(ctx)
     x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
     gap = int(0.32 * EMU_PER_IN)
     node_w = (w - gap * (len(nodes) - 1)) // len(nodes)
     node_h = min(int(1.15 * EMU_PER_IN), h)
     top = y + (h - node_h) // 2
-
-    accent = style.color("accent")
-    surface = style.resolve_color_ref(
-        style.card_tokens.get("default", {}).get("fill", "surface_1"))
-    primary_text = style.color("text_primary")
-    background = style.color("background")
-    border = style.color("border")
+    size = style.size_cpt("body", "small")
 
     ids: list[str] = []
     for index, node in enumerate(nodes):
-        eid = ctx.eid("diagram-node")
         last = index == len(nodes) - 1
-        fill = accent if last else surface
-        text_color = background if last else primary_text
-        ctx.elements.append({
-            "element_id": eid, "type": "shape", "shape": "round_rect",
-            "frame": _frame(x + index * (node_w + gap), top, node_w, node_h),
-            "corner_radius_emu": int(0.08 * EMU_PER_IN),
-            "fill": {"color": fill},
-            "stroke": {"color": border, "width_emu": 9525},
-            "paragraphs": [_para([_run(_node_text(node, index), style,
-                                       style.size_cpt("body", "small"),
-                                       color=text_color,
-                                       weight=style.weight("semibold", 600))],
-                                 align="center", line_height_pct=120)],
-            "editable": True, "semantic_role": "diagram_node",
-        })
-        ids.append(eid)
-    for index in range(len(ids) - 1):
-        ctx.elements.append({
-            "element_id": ctx.eid("diagram-conn"), "type": "connector",
-            "from_element": ids[index], "to_element": ids[index + 1],
-            "route": "straight",
-            "stroke": {"color": accent, "width_emu": int(1.8 * 12700)},
-            "arrowhead": "end",
-        })
+        ids.append(_shape(
+            ctx, _frame(x + index * (node_w + gap), top, node_w, node_h),
+            shape="round_rect", fill=c["accent"] if last else c["surface"],
+            stroke_color=c["border"], text=_node_text(node, index),
+            text_color=c["background"] if last else c["text"], size_cpt=size))
+    for a, b in zip(ids, ids[1:]):
+        _conn(ctx, a, b, color=c["accent"])
+
+
+# ---- phase_roadmap ----------------------------------------------------------
+
+def _phase_roadmap(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
+    style = ctx.style
+    nodes = _primary_nodes(diagram_ir, limit=5)
+    c = _palette(ctx)
+    x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
+    gap = int(0.28 * EMU_PER_IN)
+    phase_w = (w - gap * (len(nodes) - 1)) // len(nodes)
+    size = style.size_cpt("body", "small")
+
+    ids: list[str] = []
+    for index, node in enumerate(nodes):
+        last = index == len(nodes) - 1
+        stagger = int(index * 0.22 * EMU_PER_IN)
+        ids.append(_shape(
+            ctx, _frame(x + index * (phase_w + gap), y + stagger,
+                        phase_w, int(1.45 * EMU_PER_IN)),
+            shape="round_rect", fill=c["accent"] if last else c["surface"],
+            stroke_color=c["primary"], text=_node_text(node, index),
+            text_color=c["background"] if last else c["text"], size_cpt=size))
+    for a, b in zip(ids, ids[1:]):
+        _conn(ctx, a, b, color=c["accent"])
+
+
+# ---- layered_architecture ---------------------------------------------------
+
+def _layered_architecture(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
+    style = ctx.style
+    nodes = _primary_nodes(diagram_ir, limit=6)
+    c = _palette(ctx)
+    x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
+
+    # Boundary box
+    ctx.elements.append({
+        "element_id": ctx.eid("diagram-boundary"), "type": "shape", "shape": "rect",
+        "frame": _frame(x, y, w, h),
+        "stroke": {"color": c["border"], "width_emu": int(0.7 * EMU_PER_PT)},
+        "editable": True, "semantic_role": "diagram_boundary",
+    })
+
+    gap = int(0.16 * EMU_PER_IN)
+    inner_y = y + int(0.38 * EMU_PER_IN)
+    layer_h = (h - int(0.55 * EMU_PER_IN) - gap * (len(nodes) - 1)) // len(nodes)
+    size = style.size_cpt("body", "small")
+
+    ids: list[str] = []
+    for index, node in enumerate(nodes):
+        fill = c["surface"] if index % 2 == 0 else c["background"]
+        stroke = c["primary"] if index < 2 else c["border"]
+        ids.append(_shape(
+            ctx, _frame(x + int(0.28 * EMU_PER_IN),
+                        inner_y + index * (layer_h + gap),
+                        w - int(0.56 * EMU_PER_IN), layer_h),
+            shape="round_rect", fill=fill, stroke_color=stroke,
+            text=_node_text(node, index), text_color=c["text"], size_cpt=size))
+    for a, b in zip(ids, ids[1:]):
+        _conn(ctx, a, b, color=c["accent"])
+
+
+# ---- drill_down_stair -------------------------------------------------------
+
+def _drill_down_stair(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
+    style = ctx.style
+    nodes = _primary_nodes(diagram_ir, limit=5)
+    c = _palette(ctx)
+    x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
+    count = len(nodes)
+    step_y = min(int(0.92 * EMU_PER_IN), (h - int(0.72 * EMU_PER_IN)) // max(count - 1, 1))
+    step_x = min(int(1.05 * EMU_PER_IN), int(w * 0.09))
+    size = style.size_cpt("body", "small")
+
+    ids: list[str] = []
+    for index, node in enumerate(nodes):
+        last = index == count - 1
+        ids.append(_shape(
+            ctx, _frame(x + index * step_x, y + index * step_y,
+                        max(int(2.2 * EMU_PER_IN),
+                            w - int(2.0 * EMU_PER_IN) - index * int(step_x * 1.15)),
+                        int(0.72 * EMU_PER_IN)),
+            shape="round_rect", fill=c["accent"] if last else c["surface"],
+            stroke_color=c["accent"], text=_node_text(node, index),
+            text_color=c["background"] if last else c["text"], size_cpt=size))
+    for a, b in zip(ids, ids[1:]):
+        _conn(ctx, a, b, color=c["accent"], width_pt=2.0)
 
 
 # ---- fallback node strip ----------------------------------------------------
 
 def _node_strip(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
-    """Generic fallback: render nodes as a horizontal strip of cards."""
     style = ctx.style
     nodes = diagram_ir.get("nodes", [])[:6]
     if not nodes:
         ctx.degrade("builder_downgrade", "diagram_nodes_empty")
         return
+    c = _palette(ctx)
     x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
     gap = int(0.2 * EMU_PER_IN)
     node_w = (w - gap * (len(nodes) - 1)) // len(nodes)
     node_h = min(int(1.1 * EMU_PER_IN), h)
     top = y + (h - node_h) // 2
-    surface = style.resolve_color_ref(
-        style.card_tokens.get("default", {}).get("fill", "surface_1"))
-    primary_text = style.color("text_primary")
-    border = style.color("border")
-
+    size = style.size_cpt("body", "small")
     for index, node in enumerate(nodes):
-        ctx.elements.append({
-            "element_id": ctx.eid("diagram-node"), "type": "shape",
-            "shape": "round_rect",
-            "frame": _frame(x + index * (node_w + gap), top, node_w, node_h),
-            "corner_radius_emu": int(0.08 * EMU_PER_IN),
-            "fill": {"color": surface},
-            "stroke": {"color": border, "width_emu": 9525},
-            "paragraphs": [_para([_run(_node_text(node, index), style,
-                                       style.size_cpt("body", "small"),
-                                       color=primary_text,
-                                       weight=style.weight("semibold", 600))],
-                                 align="center", line_height_pct=120)],
-            "editable": True, "semantic_role": "diagram_node",
-        })
+        _shape(ctx, _frame(x + index * (node_w + gap), top, node_w, node_h),
+               shape="round_rect", fill=c["surface"], stroke_color=c["border"],
+               text=_node_text(node, index), text_color=c["text"], size_cpt=size)
 
 
 # ---- chart ------------------------------------------------------------------
 
-# IR chart type -> render-plan chart_type. combo (column + line overlay) is
-# not yet a native render-plan type; degrade to column for now.
-_CHART_TYPE_MAP = {
-    "column": "column", "bar": "bar", "line": "line", "pie": "pie",
-    "combo": "column",
-}
+_CHART_TYPE_MAP = {"column": "column", "bar": "bar", "line": "line", "pie": "pie"}
 
 
 def layout_chart(ctx: SlideLayout, chart: dict, frame: dict) -> None:
@@ -138,29 +236,23 @@ def layout_chart(ctx: SlideLayout, chart: dict, frame: dict) -> None:
     style = ctx.style
     rp_type = _CHART_TYPE_MAP.get(chart["type"], "column")
     if chart["type"] not in _CHART_TYPE_MAP:
+        # combo (column + line overlay) degrades to a column chart for now.
         ctx.degrade("chart_fallback", f"chart_{chart['type']}_column")
 
     palette = style.colors.get("data_series", [])
     if not palette:
         palette = [style.color("primary"), style.color("accent"),
                    style.color("positive"), style.color("text_secondary")]
-    series = []
-    for idx, s in enumerate(chart["data"]["series"]):
-        series.append({
-            "name": s["name"],
-            "values": s["values"],
-            "color": palette[idx % len(palette)],
-        })
+    series = [{"name": s["name"], "values": s["values"],
+               "color": palette[idx % len(palette)]}
+              for idx, s in enumerate(chart["data"]["series"])]
 
     ctx.elements.append({
-        "element_id": ctx.eid("chart"),
-        "type": "chart",
+        "element_id": ctx.eid("chart"), "type": "chart",
         "frame": _frame(frame["x"], frame["y"], frame["w"], frame["h"]),
         "chart_type": rp_type,
         "categories": chart["data"]["categories"],
-        "series": series,
-        "legend": "bottom",
-        "semantic_role": "chart",
+        "series": series, "legend": "bottom", "semantic_role": "chart",
     })
 
 
@@ -168,11 +260,9 @@ def layout_chart(ctx: SlideLayout, chart: dict, frame: dict) -> None:
 
 _RENDERERS = {
     "causal_chain": _causal_chain,
-    # phase_roadmap / layered_architecture / drill_down_stair land in the
-    # same node/edge grid; unimplemented families fall back to the strip.
-    "phase_roadmap": _node_strip,
-    "layered_architecture": _node_strip,
-    "drill_down_stair": _node_strip,
+    "phase_roadmap": _phase_roadmap,
+    "layered_architecture": _layered_architecture,
+    "drill_down_stair": _drill_down_stair,
     "interaction_storyboard": _node_strip,
     "product_ui_overview": _node_strip,
 }
@@ -180,10 +270,14 @@ _RENDERERS = {
 
 def layout_diagram(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
     dtype = diagram_ir.get("diagram_type", "")
+    if not diagram_ir.get("nodes"):
+        ctx.degrade("builder_downgrade", "diagram_nodes_empty")
+        _node_strip(ctx, diagram_ir, frame)
+        return
     renderer = _RENDERERS.get(dtype)
     if renderer is None:
         ctx.degrade("builder_downgrade", f"diagram_{dtype}_unknown")
         renderer = _node_strip
-    elif dtype not in ("causal_chain",):
+    elif renderer is _node_strip:
         ctx.degrade("diagram_fallback", f"diagram_{dtype}_strip")
     renderer(ctx, diagram_ir, frame)
