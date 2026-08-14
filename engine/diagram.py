@@ -204,6 +204,105 @@ def _drill_down_stair(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
         _conn(ctx, a, b, color=c["accent"], width_pt=2.0)
 
 
+# ---- heat_matrix ------------------------------------------------------------
+
+def _format_value(value) -> str:
+    number = float(value)
+    return str(int(number)) if number.is_integer() else f"{number:g}"
+
+
+def _heat_matrix(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
+    style = ctx.style
+    matrix = diagram_ir.get("matrix", {})
+    rows = [str(r) for r in matrix.get("rows", [])]
+    columns = [str(c) for c in matrix.get("columns", [])]
+    values = matrix.get("values", [])
+    if (not rows or not columns or not isinstance(values, list)
+            or len(values) != len(rows)
+            or any(not isinstance(r, list) or len(r) != len(columns) for r in values)):
+        ctx.degrade("builder_downgrade", "heat_matrix_data_invalid")
+        _node_strip(ctx, diagram_ir, frame)
+        return
+
+    c = _palette(ctx)
+    x, y, w, h = frame["x"], frame["y"], frame["w"], frame["h"]
+
+    numeric = [float(v) for row in values for v in row]
+    minimum, maximum = min(numeric), max(numeric)
+    spread = maximum - minimum
+    highlighted = {tuple(cell) for cell in matrix.get("highlighted_cells", [])
+                   if isinstance(cell, list) and len(cell) == 2}
+    suffix = str(matrix.get("value_suffix") or "")
+
+    label_w = int(1.35 * EMU_PER_IN)
+    header_h = int(0.45 * EMU_PER_IN)
+    legend_h = int(0.55 * EMU_PER_IN)
+    grid_w = w - label_w
+    grid_h = min(h - header_h - legend_h, int(3.5 * EMU_PER_IN))
+    cell_w = grid_w // max(len(columns), 1)
+    cell_h = grid_h // max(len(rows), 1)
+    size = style.size_cpt("body", "small")
+
+    # column headers
+    for ci, column in enumerate(columns):
+        ctx.elements.append({
+            "element_id": ctx.eid("hm-col"), "type": "textbox",
+            "frame": _frame(x + label_w + ci * cell_w, y, cell_w, header_h),
+            "paragraphs": [_para([_run(column, style, size, color=c["muted"],
+                                       weight=style.weight("semibold", 600))],
+                                 align="center")],
+            "valign": "middle", "editable": True, "semantic_role": "matrix_header",
+        })
+
+    # row labels + cells
+    for ri, row_label in enumerate(rows):
+        row_y = y + header_h + ri * cell_h
+        ctx.elements.append({
+            "element_id": ctx.eid("hm-row"), "type": "textbox",
+            "frame": _frame(x, row_y, label_w - int(0.08 * EMU_PER_IN), cell_h),
+            "paragraphs": [_para([_run(row_label, style, size, color=c["text"],
+                                       weight=style.weight("semibold", 600))])],
+            "valign": "middle", "editable": True, "semantic_role": "matrix_row_label",
+        })
+        for ci, value in enumerate(values[ri]):
+            number = float(value)
+            ratio = (number - minimum) / spread if spread else 0.5
+            high = ratio >= 0.52
+            hl = (ri, ci) in highlighted
+            fill = c["accent"] if high else c["surface"]
+            text_color = c["background"] if high else c["text"]
+            ctx.elements.append({
+                "element_id": ctx.eid("hm-cell"), "type": "shape", "shape": "rect",
+                "frame": _frame(x + label_w + ci * cell_w + int(0.02 * EMU_PER_IN),
+                                row_y + int(0.02 * EMU_PER_IN),
+                                cell_w - int(0.04 * EMU_PER_IN),
+                                cell_h - int(0.04 * EMU_PER_IN)),
+                "fill": {"color": fill},
+                "stroke": {"color": c["accent"] if hl else c["background"],
+                           "width_emu": int((2.0 if hl else 0.7) * EMU_PER_PT)},
+                "paragraphs": [_para([_run(f"{_format_value(value)}{suffix}", style,
+                                           size, color=text_color,
+                                           weight=style.weight("bold", 700)
+                                           if hl else 400)], align="center")],
+                "editable": True, "semantic_role": "matrix_cell",
+            })
+
+    # legend
+    legend_y = y + header_h + grid_h + int(0.16 * EMU_PER_IN)
+    for li, (label, fill) in enumerate((("低", c["surface"]), ("高", c["accent"]))):
+        ctx.elements.append({
+            "element_id": ctx.eid("hm-legend"), "type": "shape", "shape": "rect",
+            "frame": _frame(x + label_w + li * int(0.62 * EMU_PER_IN), legend_y,
+                            int(0.52 * EMU_PER_IN), int(0.28 * EMU_PER_IN)),
+            "fill": {"color": fill},
+            "stroke": {"color": c["border"], "width_emu": int(0.7 * EMU_PER_PT)},
+            "paragraphs": [_para([_run(label, style, 900,
+                                       color=c["background"] if li else c["text"])],
+                                 align="center")],
+            "editable": True, "semantic_role": "matrix_legend",
+        })
+
+
 # ---- fallback node strip ----------------------------------------------------
 
 def _node_strip(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
@@ -263,6 +362,7 @@ _RENDERERS = {
     "phase_roadmap": _phase_roadmap,
     "layered_architecture": _layered_architecture,
     "drill_down_stair": _drill_down_stair,
+    "heat_matrix": _heat_matrix,
     "interaction_storyboard": _node_strip,
     "product_ui_overview": _node_strip,
 }
@@ -270,7 +370,7 @@ _RENDERERS = {
 
 def layout_diagram(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
     dtype = diagram_ir.get("diagram_type", "")
-    if not diagram_ir.get("nodes"):
+    if dtype != "heat_matrix" and not diagram_ir.get("nodes"):
         ctx.degrade("builder_downgrade", "diagram_nodes_empty")
         _node_strip(ctx, diagram_ir, frame)
         return

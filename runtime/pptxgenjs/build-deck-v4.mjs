@@ -103,6 +103,18 @@ function renderElement(slide, element, pptx, registry) {
     } else {
       opts.line = { type: "none" };
     }
+    if (element.shadow) {
+      opts.shadow = {
+        type: "outer",
+        color: "000000",
+        blur: (element.shadow.blur_emu || 0) / EMU_PER_PT,
+        offset: {
+          x: (element.shadow.offset_x_emu || 0) / EMU_PER_PT,
+          y: (element.shadow.offset_y_emu || 0) / EMU_PER_PT,
+        },
+        opacity: (element.shadow.opacity_pct ?? 12) / 100,
+      };
+    }
     slide.addShape(pptx.ShapeType[shapeType], opts);
     if (element.paragraphs && element.paragraphs.length) {
       slide.addText(paragraphsToText(element.paragraphs), {
@@ -129,12 +141,16 @@ function renderElement(slide, element, pptx, registry) {
       }))
     );
     const colW = (element.col_widths_emu || []).map((w) => in2(w));
+    const isMinimal = element.variant === "minimal";
+    const border = isMinimal
+      ? { type: "solid", color: hex(element.border?.color || "E4E0D7"), pt: 0.25 }
+      : { type: "solid", color: hex(element.border?.color || "E4E0D7"), pt: 0.5 };
     slide.addTable(tableRows, {
       x: in2(f.x || 0),
       y: in2(f.y || 0),
       w: in2(f.w || 0),
       colW,
-      border: { type: "solid", color: hex(element.stroke?.color || "E4E0D7"), pt: 0.5 },
+      border,
     });
     registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
     return { route: "native_table" };

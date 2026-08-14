@@ -128,6 +128,12 @@
       }
      ],
      "semantic_role": "fact",
+     "shadow": {
+      "blur_emu": 50800,
+      "offset_x_emu": 0,
+      "offset_y_emu": 25400,
+      "opacity_pct": 12
+     },
      "shape": "round_rect",
      "stroke": {
       "color": "#E4DDCF",
@@ -225,7 +231,7 @@
        "cells": [
         {
          "fill": {
-          "color": "#2B2621"
+          "color": "#FBF8F1"
          },
          "paragraphs": [
           {
@@ -234,7 +240,7 @@
            "line_height_pct": 135,
            "runs": [
             {
-             "color": "#FBF8F1",
+             "color": "#2B2621",
              "font": "Aptos",
              "size_cpt": 1000,
              "text": "区域",
@@ -247,7 +253,7 @@
         },
         {
          "fill": {
-          "color": "#2B2621"
+          "color": "#FBF8F1"
          },
          "paragraphs": [
           {
@@ -256,7 +262,7 @@
            "line_height_pct": 135,
            "runs": [
             {
-             "color": "#FBF8F1",
+             "color": "#2B2621",
              "font": "Aptos",
              "size_cpt": 1000,
              "text": "收入",
@@ -269,7 +275,7 @@
         },
         {
          "fill": {
-          "color": "#2B2621"
+          "color": "#FBF8F1"
          },
          "paragraphs": [
           {
@@ -278,7 +284,7 @@
            "line_height_pct": 135,
            "runs": [
             {
-             "color": "#FBF8F1",
+             "color": "#2B2621",
              "font": "Aptos",
              "size_cpt": 1000,
              "text": "同比",
@@ -439,7 +445,8 @@
       }
      ],
      "semantic_role": "table",
-     "type": "table"
+     "type": "table",
+     "variant": "minimal"
     },
     {
      "corner_radius_emu": 101600,
@@ -472,6 +479,12 @@
       }
      ],
      "semantic_role": "fact",
+     "shadow": {
+      "blur_emu": 50800,
+      "offset_x_emu": 0,
+      "offset_y_emu": 25400,
+      "opacity_pct": 12
+     },
      "shape": "round_rect",
      "stroke": {
       "color": "#E4DDCF",
@@ -510,6 +523,12 @@
       }
      ],
      "semantic_role": "fact",
+     "shadow": {
+      "blur_emu": 50800,
+      "offset_x_emu": 0,
+      "offset_y_emu": 25400,
+      "opacity_pct": 12
+     },
      "shape": "round_rect",
      "stroke": {
       "color": "#E4DDCF",
@@ -646,6 +665,12 @@
       }
      ],
      "semantic_role": "fact",
+     "shadow": {
+      "blur_emu": 50800,
+      "offset_x_emu": 0,
+      "offset_y_emu": 25400,
+      "opacity_pct": 12
+     },
      "shape": "round_rect",
      "stroke": {
       "color": "#E4DDCF",

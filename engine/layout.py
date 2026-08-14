@@ -45,6 +45,18 @@ def _frame(x: int, y: int, w: int, h: int) -> dict:
     return {"x": int(x), "y": int(y), "w": max(int(w), 1), "h": max(int(h), 1)}
 
 
+def _shadow_spec(style: ResolvedStyle) -> dict | None:
+    """Render-plan shadow from the style's floating_panel token, or None."""
+    panel = style.shadow_tokens.get("floating_panel", {})
+    if not panel.get("enabled"):
+        return None
+    blur = int(float(panel.get("blur_pt", 4)) * EMU_PER_PT)
+    distance = int(float(panel.get("distance_pt", 2)) * EMU_PER_PT)
+    opacity = int(float(panel.get("opacity", 0.12)) * 100)
+    return {"blur_emu": blur, "offset_x_emu": 0, "offset_y_emu": distance,
+            "opacity_pct": max(0, min(100, opacity))}
+
+
 class SlideLayout:
     """Shared geometry context for one slide."""
 
@@ -160,6 +172,9 @@ class SlideLayout:
             "paragraphs": self._block_paras(block, size),
             "editable": True, "semantic_role": block.get("role", "text"),
         }
+        shadow = _shadow_spec(style)
+        if shadow:
+            element["shadow"] = shadow
         self.elements.append(element)
         edge_token = _EDGE_TOKEN.get(block.get("role", ""))
         if edge_token:
@@ -215,7 +230,7 @@ class SlideLayout:
                                          color=style.color("text_muted",
                                                            style.color("text_secondary")))]))
             metric_tok = style.card_tokens.get("metric", style.card_tokens.get("default", {}))
-            self.elements.append({
+            kpi_element = {
                 "element_id": self.eid("kpi"), "type": "shape",
                 "frame": _frame(x, top, card_w, height), "shape": "round_rect",
                 "corner_radius_emu": int(style.shape_tokens.get("card_radius_pt", 8) * EMU_PER_PT),
@@ -225,7 +240,11 @@ class SlideLayout:
                     metric_tok.get("border_color", "border")),
                            "width_emu": int(style.shape_tokens.get("border_width_pt", 0.8) * EMU_PER_PT)},
                 "paragraphs": paras, "editable": True, "semantic_role": "metric",
-            })
+            }
+            shadow = _shadow_spec(style)
+            if shadow:
+                kpi_element["shadow"] = shadow
+            self.elements.append(kpi_element)
             x += card_w + gap
         if len(metrics) > per_row:
             self.degrade("content_truncation", f"kpi_overflow_{len(metrics) - per_row}")
@@ -268,14 +287,23 @@ class SlideLayout:
         width = max(len(r) for r in rows_data)
         col_w = self.width // width if frame["w"] == self.width else frame["w"] // width
         size = style.size_cpt("body", "small")
-        header_fill = style.resolve_color_ref(
-            style.table_tokens.get("default", {}).get("header_fill", "primary"))
-        header_text = style.resolve_color_ref(
-            style.table_tokens.get("default", {}).get("header_text", "background"))
-        body_text = style.resolve_color_ref(
-            style.table_tokens.get("default", {}).get("text_color", "text_primary"))
+        # minimal variant (v3 table_tokens.minimal): no heavy header fill, no
+        # outer/vertical borders — only horizontal dividers. This is the
+        # cleaner consulting-report default; `default` keeps the strong header.
+        minimal_tok = style.table_tokens.get("minimal", {})
+        use_minimal = minimal_tok.get("show_outer_border") is False
+        default_tok = style.table_tokens.get("default", {})
+        if use_minimal:
+            header_fill = style.color("background")
+            header_text = style.color("primary")
+            variant = "minimal"
+        else:
+            header_fill = style.resolve_color_ref(default_tok.get("header_fill", "primary"))
+            header_text = style.resolve_color_ref(default_tok.get("header_text", "background"))
+            variant = "default"
+        body_text = style.resolve_color_ref(default_tok.get("text_color", "text_primary"))
         # v3: table_tokens.default.alternate_row_fill
-        zebra = bool(style.table_tokens.get("default", {}).get("alternate_row_fill"))
+        zebra = bool(default_tok.get("alternate_row_fill"))
         row_h = max(frame["h"] // max(len(rows_data), 1), 274320)
         rows = []
         for r_idx, row in enumerate(rows_data):
@@ -300,7 +328,7 @@ class SlideLayout:
             "element_id": self.eid("table"), "type": "table", "frame": frame,
             "col_widths_emu": [col_w] * width, "rows": rows,
             "border": {"color": style.color("border"), "width_emu": 9525},
-            "semantic_role": "table",
+            "variant": variant, "semantic_role": "table",
         })
 
     def image_placeholder(self, block: dict, frame: dict) -> None:

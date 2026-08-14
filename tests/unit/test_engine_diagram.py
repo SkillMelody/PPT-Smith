@@ -71,6 +71,48 @@ class TestDiagramFamilies:
         assert conn["arrowhead"] == "end"
 
 
+class TestHeatMatrix:
+    def _matrix(self):
+        return {
+            "diagram_type": "heat_matrix",
+            "matrix": {
+                "rows": ["海外", "国内"],
+                "columns": ["Q1", "Q2"],
+                "values": [[120, 140], [300, 280]],
+                "value_suffix": "",
+            },
+        }
+
+    def test_heat_matrix_renders_grid(self):
+        ctx = _ctx()
+        layout_diagram(ctx, self._matrix(), FRAME)
+        cells = [e for e in ctx.elements if e.get("semantic_role") == "matrix_cell"]
+        assert len(cells) == 4  # 2 rows x 2 columns
+        assert _count(ctx, "textbox") == 4  # 2 col headers + 2 row labels
+
+    def test_heat_matrix_legend(self):
+        ctx = _ctx()
+        layout_diagram(ctx, self._matrix(), FRAME)
+        legend = [e for e in ctx.elements if e.get("semantic_role") == "matrix_legend"]
+        assert len(legend) == 2
+
+    def test_heat_matrix_high_value_uses_accent(self):
+        ctx = _ctx()
+        layout_diagram(ctx, self._matrix(), FRAME)
+        cells = [e for e in ctx.elements if e.get("semantic_role") == "matrix_cell"]
+        # 300 is the max -> accent; 120 is min -> surface
+        accent = ctx.style.color("accent")
+        assert cells[3]["fill"]["color"] == accent  # 280 (high side of range)
+
+    def test_heat_matrix_invalid_data_falls_back(self):
+        ctx = _ctx()
+        layout_diagram(ctx, {
+            "diagram_type": "heat_matrix",
+            "matrix": {"rows": ["a"], "columns": ["x"], "values": [[1], [2, 3]]},
+        }, FRAME)
+        assert any(d["kind"] == "builder_downgrade" for d in ctx.degs)
+
+
 class TestFallbackAndChart:
     def test_unknown_type_falls_back_to_strip(self):
         ctx = _ctx()

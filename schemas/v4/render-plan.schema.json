@@ -219,6 +219,7 @@
           }
         },
         "border": { "$ref": "#/$defs/stroke" },
+        "variant": { "type": "string", "enum": ["default", "minimal", "matrix"] },
         "semantic_role": { "type": "string", "maxLength": 40 }
       }
     },
