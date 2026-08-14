@@ -24,6 +24,51 @@ from dataclasses import dataclass
 FALLBACK_ARCHETYPE = "evidence_stack"
 CONFIDENCE_FLOOR = 0.55
 
+# narrative_intent -> built-in style pack (v3 route_audience equivalent).
+# The pack name is a filename stem under styles/; the engine resolves it.
+_NARRATIVE_STYLE = {
+    "report": "consulting-light",
+    "proposal": "consulting-blueprint-hybrid",
+    "product": "product-report",
+    "research": "editorial-knowledge",
+    "training": "technical-blueprint",
+    "generic": "consulting-light",
+}
+
+# audience keyword fallbacks when narrative_intent is absent.
+_AUDIENCE_STYLE = (
+    ("executive", "consulting-light"),
+    ("strategy", "consulting-light"),
+    ("engineer", "technical-blueprint"),
+    ("architect", "technical-blueprint"),
+    ("product", "product-report"),
+    ("operator", "product-report"),
+    ("creator", "editorial-knowledge"),
+    ("reader", "editorial-knowledge"),
+)
+
+DEFAULT_STYLE = "consulting-light"
+
+
+def select_style_pack(ir: dict) -> str:
+    """Choose a built-in style pack from the IR's narrative/audience signals.
+
+    Content-aware styling (v3 route_audience): the deck's declared intent
+    and audience select the visual system, so a McKinsey report renders in
+    the boardroom blue palette, not the editorial warm-paper palette. The
+    model supplies intent/audience as content metadata; it never picks
+    colors directly — the mapping is engine-owned and deterministic.
+    """
+    deck = ir.get("deck", {}) or {}
+    intent = deck.get("narrative_intent")
+    if intent in _NARRATIVE_STYLE:
+        return _NARRATIVE_STYLE[intent]
+    audience = (deck.get("audience") or "").lower()
+    for keyword, pack in _AUDIENCE_STYLE:
+        if keyword in audience:
+            return pack
+    return DEFAULT_STYLE
+
 
 @dataclass
 class Decision:

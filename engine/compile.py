@@ -20,7 +20,7 @@ from . import __version__
 from .coverage import coverage_report
 from .extractive_ir import build_extractive_ir
 from .layout import layout_deck
-from .policy import decide_deck, decisions_to_trace
+from .policy import decide_deck, decisions_to_trace, select_style_pack
 from .pptx_builder import build_pptx
 from .pptxgenjs_builder import build_pptx as build_pptx_js, available as pptxgenjs_available
 from .provenance import verify_ir
@@ -98,6 +98,9 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
     report["stages"].append("coverage")
 
     # ---- policy / layout / plan ------------------------------------------
+    if style_path is None:
+        style_path = str(Path(__file__).resolve().parents[1] / "styles"
+                         / f"{select_style_pack(ir)}.json")
     style = load_style_pack(style_path)
     decisions = decide_deck(ir)
     laid = layout_deck(ir, decisions, style, docs)
