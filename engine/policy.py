@@ -117,6 +117,9 @@ def _candidates(f: dict) -> list[dict]:
     if f["image_count"] >= 1 and f["block_count"] <= 3:
         scores.append({"choice": "image_story", "confidence": 0.7,
                        "rule_id": "rule-image-anchor"})
+    if f["has_steps"]:
+        scores.append({"choice": "step_cards", "confidence": 0.85,
+                       "rule_id": "rule-steps-sequence"})
     if f["list_count"] >= 1 and f["list_count"] + f["fact_count"] == f["block_count"] \
             and f["list_count"] >= f["fact_count"]:
         scores.append({"choice": "list_stack", "confidence": 0.7,

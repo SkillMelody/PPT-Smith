@@ -113,6 +113,32 @@ class TestHeatMatrix:
         assert any(d["kind"] == "builder_downgrade" for d in ctx.degs)
 
 
+class TestStepCards:
+    def _steps(self, n=4):
+        return {"role": "list", "semantics": "steps",
+                "items": [{"text": f"步骤 {i}"} for i in range(1, n + 1)]}
+
+    def test_step_cards_layout(self):
+        ctx = _ctx()
+        ctx.step_cards(self._steps(), FRAME)
+        assert _count(ctx, "shape") == 8  # 4 body + 4 header
+        assert _count(ctx, "connector") == 3
+        headers = [e for e in ctx.elements if e.get("semantic_role") == "step_header"]
+        assert headers[0]["paragraphs"][0]["runs"][0]["text"].startswith("01")
+
+    def test_step_cards_header_uses_primary_fill(self):
+        ctx = _ctx()
+        ctx.step_cards(self._steps(3), FRAME)
+        primary = ctx.style.color("primary")
+        header = next(e for e in ctx.elements if e.get("semantic_role") == "step_header")
+        assert header["fill"]["color"] == primary
+
+    def test_step_cards_empty_degrade(self):
+        ctx = _ctx()
+        ctx.step_cards({"role": "list", "items": []}, FRAME)
+        assert any(d["kind"] == "builder_downgrade" for d in ctx.degs)
+
+
 class TestFallbackAndChart:
     def test_unknown_type_falls_back_to_strip(self):
         ctx = _ctx()

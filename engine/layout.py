@@ -251,6 +251,54 @@ class SlideLayout:
         if len(metrics) > per_row:
             self.degrade("content_truncation", f"kpi_overflow_{len(metrics) - per_row}")
 
+    def step_cards(self, list_block: dict, frame: dict) -> None:
+        """McKinsey-style step cards (v3): a numbered, dark-title-bar card per
+        list item, linked by arrows. steps/stages semantics select this."""
+        style = self.style
+        items = list_block.get("items", [])
+        n = min(len(items), 5)
+        if not items:
+            self.degrade("builder_downgrade", "step_cards_empty")
+            return
+        gap = style.gap_emu()
+        card_w = (frame["w"] - gap * (n - 1)) // n
+        header_h = int(0.45 * EMU_PER_IN)
+        primary = style.color("primary")
+        background = style.color("background")
+        accent = style.color("accent")
+        size = style.size_cpt("body", "small")
+
+        body_ids: list[str] = []
+        for i, item in enumerate(items[:n]):
+            x = frame["x"] + i * (card_w + gap)
+            body_id = self.eid("step-body")
+            self.elements.append({
+                "element_id": body_id, "type": "shape", "shape": "rect",
+                "frame": _frame(x, frame["y"], card_w, frame["h"]),
+                "fill": {"color": background},
+                "stroke": {"color": style.color("border"), "width_emu": 9525},
+                "editable": True, "semantic_role": "step_card",
+            })
+            body_ids.append(body_id)
+            self.elements.append({
+                "element_id": self.eid("step-header"), "type": "shape", "shape": "rect",
+                "frame": _frame(x, frame["y"], card_w, header_h),
+                "fill": {"color": primary},
+                "stroke": {"color": primary, "width_emu": 9525},
+                "paragraphs": [_para([_run(f"{i + 1:02d}  {item['text']}", style, size,
+                                           color=background,
+                                           weight=style.weight("bold", 700))],
+                                     align="center", line_height_pct=115)],
+                "editable": True, "semantic_role": "step_header",
+            })
+        for a, b in zip(body_ids, body_ids[1:]):
+            self.elements.append({
+                "element_id": self.eid("step-conn"), "type": "connector",
+                "from_element": a, "to_element": b, "route": "straight",
+                "stroke": {"color": accent, "width_emu": int(1.6 * EMU_PER_PT)},
+                "arrowhead": "end",
+            })
+
     def table(self, block: dict, frame: dict, doc: SourceDoc | None = None) -> None:
         style = self.style
         caption = block.get("caption")
@@ -427,6 +475,18 @@ def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
                                                 ctx.width, img_h))
         if others:
             top = ctx.content_top + img_h + ctx.style.gap_emu()
+            ctx.stack(others, top=top, height=ctx.content_top + ctx.content_h - top)
+    elif archetype == "step_cards":
+        steps = [b for b in blocks if b.get("role") == "list"
+                 and b.get("semantics") in ("steps", "stages")]
+        lists = steps or [b for b in blocks if b.get("role") == "list"]
+        first_list = lists[0] if lists else None
+        others = [b for b in blocks if b is not first_list]
+        cards_h = ctx.content_h if not others else ctx.content_h * 2 // 3
+        ctx.step_cards(first_list if first_list else {"items": []},
+                       _frame(ctx.left, ctx.content_top, ctx.width, cards_h))
+        if others:
+            top = ctx.content_top + cards_h + ctx.style.gap_emu()
             ctx.stack(others, top=top, height=ctx.content_top + ctx.content_h - top)
     else:  # list_stack and evidence_stack share the guaranteed stack path
         ctx.stack(blocks)
