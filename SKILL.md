@@ -67,19 +67,21 @@ Minimal shape:
 
 Block roles: `fact` / `quote` (verbatim-ish, `source_ref` **required**), `metric` (`label`+`value`, `source_ref` **required**, numbers must exist in the anchored element), `table` (references the source table — never retype cells), `image` (`asset_ref`: an `img_N` anchor), `list` (optional `semantics`: `steps|stages|options|criteria|findings`), and synthesized `insight` / `risk` / `recommendation` / `context` (optional `source_refs`).
 
+`list` items can be deepened for process content — each item may add a one-line `detail` (the step's elaboration) and `action_items` (concrete actions under it). When `semantics` is `steps`/`stages`, the engine renders a numbered step-card row (title bar + body + accent action bullets); when absent it renders a bulleted panel. Both are content semantics, never layout.
+
 Rules the engine enforces:
 
 - **Select, don't invent.** Every fact/metric/quote/table is verified against the anchored source element. Fabricated numbers and dangling anchors are rejected with machine-readable errors.
 - **Cover the source.** The engine checks section/table coverage. Don't read half the article and stop.
 - **Content only.** No visual fields. The only presentation influence you have is `slides[].hints` (`emphasis_block_ids`, `tone`).
-- Optional enrichment (better decks, never required): `message`, `relations` (`causal|comparison|sequence|hierarchy|dependency|contrast` between block ids), `slide_role`, `deck.narrative_intent`, `x_semantics`.
+- Optional enrichment (better decks, never required): `message`, `relations` (`causal|comparison|sequence|hierarchy|dependency|contrast` between block ids), `slide_role`, `deck.narrative_intent` (also selects the visual system: `report`/`proposal` → consulting blue, `product` → product palette, `research` → editorial, `training` → technical), `x_semantics`.
 
 ### Optional data visuals (v4.1 — stronger decks, never required)
 
 A slide may carry one optional data payload; the engine renders it natively (chart or diagram). Weak models omit these and the engine infers an archetype from the blocks alone.
 
 - `chart` — `{type: "column"|"bar"|"line"|"pie"|"combo", data: {categories: [...], series: [{name, values}]}, source_ref}`. Numbers must come from the anchored source; series colors and chart styling are engine-owned.
-- `diagram_ir` — `{diagram_type: "causal_chain"|"phase_roadmap"|"layered_architecture"|..., nodes: [{label, priority}], edges: [{from, to, relation}], source_refs}`. Nodes/edges describe structure only — never positions, colors, or shapes.
+- `diagram_ir` — `{diagram_type: "causal_chain"|"phase_roadmap"|"layered_architecture"|"drill_down_stair"|"heat_matrix", nodes: [{label, priority}], edges: [{from, to, relation}], source_refs}`. Nodes/edges describe structure only — never positions, colors, or shapes. `heat_matrix` instead takes a `matrix` payload (`{rows, columns, values, value_suffix?, highlighted_cells?}`).
 
 Full example: `schemas/v4/examples/presentation-ir-v41-chart-diagram.json`.
 
