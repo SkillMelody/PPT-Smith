@@ -103,16 +103,35 @@ class SlideLayout:
             "semantic_role": "title",
         })
 
-    def add_footer(self, text: str) -> None:
+    def add_footer(self, text: str, page_index: int) -> None:
+        """Two-tone footer (v3): a full-width primary bar, an accent edge
+        strip, source/copyright text, and a page number."""
         style = self.style
-        self.elements.append({
-            "element_id": self.eid("footer"), "type": "textbox",
-            "frame": _frame(self.left, CANVAS_H - style.margin_emu() // 2 - FOOTER_H,
-                            self.width, FOOTER_H),
-            "paragraphs": [_para([_run(text, style, 900,
-                                       color=style.color("text_secondary"))])],
-            "valign": "middle", "editable": True, "semantic_role": "footer",
-        })
+        y = CANVAS_H - FOOTER_H
+        primary = style.color("primary")
+        accent = style.color("accent")
+        background = style.color("background")
+        self.elements.extend([{
+            "element_id": self.eid("footer-bar"), "type": "shape", "shape": "rect",
+            "frame": _frame(0, y, CANVAS_W, FOOTER_H),
+            "fill": {"color": primary}, "editable": True, "semantic_role": "footer_bar",
+        }, {
+            "element_id": self.eid("footer-accent"), "type": "shape", "shape": "rect",
+            "frame": _frame(0, y, int(0.08 * EMU_PER_IN), FOOTER_H),
+            "fill": {"color": accent}, "editable": True, "semantic_role": "footer_accent",
+        }, {
+            "element_id": self.eid("footer-text"), "type": "textbox",
+            "frame": _frame(int(0.22 * EMU_PER_IN), y, int(6.0 * EMU_PER_IN), FOOTER_H),
+            "paragraphs": [_para([_run(text, style, 800, color=background)])],
+            "valign": "middle", "editable": True, "semantic_role": "footer_text",
+        }, {
+            "element_id": self.eid("footer-page"), "type": "textbox",
+            "frame": _frame(CANVAS_W - int(1.0 * EMU_PER_IN), y,
+                            int(0.8 * EMU_PER_IN), FOOTER_H),
+            "paragraphs": [_para([_run(f"{page_index:02d}", style, 900,
+                                       color=background)], align="right")],
+            "valign": "middle", "editable": True, "semantic_role": "footer_page",
+        }])
 
     # ---- content builders -------------------------------------------------
 
@@ -556,7 +575,7 @@ def layout_deck(ir: dict, decisions: list, style: ResolvedStyle,
     decision_map = {d.slide_id: d for d in decisions}
     source_note = "；".join(
         s.get("title") or s.get("path") or s["source_id"] for s in ir.get("sources", []))
-    for slide in ir.get("slides", []):
+    for page_index, slide in enumerate(ir.get("slides", []), 1):
         decision = decision_map.get(slide["id"])
         archetype = decision.chosen if decision else "evidence_stack"
         ctx = SlideLayout(slide["id"], style, degradations)
@@ -566,7 +585,7 @@ def layout_deck(ir: dict, decisions: list, style: ResolvedStyle,
              for b in slide.get("blocks", []) if b.get("source_ref")), None)
         doc = docs.get(first_ref) if first_ref else next(iter(docs.values()), None)
         _layout_content(ctx, slide, archetype, doc)
-        ctx.add_footer(f"来源：{source_note}" if source_note else " ")
+        ctx.add_footer(f"来源：{source_note}" if source_note else " ", page_index)
         plan_slides.append({
             "slide_id": slide["id"],
             "background": {"color": style.color("background")},

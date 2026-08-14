@@ -159,12 +159,44 @@
     },
     {
      "editable": true,
-     "element_id": "s1-footer-3",
+     "element_id": "s1-footer-bar-3",
+     "fill": {
+      "color": "#2B2621"
+     },
      "frame": {
       "h": 274320,
-      "w": 11186160,
-      "x": 502920,
-      "y": 6332220
+      "w": 12192000,
+      "x": 0,
+      "y": 6583680
+     },
+     "semantic_role": "footer_bar",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
+     "element_id": "s1-footer-accent-4",
+     "fill": {
+      "color": "#C65D3B"
+     },
+     "frame": {
+      "h": 274320,
+      "w": 73152,
+      "x": 0,
+      "y": 6583680
+     },
+     "semantic_role": "footer_accent",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
+     "element_id": "s1-footer-text-5",
+     "frame": {
+      "h": 274320,
+      "w": 5486400,
+      "x": 201168,
+      "y": 6583680
      },
      "paragraphs": [
       {
@@ -173,9 +205,9 @@
        "line_height_pct": 135,
        "runs": [
         {
-         "color": "#857C70",
+         "color": "#FBF8F1",
          "font": "Aptos",
-         "size_cpt": 900,
+         "size_cpt": 800,
          "text": "来源：src",
          "weight": 400
         }
@@ -183,7 +215,37 @@
        "space_after_cpt": 0
       }
      ],
-     "semantic_role": "footer",
+     "semantic_role": "footer_text",
+     "type": "textbox",
+     "valign": "middle"
+    },
+    {
+     "editable": true,
+     "element_id": "s1-footer-page-6",
+     "frame": {
+      "h": 274320,
+      "w": 731520,
+      "x": 11277600,
+      "y": 6583680
+     },
+     "paragraphs": [
+      {
+       "align": "right",
+       "bullet": "none",
+       "line_height_pct": 135,
+       "runs": [
+        {
+         "color": "#FBF8F1",
+         "font": "Aptos",
+         "size_cpt": 900,
+         "text": "01",
+         "weight": 400
+        }
+       ],
+       "space_after_cpt": 0
+      }
+     ],
+     "semantic_role": "footer_page",
      "type": "textbox",
      "valign": "middle"
     }
@@ -554,12 +616,44 @@
     },
     {
      "editable": true,
-     "element_id": "s2-footer-5",
+     "element_id": "s2-footer-bar-5",
+     "fill": {
+      "color": "#2B2621"
+     },
      "frame": {
       "h": 274320,
-      "w": 11186160,
-      "x": 502920,
-      "y": 6332220
+      "w": 12192000,
+      "x": 0,
+      "y": 6583680
+     },
+     "semantic_role": "footer_bar",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
+     "element_id": "s2-footer-accent-6",
+     "fill": {
+      "color": "#C65D3B"
+     },
+     "frame": {
+      "h": 274320,
+      "w": 73152,
+      "x": 0,
+      "y": 6583680
+     },
+     "semantic_role": "footer_accent",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
+     "element_id": "s2-footer-text-7",
+     "frame": {
+      "h": 274320,
+      "w": 5486400,
+      "x": 201168,
+      "y": 6583680
      },
      "paragraphs": [
       {
@@ -568,9 +662,9 @@
        "line_height_pct": 135,
        "runs": [
         {
-         "color": "#857C70",
+         "color": "#FBF8F1",
          "font": "Aptos",
-         "size_cpt": 900,
+         "size_cpt": 800,
          "text": "来源：src",
          "weight": 400
         }
@@ -578,7 +672,37 @@
        "space_after_cpt": 0
       }
      ],
-     "semantic_role": "footer",
+     "semantic_role": "footer_text",
+     "type": "textbox",
+     "valign": "middle"
+    },
+    {
+     "editable": true,
+     "element_id": "s2-footer-page-8",
+     "frame": {
+      "h": 274320,
+      "w": 731520,
+      "x": 11277600,
+      "y": 6583680
+     },
+     "paragraphs": [
+      {
+       "align": "right",
+       "bullet": "none",
+       "line_height_pct": 135,
+       "runs": [
+        {
+         "color": "#FBF8F1",
+         "font": "Aptos",
+         "size_cpt": 900,
+         "text": "02",
+         "weight": 400
+        }
+       ],
+       "space_after_cpt": 0
+      }
+     ],
+     "semantic_role": "footer_page",
      "type": "textbox",
      "valign": "middle"
     }
@@ -733,12 +857,44 @@
     },
     {
      "editable": true,
-     "element_id": "s3-footer-5",
+     "element_id": "s3-footer-bar-5",
+     "fill": {
+      "color": "#2B2621"
+     },
      "frame": {
       "h": 274320,
-      "w": 11186160,
-      "x": 502920,
-      "y": 6332220
+      "w": 12192000,
+      "x": 0,
+      "y": 6583680
+     },
+     "semantic_role": "footer_bar",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
+     "element_id": "s3-footer-accent-6",
+     "fill": {
+      "color": "#C65D3B"
+     },
+     "frame": {
+      "h": 274320,
+      "w": 73152,
+      "x": 0,
+      "y": 6583680
+     },
+     "semantic_role": "footer_accent",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
+     "element_id": "s3-footer-text-7",
+     "frame": {
+      "h": 274320,
+      "w": 5486400,
+      "x": 201168,
+      "y": 6583680
      },
      "paragraphs": [
       {
@@ -747,9 +903,9 @@
        "line_height_pct": 135,
        "runs": [
         {
-         "color": "#857C70",
+         "color": "#FBF8F1",
          "font": "Aptos",
-         "size_cpt": 900,
+         "size_cpt": 800,
          "text": "来源：src",
          "weight": 400
         }
@@ -757,7 +913,37 @@
        "space_after_cpt": 0
       }
      ],
-     "semantic_role": "footer",
+     "semantic_role": "footer_text",
+     "type": "textbox",
+     "valign": "middle"
+    },
+    {
+     "editable": true,
+     "element_id": "s3-footer-page-8",
+     "frame": {
+      "h": 274320,
+      "w": 731520,
+      "x": 11277600,
+      "y": 6583680
+     },
+     "paragraphs": [
+      {
+       "align": "right",
+       "bullet": "none",
+       "line_height_pct": 135,
+       "runs": [
+        {
+         "color": "#FBF8F1",
+         "font": "Aptos",
+         "size_cpt": 900,
+         "text": "03",
+         "weight": 400
+        }
+       ],
+       "space_after_cpt": 0
+      }
+     ],
+     "semantic_role": "footer_page",
      "type": "textbox",
      "valign": "middle"
     }

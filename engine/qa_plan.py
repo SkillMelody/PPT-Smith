@@ -58,13 +58,15 @@ def check_plan(plan: dict) -> dict:
 
         for element in slide["elements"]:
             eid = element["element_id"]
+            role = element.get("semantic_role", "")
+            is_footer = role.startswith("footer")
             frame = element.get("frame")
             if frame:
                 if frame["x"] < 0 or frame["y"] < 0 or \
                         frame["x"] + frame["w"] > cw or frame["y"] + frame["h"] > ch:
                     errors.append(_issue("ELEMENT_OUT_OF_BOUNDS", sid, eid,
                                          f"frame {frame} exceeds canvas"))
-                if element.get("semantic_role") not in ("footer", "title"):
+                if role != "title" and not is_footer:
                     content_area += frame["w"] * frame["h"]
 
             if element.get("type") in ("textbox", "shape") and frame:
@@ -75,6 +77,8 @@ def check_plan(plan: dict) -> dict:
                     errors.append(_issue("TEXT_OVERFLOW_RISK", sid, eid,
                                          f"estimated text {total_h} EMU vs frame {frame['h']}"))
 
+            if is_footer:
+                continue  # footer text sits on the primary bar, not the bg
             for para, fill in _element_runs(element):
                 back = (fill or {}).get("color", bg)
                 for run in para["runs"]:
