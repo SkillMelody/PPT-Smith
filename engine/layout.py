@@ -13,7 +13,7 @@ construction, nothing silently dropped.
 from __future__ import annotations
 
 from .source_doc import SourceDoc, parse_anchor
-from .style_pack import EMU_PER_PT, ResolvedStyle
+from .style_pack import EMU_PER_IN, EMU_PER_PT, ResolvedStyle
 from .textfit import fit_size_cpt, paragraphs_height_emu, truncate_to_fit
 
 CANVAS_W, CANVAS_H = 12192000, 6858000
@@ -119,12 +119,14 @@ class SlideLayout:
     def _block_paras(self, block: dict, size_cpt: int) -> list[dict]:
         style = self.style
         role = block.get("role")
+        weight = style.weight("semibold", 600)
         if role == "list":
-            return [_para([_run(f"• {item['text']}", style, size_cpt)],
+            return [_para([_run(f"• {item['text']}", style, size_cpt,
+                                weight=weight)],
                           bullet="dot", space_after_cpt=400)
                     for item in block.get("items", [])]
         text = block.get("text", "")
-        return [_para([_run(text, style, size_cpt)])]
+        return [_para([_run(text, style, size_cpt, weight=weight)])]
 
     def card(self, block: dict, frame: dict) -> None:
         style = self.style
@@ -431,33 +433,55 @@ def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
 
 
 def _cover_slide(ir: dict, style: ResolvedStyle) -> dict:
+    """McKinsey-style cover: a vertical primary bar anchors the title block,
+    followed by a subtitle and a horizontal rule (migrated from v3's
+    renderCoverSlide)."""
     deck = ir["deck"]
     margin = style.margin_emu()
-    width = CANVAS_W - 2 * margin
+    bar_x = margin + int(0.1 * EMU_PER_IN)
+    text_x = margin + int(0.55 * EMU_PER_IN)
+    width = CANVAS_W - 2 * margin - int(0.7 * EMU_PER_IN)
+
     elements = [{
+        # left vertical bar — the cover's visual anchor
+        "element_id": "cover-bar", "type": "shape", "shape": "rect",
+        "frame": _frame(bar_x, int(1.35 * EMU_PER_IN),
+                        int(0.12 * EMU_PER_IN), int(3.95 * EMU_PER_IN)),
+        "fill": {"color": style.color("primary")},
+        "editable": True, "semantic_role": "accent_bar",
+    }, {
         "element_id": "cover-title", "type": "textbox",
-        "frame": _frame(margin, CANVAS_H * 3 // 8, width, 1600200),
+        "frame": _frame(text_x, int(1.9 * EMU_PER_IN), width, int(1.55 * EMU_PER_IN)),
         "paragraphs": [_para([_run(deck["title"], style,
                                    style.size_cpt("title", "cover"),
                                    font=style.font("editorial"),
-                                   weight=style.weight("semibold", 600))],
-                             line_height_pct=110)],
+                                   weight=style.weight("bold", 700))],
+                             line_height_pct=105)],
         "valign": "middle", "editable": True, "semantic_role": "title",
-    }, {
-        "element_id": "cover-rule", "type": "shape",
-        "frame": _frame(margin, CANVAS_H * 3 // 8 - 91440, 1371600, 45720),
-        "shape": "rect", "fill": {"color": style.color("accent")},
-        "editable": True, "semantic_role": "accent_edge",
     }]
-    if deck.get("purpose"):
+
+    subtitle = deck.get("purpose")
+    if not subtitle:
+        first_source = ir.get("sources", [{}])[0]
+        subtitle = first_source.get("title") or first_source.get("path")
+    if subtitle:
         elements.append({
-            "element_id": "cover-purpose", "type": "textbox",
-            "frame": _frame(margin, CANVAS_H * 3 // 8 + 1700784, width, 685800),
-            "paragraphs": [_para([_run(deck["purpose"], style,
-                                       style.size_cpt("body", "large"),
+            "element_id": "cover-subtitle", "type": "textbox",
+            "frame": _frame(text_x, int(3.9 * EMU_PER_IN), int(9.3 * EMU_PER_IN),
+                            int(0.72 * EMU_PER_IN)),
+            "paragraphs": [_para([_run(subtitle, style,
+                                       max(style.size_cpt("body", "large"), 1400),
                                        color=style.color("text_secondary"))])],
-            "valign": "top", "editable": True, "semantic_role": "message",
+            "valign": "top", "editable": True, "semantic_role": "subtitle",
         })
+
+    elements.append({
+        "element_id": "cover-rule", "type": "shape", "shape": "rect",
+        "frame": _frame(text_x, int(5.25 * EMU_PER_IN), int(3.9 * EMU_PER_IN),
+                        int(0.05 * EMU_PER_IN)),
+        "fill": {"color": style.color("border")},
+        "editable": True, "semantic_role": "rule",
+    })
     return {"slide_id": "cover",
             "background": {"color": style.color("background")},
             "elements": elements}

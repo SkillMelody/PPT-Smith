@@ -15,25 +15,41 @@
    "elements": [
     {
      "editable": true,
+     "element_id": "cover-bar",
+     "fill": {
+      "color": "#2B2621"
+     },
+     "frame": {
+      "h": 3611880,
+      "w": 109728,
+      "x": 594360,
+      "y": 1234440
+     },
+     "semantic_role": "accent_bar",
+     "shape": "rect",
+     "type": "shape"
+    },
+    {
+     "editable": true,
      "element_id": "cover-title",
      "frame": {
-      "h": 1600200,
-      "w": 11186160,
-      "x": 502920,
-      "y": 2571750
+      "h": 1417320,
+      "w": 10546080,
+      "x": 1005840,
+      "y": 1737360
      },
      "paragraphs": [
       {
        "align": "left",
        "bullet": "none",
-       "line_height_pct": 110,
+       "line_height_pct": 105,
        "runs": [
         {
          "color": "#4A423A",
          "font": "Source Han Serif SC",
          "size_cpt": 3400,
          "text": "2025 年度经营总结",
-         "weight": 600
+         "weight": 700
         }
        ],
        "space_after_cpt": 0
@@ -47,15 +63,15 @@
      "editable": true,
      "element_id": "cover-rule",
      "fill": {
-      "color": "#C65D3B"
+      "color": "#E4DDCF"
      },
      "frame": {
       "h": 45720,
-      "w": 1371600,
-      "x": 502920,
-      "y": 2480310
+      "w": 3566160,
+      "x": 1005840,
+      "y": 4800600
      },
-     "semantic_role": "accent_edge",
+     "semantic_role": "rule",
      "shape": "rect",
      "type": "shape"
     }
@@ -121,7 +137,7 @@
          "font": "Aptos",
          "size_cpt": 1600,
          "text": "前言段落,介绍背景。",
-         "weight": 400
+         "weight": 600
         }
        ],
        "space_after_cpt": 0
@@ -472,7 +488,7 @@
          "font": "Aptos",
          "size_cpt": 1000,
          "text": "2025 年销售收入增长 36%,其中海外业务贡献最大。",
-         "weight": 400
+         "weight": 600
         }
        ],
        "space_after_cpt": 0
@@ -516,7 +532,7 @@
          "font": "Aptos",
          "size_cpt": 850,
          "text": "海外业务收入 +52%",
-         "weight": 400
+         "weight": 600
         }
        ],
        "space_after_cpt": 0
@@ -658,7 +674,7 @@
          "font": "Aptos",
          "size_cpt": 1600,
          "text": "毛利率下降 2.8 个百分点。",
-         "weight": 400
+         "weight": 600
         }
        ],
        "space_after_cpt": 0

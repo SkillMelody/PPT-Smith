@@ -189,7 +189,7 @@ function renderElement(slide, element, pptx, registry) {
       chartColors: series.map((s) => hex(s.color)),
       showLegend: element.legend !== "none" && series.length > 1,
       legendPos: element.legend === "right" ? "r" : "b",
-      showValue: false,
+      showValue: true,
       dataLabelColor: hex(element.label_color || "000000"),
       dataLabelFontSize: pt2(element.label_size_cpt || 900),
     };
