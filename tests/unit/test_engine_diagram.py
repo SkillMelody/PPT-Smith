@@ -138,6 +138,22 @@ class TestStepCards:
         ctx.step_cards({"role": "list", "items": []}, FRAME)
         assert any(d["kind"] == "builder_downgrade" for d in ctx.degs)
 
+    def test_step_cards_detail_and_actions(self):
+        ctx = _ctx()
+        ctx.step_cards({"role": "list", "semantics": "steps",
+                        "items": [
+                            {"text": "重新定义", "detail": "对齐愿景",
+                             "action_items": ["行动一", "行动二"]},
+                            {"text": "聚焦抓手", "detail": "锁定价值",
+                             "action_items": ["行动三"]},
+                        ]}, FRAME)
+        detail = sum(1 for e in ctx.elements if e.get("semantic_role") == "step_detail")
+        dots = sum(1 for e in ctx.elements if e.get("semantic_role") == "step_dot")
+        actions = sum(1 for e in ctx.elements if e.get("semantic_role") == "step_action")
+        assert detail == 2
+        assert dots == 3  # 2 + 1
+        assert actions == 3
+
 
 class TestFallbackAndChart:
     def test_unknown_type_falls_back_to_strip(self):

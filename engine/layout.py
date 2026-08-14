@@ -272,7 +272,8 @@ class SlideLayout:
 
     def step_cards(self, list_block: dict, frame: dict) -> None:
         """McKinsey-style step cards (v3): a numbered, dark-title-bar card per
-        list item, linked by arrows. steps/stages semantics select this."""
+        list item, with an optional body line and accent action items, linked
+        by arrows. steps/stages semantics select this."""
         style = self.style
         items = list_block.get("items", [])
         n = min(len(items), 5)
@@ -285,7 +286,12 @@ class SlideLayout:
         primary = style.color("primary")
         background = style.color("background")
         accent = style.color("accent")
+        border = style.color("border")
+        body_text = style.color("text_primary")
+        muted = style.color("text_secondary")
         size = style.size_cpt("body", "small")
+        pad = int(0.08 * EMU_PER_IN)
+        dot = int(0.06 * EMU_PER_IN)
 
         body_ids: list[str] = []
         for i, item in enumerate(items[:n]):
@@ -295,7 +301,7 @@ class SlideLayout:
                 "element_id": body_id, "type": "shape", "shape": "rect",
                 "frame": _frame(x, frame["y"], card_w, frame["h"]),
                 "fill": {"color": background},
-                "stroke": {"color": style.color("border"), "width_emu": 9525},
+                "stroke": {"color": border, "width_emu": 9525},
                 "editable": True, "semantic_role": "step_card",
             })
             body_ids.append(body_id)
@@ -310,6 +316,32 @@ class SlideLayout:
                                      align="center", line_height_pct=115)],
                 "editable": True, "semantic_role": "step_header",
             })
+            cy = frame["y"] + header_h + pad
+            detail = item.get("detail")
+            if detail:
+                self.elements.append({
+                    "element_id": self.eid("step-detail"), "type": "textbox",
+                    "frame": _frame(x + pad, cy, card_w - 2 * pad, int(0.4 * EMU_PER_IN)),
+                    "paragraphs": [_para([_run(detail, style, size, color=body_text)],
+                                         line_height_pct=120)],
+                    "valign": "top", "editable": True, "semantic_role": "step_detail",
+                })
+                cy += int(0.42 * EMU_PER_IN)
+            for ai in item.get("action_items", []):
+                self.elements.append({
+                    "element_id": self.eid("step-dot"), "type": "shape", "shape": "rect",
+                    "frame": _frame(x + pad, cy + int(0.05 * EMU_PER_IN), dot, dot),
+                    "fill": {"color": accent}, "editable": True, "semantic_role": "step_dot",
+                })
+                self.elements.append({
+                    "element_id": self.eid("step-action"), "type": "textbox",
+                    "frame": _frame(x + pad + dot + pad, cy, card_w - 2 * pad - dot - pad,
+                                    int(0.26 * EMU_PER_IN)),
+                    "paragraphs": [_para([_run(ai, style, size, color=muted)],
+                                         line_height_pct=115)],
+                    "valign": "top", "editable": True, "semantic_role": "step_action",
+                })
+                cy += int(0.26 * EMU_PER_IN)
         for a, b in zip(body_ids, body_ids[1:]):
             self.elements.append({
                 "element_id": self.eid("step-conn"), "type": "connector",
