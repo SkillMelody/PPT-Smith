@@ -156,11 +156,15 @@ def score_v4(
     case_path: Optional[Path] = None,
     use_reference_rubric: bool = False,
     reference_rubric: Optional[str] = None,
+    pptx_path: Optional[Path] = None,
+    render_report: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     case: dict[str, Any] = {"case_id": case_id, "expected_metrics": {}}
     if reference_rubric:
         case["reference_rubric"] = reference_rubric
     qa_report = qa_report_from_v4(compile_result, render_plan, ir)
+    if render_report is not None:
+        qa_report["evidence"] = {"render_report": render_report}
     return build_rubric_score(
         case=case,
         case_path=case_path or ROOT,
@@ -168,21 +172,30 @@ def score_v4(
         qa_report=qa_report,
         build_manifest=None,
         use_reference_rubric=use_reference_rubric,
+        pptx_path=pptx_path,
     )
 
 
 def provisional_summary(score: dict[str, Any]) -> dict[str, Any]:
-    dims = {
+    prov = {
         str(item.get("dimension")): item.get("provisional_score")
         for item in score.get("dimensions", []) if isinstance(item, dict)
     }
+    trusted = {
+        str(item.get("dimension")): item.get("score")
+        for item in score.get("dimensions", []) if isinstance(item, dict)
+    }
+    is_trusted = not bool(score.get("manual_review_required"))
     return {
         "case_id": score.get("case_id"),
         "rubric_quality_status": score.get("rubric_quality_status"),
         "hard_gate_status": score.get("hard_gate_status"),
         "manual_review_required": score.get("manual_review_required"),
-        "provisional_total": sum(v for v in dims.values() if isinstance(v, int)),
-        "provisional_dimensions": dims,
+        "scores_source": "reference_rubric" if is_trusted else "automatic_provisional",
+        "total": sum(v for v in (trusted if is_trusted else prov).values() if isinstance(v, int)),
+        "dimensions": trusted if is_trusted else prov,
+        "provisional_total": sum(v for v in prov.values() if isinstance(v, int)),
+        "provisional_dimensions": prov,
     }
 
 
@@ -196,6 +209,8 @@ def _main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--render-plan")
     parser.add_argument("--ir")
     parser.add_argument("--reference-rubric")
+    parser.add_argument("--pptx")
+    parser.add_argument("--render-report")
     parser.add_argument("--json-out")
     args = parser.parse_args(argv)
 
@@ -212,6 +227,8 @@ def _main(argv: Optional[list[str]] = None) -> int:
         ir=read(args.ir),
         reference_rubric=args.reference_rubric,
         use_reference_rubric=bool(args.reference_rubric),
+        pptx_path=Path(args.pptx) if args.pptx else None,
+        render_report=read(args.render_report),
     )
     if args.json_out:
         write_json(score, Path(args.json_out))
