@@ -346,6 +346,7 @@ class SlideLayout:
             self.elements.append({
                 "element_id": self.eid("step-conn"), "type": "connector",
                 "from_element": a, "to_element": b, "route": "straight",
+                "from_side": "right", "to_side": "left",
                 "stroke": {"color": accent, "width_emu": int(1.6 * EMU_PER_PT)},
                 "arrowhead": "end",
             })

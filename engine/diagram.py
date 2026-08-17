@@ -70,10 +70,12 @@ def _shape(ctx: SlideLayout, frame: dict, *, shape: str, fill: str | None,
 
 
 def _conn(ctx: SlideLayout, from_id: str, to_id: str, *, color: str,
-          width_pt: float = 1.8, arrow: str = "end") -> None:
+          width_pt: float = 1.8, arrow: str = "end",
+          from_side: str = "auto", to_side: str = "auto") -> None:
     ctx.elements.append({
         "element_id": ctx.eid("diagram-conn"), "type": "connector",
         "from_element": from_id, "to_element": to_id, "route": "straight",
+        "from_side": from_side, "to_side": to_side,
         "stroke": {"color": color, "width_emu": int(width_pt * EMU_PER_PT)},
         "arrowhead": arrow,
     })
@@ -114,7 +116,8 @@ def _causal_chain(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
             stroke_color=c["border"], text=_node_text(node, index),
             text_color=c["background"] if last else c["text"], size_cpt=size))
     for a, b in zip(ids, ids[1:]):
-        _conn(ctx, a, b, color=c["accent"])
+        _conn(ctx, a, b, color=c["accent"],
+              from_side="right", to_side="left")
 
 
 # ---- phase_roadmap ----------------------------------------------------------
@@ -139,7 +142,8 @@ def _phase_roadmap(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
             stroke_color=c["primary"], text=_node_text(node, index),
             text_color=c["background"] if last else c["text"], size_cpt=size))
     for a, b in zip(ids, ids[1:]):
-        _conn(ctx, a, b, color=c["accent"])
+        _conn(ctx, a, b, color=c["accent"],
+              from_side="right", to_side="left")
 
 
 # ---- layered_architecture ---------------------------------------------------
@@ -174,7 +178,8 @@ def _layered_architecture(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> No
             shape="round_rect", fill=fill, stroke_color=stroke,
             text=_node_text(node, index), text_color=c["text"], size_cpt=size))
     for a, b in zip(ids, ids[1:]):
-        _conn(ctx, a, b, color=c["accent"])
+        _conn(ctx, a, b, color=c["accent"],
+              from_side="bottom", to_side="top")
 
 
 # ---- drill_down_stair -------------------------------------------------------
@@ -201,7 +206,8 @@ def _drill_down_stair(ctx: SlideLayout, diagram_ir: dict, frame: dict) -> None:
             stroke_color=c["accent"], text=_node_text(node, index),
             text_color=c["background"] if last else c["text"], size_cpt=size))
     for a, b in zip(ids, ids[1:]):
-        _conn(ctx, a, b, color=c["accent"], width_pt=2.0)
+        _conn(ctx, a, b, color=c["accent"],
+              from_side="right", to_side="left")
 
 
 # ---- heat_matrix ------------------------------------------------------------

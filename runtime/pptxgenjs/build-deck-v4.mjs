@@ -180,6 +180,7 @@ function renderElement(slide, element, pptx, registry) {
       labels: element.categories || [],
       values: s.values,
     }));
+    const isPie = chartType === "pie" || chartType === "doughnut";
     const opts = {
       x: in2(f.x || 0),
       y: in2(f.y || 0),
@@ -187,11 +188,14 @@ function renderElement(slide, element, pptx, registry) {
       h: in2(f.h || 0),
       barDir: element.chart_type === "bar" ? "bar" : "col",
       chartColors: series.map((s) => hex(s.color)),
-      showLegend: element.legend !== "none" && series.length > 1,
+      showLegend: element.legend !== "none",
       legendPos: element.legend === "right" ? "r" : "b",
       showValue: true,
-      dataLabelColor: hex(element.label_color || "000000"),
-      dataLabelFontSize: pt2(element.label_size_cpt || 900),
+      showPercent: isPie,
+      dataLabelColor: isPie ? "FFFFFF" : hex(element.label_color || "000000"),
+      dataLabelFontSize: isPie ? 12 : pt2(element.label_size_cpt || 900),
+      dataLabelFontBold: isPie,
+      firstSliceAng: 270,
     };
     slide.addChart(pptx.ChartType[chartType], data, opts);
     registry[element.element_id] = { x: in2(f.x || 0), y: in2(f.y || 0), w: in2(f.w || 0), h: in2(f.h || 0) };
@@ -205,20 +209,28 @@ function renderElement(slide, element, pptx, registry) {
     if (!from || !to) {
       throw new Error(`connector endpoints missing: ${element.element_id}`);
     }
-    const x1 = from.x + from.w / 2;
-    const y1 = from.y + from.h / 2;
-    const x2 = to.x + to.w / 2;
-    const y2 = to.y + to.h / 2;
-    const x = Math.min(x1, x2);
-    const y = Math.min(y1, y2);
-    const w = Math.abs(x2 - x1);
-    const h = Math.abs(y2 - y1);
-    slide.addShape(pptx.ShapeType.line, {
+    const anchorPoint = (box, side) => {
+      const ax = side === "left" ? 0 : side === "right" ? box.w : box.w / 2;
+      const ay = side === "top" ? 0 : side === "bottom" ? box.h : box.h / 2;
+      return { x: box.x + ax, y: box.y + ay };
+    };
+    const p1 = anchorPoint(from, element.from_side === "auto" ? "right" : (element.from_side || "right"));
+    const p2 = anchorPoint(to, element.to_side === "auto" ? "left" : (element.to_side || "left"));
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.abs(p2.x - p1.x);
+    const h = Math.abs(p2.y - p1.y);
+    const ah = element.arrowhead || "none";
+    const line = { color: hex(element.stroke?.color || "000000"), width: (element.stroke?.width_emu || EMU_PER_PT) / EMU_PER_PT };
+    if (ah === "end" || ah === "both") line.endArrowType = "triangle";
+    if (ah === "both") line.startArrowType = "triangle";
+    const lineOpts = {
       x, y, w, h,
-      line: { color: hex(element.stroke?.color || "000000"), width: (element.stroke?.width_emu || EMU_PER_PT) / EMU_PER_PT },
-      flipH: x2 < x1,
-      flipV: y2 < y1,
-    });
+      line,
+      flipH: p2.x < p1.x,
+      flipV: p2.y < p1.y,
+    };
+    slide.addShape(pptx.ShapeType.line, lineOpts);
     if (element.label) {
       const lf = element.label.frame || {};
       slide.addText(paragraphsToText(element.label.paragraphs), {
