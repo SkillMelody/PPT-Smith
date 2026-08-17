@@ -35,8 +35,18 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from engine.compile import compile_deck  # noqa: E402
+from score_v4 import provisional_summary, score_v4  # noqa: E402
 
 SOURCE_TYPES = {".md": "markdown", ".html": "html", ".txt": "text"}
+
+
+def _load_json_or_none(path: Path) -> dict | None:
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
 
 
 def _geometry_sha(render_plan_path: Path) -> str:
@@ -83,6 +93,18 @@ def run_case(case_dir: Path, out_root: Path, style: str | None) -> list[dict]:
         coverage = report.get("coverage", {})
         worst_section = min((s["section_ratio"]
                              for s in coverage.get("sources", [])), default=None)
+        rubric = None
+        compile_result_path = out / "compile-result.json"
+        if compile_result_path.is_file():
+            try:
+                rubric = provisional_summary(score_v4(
+                    case_id=f"{case_dir.name}/{producer}",
+                    compile_result=_load_json_or_none(compile_result_path) or {},
+                    render_plan=_load_json_or_none(out / "render-plan.json"),
+                    ir=_load_json_or_none(out / "ir.json"),
+                ))
+            except Exception as exc:  # rubric must never break the floor report
+                rubric = {"error": f"{type(exc).__name__}: {exc}"}
         rows.append({
             "case": case_dir.name,
             "producer": producer,
@@ -97,6 +119,7 @@ def run_case(case_dir: Path, out_root: Path, style: str | None) -> list[dict]:
             "coverage_status": coverage.get("status"),
             "worst_section_ratio": worst_section,
             "deterministic": deterministic,
+            "rubric": rubric,
         })
     return rows
 
@@ -106,6 +129,12 @@ def summarize(rows: list[dict]) -> dict:
     summary = {}
     for producer in producers:
         mine = [r for r in rows if r["producer"] == producer]
+        rubric_totals = [
+            r["rubric"]["provisional_total"]
+            for r in mine
+            if isinstance(r.get("rubric"), dict)
+            and isinstance(r["rubric"].get("provisional_total"), int)
+        ]
         summary[producer] = {
             "cases": len(mine),
             "walkthrough_rate": sum(1 for r in mine if r["ok"]) / len(mine),
@@ -113,6 +142,7 @@ def summarize(rows: list[dict]) -> dict:
             "qa_errors_total": sum(r["qa_errors"] or 0 for r in mine),
             "ir_rejected": sum(1 for r in mine if r["ir_rejected"]),
             "deterministic": all(r["deterministic"] in (True, None) for r in mine),
+            "rubric_provisional_total": (sum(rubric_totals) / len(rubric_totals)) if rubric_totals else None,
         }
     return summary
 
@@ -129,15 +159,46 @@ def to_markdown(rows: list[dict], summary: dict) -> str:
             f"| {r['coverage_status']} | "
             f"{'✅' if r['deterministic'] else '—' if r['deterministic'] is None else '❌'} |")
     lines += ["", "## Per-producer summary", "",
-              "| producer | walk-through | blank slides | qa errors | IR rejected | deterministic |",
-              "|---|---|---|---|---|---|"]
+              "| producer | walk-through | blank slides | qa errors | IR rejected | deterministic | rubric (prov) |",
+              "|---|---|---|---|---|---|---|"]
     for producer, s in summary.items():
+        rubric_total = s["rubric_provisional_total"]
+        rubric_cell = f"{rubric_total:.1f}/18" if rubric_total is not None else "—"
         lines.append(f"| {producer} | {s['walkthrough_rate']:.0%} "
                      f"| {s['blank_slides_total']} | {s['qa_errors_total']} "
-                     f"| {s['ir_rejected']} | {'✅' if s['deterministic'] else '❌'} |")
+                     f"| {s['ir_rejected']} | {'✅' if s['deterministic'] else '❌'} "
+                     f"| {rubric_cell} |")
+    lines += ["", "## Rubric (provisional automatic evidence)",
+              "",
+              "Six-dimension provisional scores; `manual_review_required=true` until a "
+              "trusted scorer or a bound `reference-rubric.json` anchors the case. "
+              "Order: title/message, content-fidelity, expression, composition, craft, editability.",
+              "",
+              "| case | producer | title | fidelity | expr | comp | craft | edit | total |",
+              "|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        rubric = r.get("rubric")
+        if not isinstance(rubric, dict):
+            lines.append(f"| {r['case']} | {r['producer']} | — | — | — | — | — | — | — |")
+            continue
+        dims = rubric.get("provisional_dimensions", {})
+        if not dims:
+            lines.append(f"| {r['case']} | {r['producer']} | err | | | | | | {rubric.get('error')} |")
+            continue
+        lines.append(
+            f"| {r['case']} | {r['producer']} "
+            f"| {dims.get('title_role_and_message_quality')} "
+            f"| {dims.get('content_fidelity')} "
+            f"| {dims.get('expression_architecture')} "
+            f"| {dims.get('page_composition')} "
+            f"| {dims.get('component_craft')} "
+            f"| {dims.get('editability_hygiene')} "
+            f"| {rubric.get('provisional_total')}/18 |")
     lines += ["", "Acceptance floors (plan §1.3): walk-through 100%, blank slides 0, "
               "qa errors 0, deterministic ✅ for every producer. `ir_rejected` is not "
-              "a failure — it proves the provenance gate + extractive fallback."]
+              "a failure — it proves the provenance gate + extractive fallback. "
+              "Rubric total is provisional automatic evidence (not a trusted score) "
+              "until a `reference-rubric.json` anchors the case."]
     return "\n".join(lines) + "\n"
 
 
