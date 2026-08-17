@@ -3,7 +3,7 @@ name: "article-html-to-ppt"
 description: "Compile articles (Markdown/HTML/text) into professional, editable PPTX decks via a deterministic local engine. The model's only job: optionally write a content-only Presentation IR, then run one command. Layout, styling, and QA are engine-owned."
 metadata:
   display_name: "MeowClaw PPT Smith"
-  english_alias: "MeowClaw PPTSmith"
+  english_alias: "MeowClaw PPT Smith"
   public_slug: "meowclaw-pptsmith"
   version: "4.1.0-alpha"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
