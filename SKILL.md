@@ -161,7 +161,12 @@ Rules:
 
 The engine ships a deterministic deck by default. Two optional refine routes give a capable model more influence when the user wants it — both are opt-in and QA-gated:
 
-- **Level 1 — page-level composition intent** (in the IR): add a `refine` field to any slide to describe how it should be composed. Families: `split` (two columns, optional per-side chart/diagram), `wheel` (hub + spokes flywheel), `contrast` (two opposing blocks + divider), `spotlight` (one emphasized block + supporting stack). The engine compiles the intent into geometry and QA-gates it; an unsupported type degrades to the rule archetype.
+- **Refine at generation time** (choose refinement up front): pass a refine spec to `compile`:
+  ```bash
+  python3 -m engine compile --source doc:markdown:source.md --refine refine.json --output-dir out/
+  ```
+  `refine.json` maps slide ids to page-level composition intent, using 0-based block indices (`{"s2": {"type": "contrast", "left": [0], "right": [1]}}`). Applied before layout; unknown slides/types and out-of-range indices are rejected honestly without failing the compile.
+- **Level 1 — page-level composition intent** (in the IR): add a `refine` field to any slide. Families: `split` (two columns, optional per-side chart/diagram), `wheel` (hub + spokes flywheel), `contrast` (two opposing blocks + divider), `spotlight` (one emphasized block + supporting stack). The engine compiles the intent into geometry and QA-gates it; an unsupported type degrades to the rule archetype.
 - **Level 2 — code refine** (explicit, user must ask): `python3 -m engine refine-code --script refine.py --source … --ir ir.json --output-dir out/`. The script gets full python-pptx freedom over a copy of the engine deck, then runs the QA structural inspection: the refine is **rejected** (exit 1) if it introduces new out-of-bounds / orphan / blank-slide issues vs the engine base. Never ship a refine QA would block.
 
 Rules: refine never overrides explicit `chart`/`diagram_ir`; Level 1 wins over chart auto-inference (the user asked for this composition, not a chart). Refines are a degradation-free path only when they pass QA — otherwise the engine deck stands.

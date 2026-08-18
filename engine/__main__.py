@@ -71,6 +71,9 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--ir")
     c.add_argument("--style")
     c.add_argument("--output-dir", required=True)
+    c.add_argument("--refine", dest="refine_spec_path",
+                   help="JSON refine spec applied at generation time "
+                        "(page-level composition intent per slide)")
     c.add_argument("--no-degrade", action="store_true",
                    help="fail on invalid IR instead of falling back to extraction")
 
@@ -112,7 +115,8 @@ def main(argv: list[str] | None = None) -> int:
             specs.append(tuple(parts))
         report = compile_deck(sources=specs, ir_path=args.ir, style_path=args.style,
                               output_dir=args.output_dir,
-                              degrade_on_error=not args.no_degrade)
+                              degrade_on_error=not args.no_degrade,
+                              refine_spec_path=args.refine_spec_path)
         print(json.dumps({k: report[k] for k in
                           ("ok", "ir_origin", "slide_count", "pptx", "stage")
                           if k in report}, ensure_ascii=False, indent=2))

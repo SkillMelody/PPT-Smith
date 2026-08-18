@@ -51,7 +51,8 @@ def _subset_validate(document: dict, schema_file: str) -> list[dict]:
 
 def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = None,
                  style_path: str | None = None, output_dir: str,
-                 degrade_on_error: bool = True) -> dict:
+                 degrade_on_error: bool = True,
+                 refine_spec_path: str | None = None) -> dict:
     """sources: [(source_id, type, path)]. Returns the compile report."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -92,6 +93,15 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
             report["ir_rejection_errors"] = ir_findings
         report["extraction_warnings"] = extraction["warnings"]
     report["stages"].append("ir")
+
+    # P12-refine: apply a compile-time refine spec (user chose refinement at
+    # generation time). Applied BEFORE chart inference so refine intent wins.
+    if refine_spec_path:
+        from .refine_spec import apply_refine_spec, load_refine_spec  # noqa: PLC0415
+        spec = load_refine_spec(refine_spec_path)
+        refine_report = apply_refine_spec(ir, spec)
+        report["refine_spec"] = refine_report
+        report["stages"].append("refine_spec")
 
     # P10: chart auto-inference — when the model didn't write chart/diagram_ir,
     # infer one from metric blocks + relations. Never overrides what the model
