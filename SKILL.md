@@ -143,9 +143,19 @@ Do not present a degraded or extractive deck as if it were fully IR-driven. The 
 - 3–8 blocks per slide is the sweet spot; the schema caps at 12.
 - The engine guarantees the floor (no blank pages, no overflow, verified content). The ceiling — sharp selection, insight, narrative — is your contribution.
 
-## Autonomy tiers (protocol extension slot)
+## Autonomy tiers (P11 — enabled)
 
-This version runs every model at tier **L0**: zero visual authority, rules pick every archetype. Tiers **L1** (choose among engine-proposed archetype candidates) and **L2** (constrained composition proposals, QA-gated) are reserved protocol extensions; their activation and the behavioral probe that grants them will be documented here when enabled. Nothing in the current protocol changes when they arrive.
+Every model starts at tier **L0** (zero visual authority; rules pick every archetype). A stronger model may ask for bounded influence by adding a `proposal` to any slide in the IR:
+
+- **L1 — advisor choice**: `"proposal": {"tier": "L1", "archetype_choice": "kpi_wall"}`. The engine checks the choice against its **own candidate menu** for that slide (from `decision-trace.json`). Valid → adopted with the engine's confidence; invalid → falls back to the rule choice and the rejection is recorded (never a failure).
+- **L2 — constrained composition**: `"proposal": {"tier": "L2", "rows": [{"block_ids": ["b1", "b2"]}, {"block_ids": ["b3"]}]}`. A row/column grid assignment of the slide's blocks (blocks need explicit `id`s). The engine validates it (1–6 rows, 1–4 blocks per row, every block used exactly once), lays out the grid, and QA-gates the result. A rejected proposal falls back to the rule archetype and is recorded.
+
+Rules:
+
+- Proposals describe **content arrangement only** — never positions, sizes, colors, or fonts. The engine owns all geometry.
+- A rejected proposal is a **degradation**, not an error: the deck still ships with the rule archetype and the decision trace says why the proposal was rejected.
+- **Local hardening flywheel**: an L2 proposal that passes QA can be hardened into a content-free pattern (role signature + row structure, stored under `~/.ppt-smith/local-archetypes/`); it then becomes a rule candidate for future decks of the same shape — any model, any tier.
+- The behavioral probe (`engine/autonomy.py`) demonstrates the tiers; nothing here changes the L0 floor.
 
 ## Legacy v3 route
 

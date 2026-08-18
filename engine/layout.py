@@ -540,8 +540,60 @@ def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
         if others:
             top = ctx.content_top + cards_h + ctx.style.gap_emu()
             ctx.stack(others, top=top, height=ctx.content_top + ctx.content_h - top)
+    elif archetype == "proposed_grid":
+        _layout_proposed_grid(ctx, slide, doc)
     else:  # list_stack and evidence_stack share the guaranteed stack path
         ctx.stack(blocks)
+
+
+def _layout_proposed_grid(ctx: SlideLayout, slide: dict,
+                          doc: SourceDoc | None = None) -> None:
+    """L2 autonomy grid: render the slide's blocks into the row/column grid
+    the model proposed (block ids -> rows). The engine owns geometry: each
+    row is a horizontal band split evenly among its blocks; a block that is
+    a table gets a table, everything else a card. Blocks not mentioned in
+    the proposal (should not happen — validation forbids it) stack below.
+    """
+    proposal = (slide.get("proposal") or {})
+    rows = proposal.get("rows") or []
+    blocks = slide.get("blocks", [])
+    by_id = {b.get("id"): b for b in blocks if b.get("id")}
+
+    if not rows or not by_id:
+        ctx.degrade("builder_downgrade", "proposed_grid_empty")
+        ctx.stack(blocks)
+        return
+
+    style = ctx.style
+    gap = style.gap_emu()
+    n_rows = len(rows)
+    row_h = (ctx.content_h - gap * (n_rows - 1)) // n_rows
+    y = ctx.content_top
+    used_ids: set[str] = set()
+    for row in rows:
+        ids = row.get("block_ids") or []
+        used_ids.update(ids)
+        n = len(ids)
+        cell_w = (ctx.width - gap * (n - 1)) // n if n else ctx.width
+        x = ctx.left
+        for bid in ids:
+            block = by_id.get(bid)
+            if block is None:
+                continue
+            if block.get("role") == "table":
+                ctx.table(block, _frame(x, y, cell_w, row_h), doc)
+            elif block.get("role") == "image":
+                ctx.image_placeholder(block, _frame(x, y, cell_w, row_h))
+            else:
+                ctx.card(block, _frame(x, y, cell_w, row_h))
+            x += cell_w + gap
+        y += row_h + gap
+
+    # blocks the proposal omitted (validation should forbid, but stay safe)
+    leftover = [b for b in blocks if b.get("id") not in used_ids]
+    if leftover:
+        ctx.stack(leftover, top=y,
+                  height=ctx.content_top + ctx.content_h - y)
 
 
 def _cover_slide(ir: dict, style: ResolvedStyle) -> dict:

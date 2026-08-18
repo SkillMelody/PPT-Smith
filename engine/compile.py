@@ -110,6 +110,12 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
                          / f"{select_style_pack(ir)}.json")
     style = load_style_pack(style_path)
     decisions = decide_deck(ir)
+    # P11: apply L1/L2 autonomy proposals (engine-validated, QA-gated,
+    # fall back to the rule archetype when rejected).
+    from .proposal_apply import apply_proposals  # noqa: PLC0415
+    autonomy_report = apply_proposals(ir, decisions)
+    report["autonomy"] = autonomy_report
+    report["stages"].append("autonomy")
     laid = layout_deck(ir, decisions, style, docs)
     report["degradations"].extend(laid["degradations"])
     report["stages"].append("layout")
@@ -146,6 +152,7 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
     trace["outcomes"] = {
         "qa_error_count": qa["error_count"],
         "repair_rounds": 0,
+        "autonomy": autonomy_report,
         "degradations": [
             {k: v for k, v in d.items() if k in ("kind", "slide_id", "detail_code")}
             for d in report["degradations"]],

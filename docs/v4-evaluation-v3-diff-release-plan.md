@@ -63,9 +63,10 @@ v4 引擎已为这个目标搭好地基：**style pack 是可校验的结构化�
   - 图表样式并入 style pack（用户模板决定图表配色/字体，不写代码）。
 - 交付物：chart 推断规则 + 图表风格并入模板 + 黄金锚定验证。
 
-### 阶段 P11 — 设计感上限（差异化）
-- L1/L2 autonomy 启用：行为探针已实现（`engine/autonomy.py`），让强模型在**引擎候选范围内**选择/提案构图，QA 门禁兜底；本地硬化飞轮把通过的构图变成规则候选。
-- 交付物：L1/L2 激活 + 探针文档 + 本地硬化目录。
+### 阶段 P11 — 设计感上限（已完成）
+- L1/L2 autonomy 已启用：L1 从引擎候选菜单选 archetype（`autonomy_l1`）；L2 网格行结构提案（`proposed_grid`），QA 门禁兜底，被拒提案诚实记录并回退规则。
+- 本地硬化飞轮已验证：L2 通过提案 → 内容无关模式（角色签名+行结构）存储 → 同构 slide 匹配并实例化。
+- 交付物：`engine/proposal_apply.py` + `layout._layout_proposed_grid` + IR schema `proposal` 字段 + 11 测试。
 
 ### 阶段 P12 — 可信交付与多模型基准
 - 用真实模型（DeepSeek/GLM/MiniMax 等）产出 v4 IR，填充 v4-bench，形成多模型 × v4 的验收报告（对齐 v3 的 model-path 对比表）。
@@ -78,9 +79,9 @@ v4 引擎已为这个目标搭好地基：**style pack 是可校验的结构化�
 ## 5. 落地清单（建议顺序）
 
 1. **立即**（发布前置）：更新 README.md / skill-card.md 到 v4；写 `docs/v4.0.0-release-notes.md`；统一版本号。
-2. **P9**：style pack 用户模板化 + 从 PPTX 提取模板的引导脚本。
-3. **P10**：图表自动推断（文本/表格→chart）+ 图表风格并入模板。
-4. **P11**：L1/L2 autonomy 激活 + 本地硬化。
+2. **P9**（已完成）：style pack 用户模板化 + 从 PPTX 提取模板的引导脚本。
+3. **P10**（已完成）：图表自动推断（文本/表格→chart）+ 图表风格并入模板。
+4. **P11**（已完成）：L1/L2 autonomy 激活 + 本地硬化。
 5. **P12**：真实模型多模型 v4 基准 + 验收报告。
 6. **P13**：商业化分层。
 

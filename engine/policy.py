@@ -75,9 +75,10 @@ class Decision:
     slide_id: str
     chosen: str
     confidence: float
-    chosen_by: str  # rule | fallback
+    chosen_by: str  # rule | fallback | autonomy_l1 | autonomy_l2
     candidates: list[dict]
     evidence: list[dict]
+    autonomy: dict | None = None  # P11: {"tier", "proposal_accepted"|"proposal_rejected", ...}
 
 
 def _features(slide: dict) -> dict:
@@ -172,7 +173,7 @@ def decisions_to_trace(decisions: list[Decision], *, run_id: str, engine_version
                        profile: str = "standard") -> dict:
     entries = []
     for idx, d in enumerate(decisions, 1):
-        entries.append({
+        entry = {
             "decision_id": f"d-{idx:03d}",
             "slide_id": d.slide_id,
             "stage": "archetype",
@@ -181,7 +182,10 @@ def decisions_to_trace(decisions: list[Decision], *, run_id: str, engine_version
             "chosen": d.chosen,
             "chosen_by": d.chosen_by,
             "confidence": d.confidence,
-        })
+        }
+        if d.autonomy is not None:
+            entry["autonomy"] = d.autonomy
+        entries.append(entry)
     return {
         "schema_version": "4.0.0",
         "run": {
