@@ -98,6 +98,18 @@ python3 -m engine compile --source doc:markdown:source.md --output-dir out/
 
 Optional: `--style styles/<pack>.json` — available packs: `editorial-knowledge` (default), `consulting-light`, `technical-blueprint`, `product-report`, `consulting-blueprint-hybrid`. Ask the user which they want when it matters; validate custom packs with `python3 -m engine style-validate --style pack.json`.
 
+**Bring your own design (P9)** — to make a deck carry the user's own design sense, generate a style pack from their PPTX (colors + fonts extracted, engine tokens inherited), validate it, then compile with `--style`:
+
+```bash
+python3 scripts/template_from_pptx.py --pptx user-deck.pptx \
+  --style-id my-brand --display-name "My Brand" --output styles/my-brand.json
+python3 -m engine style-validate --style styles/my-brand.json   # must pass
+python3 -m engine compile --source doc:markdown:source.md \
+  --style styles/my-brand.json --output-dir out/
+```
+
+See `docs/template-authoring-guide.md` for the full authoring workflow.
+
 Outputs in `out/`: `deck.pptx`, `render-plan.json`, `decision-trace.json`, `ir.json`, `compile-result.json`.
 
 ### Step 5 — Repair loop (max 3 rounds)
