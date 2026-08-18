@@ -85,10 +85,17 @@ python3 -m engine compile \
 3. `style-validate` 通过后，用 `--style` 编译文档
 4. 交付 deck，说明这是"长在用户模板里的"
 
-## 后续（P10 预告）
+## 后续（P10 已完成）
 
-图表/图解的**配色、字体、风格**也会并入 style pack——用户改一个 token，
-全 deck 图表同步换肤，依然不用写任何图表代码。
+图表/图解的**配色、字体、风格**已并入 style pack——用户改一个 token，全 deck 图表同步换肤，依然不用写任何图表代码。
+
+并且引擎现在可以**自动推断图表**（P10）：slide 有 ≥2 个 metric 块或数值表格时，引擎自动生成 chart 并渲染（comparison→combo、sequence→line、默认 column），模型/用户都不需要写 chart 结构。数据系列色取自 style pack 的 `data_series`，也就是用户模板的配色。
+
+```bash
+# 不需要写任何 chart 结构，引擎自动推断并渲染图表
+python3 -m engine compile --source doc:markdown:source.md \
+  --style styles/my-brand.json --output-dir out/
+```
 
 ## 测试
 

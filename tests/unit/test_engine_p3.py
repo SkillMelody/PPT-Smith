@@ -60,7 +60,7 @@ def test_compile_provided_ir_selects_archetypes(tmp_path):
     assert report["ok"] and report["ir_origin"] == "provided"
     trace = json.loads((tmp_path / "out" / "decision-trace.json").read_text("utf-8"))
     chosen = {d["slide_id"]: d["chosen"] for d in trace["decisions"]}
-    assert chosen == {"s1": "kpi_wall", "s2": "full_table"}
+    assert chosen == {"s1": "chart_column", "s2": "chart_column"}
     assert all(d["chosen_by"] == "rule" for d in trace["decisions"])
 
 

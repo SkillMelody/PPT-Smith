@@ -93,6 +93,13 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
         report["extraction_warnings"] = extraction["warnings"]
     report["stages"].append("ir")
 
+    # P10: chart auto-inference — when the model didn't write chart/diagram_ir,
+    # infer one from metric blocks + relations. Never overrides what the model
+    # deliberately provided.
+    from .chart_inference import infer_charts  # noqa: PLC0415
+    infer_charts(ir, docs)
+    report["stages"].append("chart_inference")
+
     coverage = coverage_report(ir, docs)
     report["coverage"] = coverage
     report["stages"].append("coverage")

@@ -83,6 +83,8 @@ A slide may carry one optional data payload; the engine renders it natively (cha
 - `chart` — `{type: "column"|"bar"|"line"|"pie"|"combo", data: {categories: [...], series: [{name, values}]}, source_ref}`. Numbers must come from the anchored source; series colors and chart styling are engine-owned.
 - `diagram_ir` — `{diagram_type: "causal_chain"|"phase_roadmap"|"layered_architecture"|"drill_down_stair"|"heat_matrix", nodes: [{label, priority}], edges: [{from, to, relation}], source_refs}`. Nodes/edges describe structure only — never positions, colors, or shapes. `heat_matrix` instead takes a `matrix` payload (`{rows, columns, values, value_suffix?, highlighted_cells?}`).
 
+**Chart auto-inference (P10 — you don't need to write charts at all).** If the slide has no explicit `chart`/`diagram_ir`, the engine infers one from the content itself: ≥2 metric blocks with numeric values → a chart (comparison relation → combo, sequence → line, else column); a numeric table → a chart from its columns. The inferred payload is recorded in the decision trace (`inferred: true`); it never overrides a chart you deliberately wrote.
+
 Full example: `schemas/v4/examples/presentation-ir-v41-chart-diagram.json`.
 
 ### Step 4 — Compile
