@@ -24,6 +24,9 @@ from dataclasses import dataclass
 FALLBACK_ARCHETYPE = "evidence_stack"
 CONFIDENCE_FLOOR = 0.55
 
+# P12-refine: supported page-level composition intent families.
+_REFINE_TYPES = ("split", "wheel", "contrast", "spotlight")
+
 # narrative_intent -> built-in style pack (v3 route_audience equivalent).
 # The pack name is a filename stem under styles/; the engine resolves it.
 _NARRATIVE_STYLE = {
@@ -153,6 +156,19 @@ def decide_slide(slide: dict) -> Decision:
         return Decision(slide_id=slide["id"], chosen=choice, confidence=0.9,
                         chosen_by="rule", candidates=candidates,
                         evidence=evidence + [{"feature": "diagram", "value": dtype}])
+
+    # P12-refine: explicit page-level composition intent (split/wheel/contrast/
+    # spotlight). Structure is engine-validated; geometry and QA stay engine-owned.
+    if slide.get("refine"):
+        rtype = slide["refine"].get("type", "")
+        choice = f"refine_{rtype}" if rtype else None
+        if choice and rtype in _REFINE_TYPES:
+            candidates = [{"choice": choice, "confidence": 0.85,
+                           "rule_id": "rule-refine-intent"}]
+            return Decision(slide_id=slide["id"], chosen=choice, confidence=0.85,
+                            chosen_by="rule", candidates=candidates,
+                            evidence=evidence + [{"feature": "refine", "value": rtype}])
+        # unknown refine type -> fall through to rule archetype (honest degrade)
 
     candidates = _candidates(features)
     top = candidates[0]

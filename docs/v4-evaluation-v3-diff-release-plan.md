@@ -68,6 +68,12 @@ v4 引擎已为这个目标搭好地基：**style pack 是可校验的结构化�
 - 本地硬化飞轮已验证：L2 通过提案 → 内容无关模式（角色签名+行结构）存储 → 同构 slide 匹配并实例化。
 - 交付物：`engine/proposal_apply.py` + `layout._layout_proposed_grid` + IR schema `proposal` 字段 + 11 测试。
 
+### 阶段 P12-refine — 逐页精修开关（已完成，默认关闭）
+回应"v4 确定性锁死高配模型上限"的架构决策：增加**两级精修开关**，默认关闭（引擎路径不变），开启时给高配模型接近 v3 Path A 的表达力，同时保留确定性 + QA 门禁。
+- **Level 1（受约束意图语言）**：IR slide 的 `refine` 字段（`split`/`wheel`/`contrast`/`spotlight` 构图族 + 块分配）→ 引擎编译几何 + QA。refine 优先于图表自动推断；未知类型诚实降级到规则 archetype。
+- **Level 2（代码精修）**：`engine refine-code` 允许 python-pptx 自由脚本精修引擎 deck 副本，过 ppt_qa 结构检查——只拒绝**相对 base 新增**的越界/orphan/空白问题（diff 式 QA），正常精修被接受、破坏精修被拒（exit 1）。
+- 交付物：`engine/refine_renderers.py`（4 个构图 renderer）+ IR schema `refine` 字段 + `scripts/refine_code.py` + 7 测试。
+
 ### 阶段 P12 — 可信交付与多模型基准
 - 用真实模型（DeepSeek/GLM/MiniMax 等）产出 v4 IR，填充 v4-bench，形成多模型 × v4 的验收报告（对齐 v3 的 model-path 对比表）。
 - 交付物：`docs/v4.0.0-release-notes.md` + 验收报告 + 黄金锚定基准。

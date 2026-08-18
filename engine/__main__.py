@@ -74,7 +74,24 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--no-degrade", action="store_true",
                    help="fail on invalid IR instead of falling back to extraction")
 
+    rc = sub.add_parser("refine-code",
+                        help="P12 Level 2: run a python-pptx refine script with QA safety net")
+    rc.add_argument("--script", required=True)
+    rc.add_argument("--source", action="append", required=True, metavar="ID:TYPE:PATH")
+    rc.add_argument("--ir", required=True)
+    rc.add_argument("--output-dir", required=True)
+    rc.add_argument("--deck", help="refine an existing deck.pptx instead of building from IR")
+
     args = parser.parse_args(argv)
+
+    if args.command == "refine-code":
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from refine_code import main as refine_main  # noqa: PLC0415
+        return refine_main(["--script", args.script,
+                            *(f"--source={s}" for s in args.source),
+                            "--ir", args.ir,
+                            "--output-dir", args.output_dir]
+                           + (["--deck", args.deck] if args.deck else []))
 
     if args.command == "style-validate":
         from .style_validator import validate_style_pack

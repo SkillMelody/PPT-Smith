@@ -357,6 +357,63 @@
         }
       }
     },
+    "refine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["split", "wheel", "contrast", "spotlight"] },
+        "left": {
+          "$ref": "#/$defs/refineSlot",
+          "description": "split/contrast: the left column's blocks (and optional visual)."
+        },
+        "right": {
+          "$ref": "#/$defs/refineSlot",
+          "description": "split/contrast: the right column's blocks (and optional visual)."
+        },
+        "hub": {
+          "$ref": "#/$defs/refineSlot",
+          "description": "wheel: the central hub block."
+        },
+        "spokes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/idSlug" },
+          "description": "wheel: block ids radiating from the hub (1..4)."
+        },
+        "spotlight": {
+          "$ref": "#/$defs/refineSlot",
+          "description": "spotlight: the single emphasized block."
+        },
+        "supporting": {
+          "$ref": "#/$defs/refineSlot",
+          "description": "spotlight: supporting blocks below the emphasized one."
+        }
+      },
+      "description": "Page-level composition intent (P12-refine Level 1). The model picks a composition family and assigns block ids to its slots; the engine owns geometry, colors, fonts and QA. Unsupported types or invalid block references degrade honestly to the rule archetype."
+    },
+    "refineSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/idSlug" }
+        },
+        "visual": {
+          "type": "object",
+          "description": "Optional visual in this slot: {chart: {...}} or {diagram_ir: {...}} (v4.1 payload shapes).",
+          "additionalProperties": false,
+          "properties": {
+            "chart": { "$ref": "#/$defs/chart" },
+            "diagram_ir": { "$ref": "#/$defs/diagramIr" }
+          }
+        }
+      }
+    },
     "proposal": {
       "type": "object",
       "additionalProperties": false,
@@ -430,6 +487,10 @@
         "proposal": {
           "$ref": "#/$defs/proposal",
           "description": "Optional autonomy-tier proposal (P11): a stronger model may ask for constrained influence over composition. L1 selects an archetype from the engine's own candidate menu; L2 proposes a row/column grid assignment of blocks. Both are validated by the engine, QA-gated, and fall back to the rule archetype if rejected. Never required; weak models omit it and stay at L0."
+        },
+        "refine": {
+          "$ref": "#/$defs/refine",
+          "description": "Optional page-level composition intent (P12-refine Level 1): a capable model may describe HOW a slide should be composed (split columns, wheel/flywheel, contrast, spotlight) and which blocks fill each slot. The engine compiles the intent into concrete geometry and QA-gates the result; an unsupported or invalid intent degrades honestly to the rule archetype. Never required."
         },
         "hints": {
           "type": "object",

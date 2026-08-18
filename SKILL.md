@@ -157,6 +157,15 @@ Rules:
 - **Local hardening flywheel**: an L2 proposal that passes QA can be hardened into a content-free pattern (role signature + row structure, stored under `~/.ppt-smith/local-archetypes/`); it then becomes a rule candidate for future decks of the same shape — any model, any tier.
 - The behavioral probe (`engine/autonomy.py`) demonstrates the tiers; nothing here changes the L0 floor.
 
+## Refine (P12 — optional, off by default)
+
+The engine ships a deterministic deck by default. Two optional refine routes give a capable model more influence when the user wants it — both are opt-in and QA-gated:
+
+- **Level 1 — page-level composition intent** (in the IR): add a `refine` field to any slide to describe how it should be composed. Families: `split` (two columns, optional per-side chart/diagram), `wheel` (hub + spokes flywheel), `contrast` (two opposing blocks + divider), `spotlight` (one emphasized block + supporting stack). The engine compiles the intent into geometry and QA-gates it; an unsupported type degrades to the rule archetype.
+- **Level 2 — code refine** (explicit, user must ask): `python3 -m engine refine-code --script refine.py --source … --ir ir.json --output-dir out/`. The script gets full python-pptx freedom over a copy of the engine deck, then runs the QA structural inspection: the refine is **rejected** (exit 1) if it introduces new out-of-bounds / orphan / blank-slide issues vs the engine base. Never ship a refine QA would block.
+
+Rules: refine never overrides explicit `chart`/`diagram_ir`; Level 1 wins over chart auto-inference (the user asked for this composition, not a chart). Refines are a degradation-free path only when they pass QA — otherwise the engine deck stands.
+
 ## Legacy v3 route
 
 The v3 multi-contract pipeline (`scripts/run_pipeline.py`, `ppt-ir` v2 contracts) remains in-tree for compatibility and is superseded by this protocol. Do not mix the two routes in one delivery.

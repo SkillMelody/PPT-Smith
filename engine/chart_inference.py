@@ -149,6 +149,11 @@ def infer_charts(ir: dict, docs: dict) -> dict:
     for slide in ir.get("slides", []):
         if slide.get("chart") or slide.get("diagram_ir"):
             continue  # model already provided one; never override
+        if slide.get("refine"):
+            # P12-refine: explicit page-level composition intent wins over
+            # chart inference — the user asked for this composition, not a
+            # chart. (An explicit chart inside a refine slot still works.)
+            continue
 
         metrics = [b for b in slide.get("blocks", []) if b.get("role") == "metric"]
         table_series = _extract_table_series(slide, docs)

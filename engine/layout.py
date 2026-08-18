@@ -542,6 +542,11 @@ def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
             ctx.stack(others, top=top, height=ctx.content_top + ctx.content_h - top)
     elif archetype == "proposed_grid":
         _layout_proposed_grid(ctx, slide, doc)
+    elif archetype.startswith("refine_") and slide.get("refine"):
+        from .refine_renderers import layout_refine  # deferred: avoid import cycle
+        layout_refine(ctx, slide, slide["refine"],
+                      _frame(ctx.left, ctx.content_top, ctx.width, ctx.content_h),
+                      doc)
     else:  # list_stack and evidence_stack share the guaranteed stack path
         ctx.stack(blocks)
 
