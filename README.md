@@ -211,6 +211,9 @@ v2.0 已完成 Standard 生产验收；另有一条记录明确的 PptxGenJS 4.0
 ## 文档入口
 
 - [OpenClaw 执行规范](./SKILL.md)
+- [V4 三路线架构与执行隔离](docs/v4-three-route-architecture.md)
+- [V4 Bespoke 高定路线](docs/v4-bespoke-architecture-plan.md)
+- [V4 Template / Path C 路线](docs/v4-template-route.md)
 - [英文 README](./README.en.md)
 - [v3.0.0 发布说明与 v1.2.0 对比](docs/v3.0.0-release-notes.md)
 - [v2.1 RC1 验收报告（历史基线）](docs/v2.1-rc1-acceptance-report.md)

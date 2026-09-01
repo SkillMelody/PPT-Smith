@@ -90,6 +90,31 @@ def test_extractive_ir_is_schema_valid_and_anchored():
     assert verify_ir(ir, {"src": _doc()}) == []
 
 
+def test_presentation_ir_schema_accepts_named_multi_chart_pages():
+    ir = build_extractive_ir(_doc(), source_meta={"type": "markdown"})["ir"]
+    ir["slides"][0]["charts"] = [{
+        "id": "innovation",
+        "type": "column",
+        "data": {
+            "categories": ["Reported", "Other"],
+            "series": [{"name": "Share", "values": [64, 36]}],
+        },
+        "source_ref": {"source_id": "src", "loc": "para_2"},
+    }, {
+        "id": "profitability",
+        "type": "doughnut",
+        "data": {
+            "categories": ["Reported", "Other"],
+            "series": [{"name": "Share", "values": [36, 64]}],
+        },
+        "source_ref": {"source_id": "src", "loc": "para_2"},
+    }]
+
+    errors = list(Draft202012Validator(IR_SCHEMA).iter_errors(ir))
+
+    assert not errors, [error.message for error in errors[:3]]
+
+
 def test_provenance_rejects_fabrication():
     doc = _doc()
     result = build_extractive_ir(doc, source_meta={"type": "markdown"})

@@ -29,7 +29,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ppt_qa.verifier import run_structural_inspection  # noqa: E402
+from ppt_qa.render_report import write_render_report  # noqa: E402
+from ppt_qa.verifier import run_render_report, run_structural_inspection  # noqa: E402
+from engine.high_fidelity_guard import content_lock  # noqa: E402
 
 
 def _load_script(path: Path):
@@ -53,6 +55,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--deck", help="optional: refine an existing deck.pptx "
                                        "instead of building from IR")
+    parser.add_argument("--high-fidelity", action="store_true",
+                        help="require content lock + real render before accepting model-authored page code")
+    parser.add_argument("--render-engine", choices=["auto", "libreoffice", "powerpoint_macos", "powerpoint_windows"],
+                        default="auto")
     args = parser.parse_args(argv)
 
     from pptx import Presentation
@@ -117,8 +123,22 @@ def main(argv: list[str] | None = None) -> int:
     new_blockers = [b for b in refined_blockers
                     if (b.get("code"), b.get("slide_id"), b.get("message"))
                     not in base_keys]
+    lock = content_lock(deck_path, refined) if args.high_fidelity else None
+    render_report = None
+    render_ok = True
+    if args.high_fidelity and not new_blockers and lock and lock["status"] == "pass":
+        render_dir = out / "render"
+        render_report = run_render_report(
+            refined, render_dir, engine=args.render_engine,
+            expected_slides=len(prs.slides),
+        )
+        write_render_report(render_report, render_dir / "render-report.json")
+        render_ok = render_report.get("status") == "passed"
+    ok = not new_blockers and (not args.high_fidelity or (lock and lock["status"] == "pass" and render_ok))
     result = {
-        "ok": not new_blockers,
+        "ok": ok,
+        "mode": "high_fidelity" if args.high_fidelity else "refine",
+        "status": "visual_unreviewed" if ok and args.high_fidelity else ("accepted" if ok else "rejected"),
         "refined_deck": str(refined),
         "base_deck": str(deck_path),
         "inspection": {
@@ -127,6 +147,9 @@ def main(argv: list[str] | None = None) -> int:
             "new_blocker_count": len(new_blockers),
             "new_blockers": new_blockers[:8],
         },
+        "content_lock": lock,
+        "render": render_report,
+        "visual_review": {"state": "unreviewed", "required": bool(args.high_fidelity)},
     }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["ok"] else 1

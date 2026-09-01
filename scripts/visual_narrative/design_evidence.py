@@ -134,6 +134,13 @@ def _inject_prototype(
                 })
                 known_source_ids.add(source_ref["source_id"])
     source_labels = [f"{ref['source_id']}#{ref['locator']}" for ref in source_refs]
+    # The selected pages stop being generic judgment/data pages once their
+    # sole primary object is a source-bound product prototype. Mark the
+    # semantic role truthfully so data-slide quality gates do not demand an
+    # unrelated chart or a duplicate support card.
+    slide["slide_role"] = "diagram"
+    slide["primary_expression"] = "relationship_visual"
+    slide["primary_anchor"] = object_id
     if component_type == "product_ui_overview":
         slide["title"] = "产品工作台 UI 总览"
         slide["message"] = "Canvas 是核心工作区；真实应用截图待补。"

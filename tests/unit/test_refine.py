@@ -146,12 +146,13 @@ def build(prs, context):
 """
 
 BAD_REFINE = GOOD_REFINE + """
-        slide.shapes.add_textbox(Inches(30), Inches(30), Inches(1), Inches(1))
+        box = slide.shapes.add_textbox(Inches(1), Inches(5.8), Inches(3), Inches(0.3))
+        box.text = 'Unverified growth claim'
 """
 
 
 class TestLevel2RefineCode:
-    def _run(self, tmp_path, script_src):
+    def _run(self, tmp_path, script_src, *, high_fidelity=False):
         src = ROOT / "tests" / "fixtures" / "v4-bench" / "product-launch"
         script = tmp_path / "refine.py"
         script.write_text(script_src, encoding="utf-8")
@@ -161,7 +162,8 @@ class TestLevel2RefineCode:
              "--script", str(script),
              "--source", f"doc:markdown:{src / 'source.md'}",
              "--ir", str(src / "irs" / "sim-strong.json"),
-             "--output-dir", str(out)],
+             "--output-dir", str(out)]
+            + (["--high-fidelity", "--render-engine", "libreoffice"] if high_fidelity else []),
             capture_output=True, text=True, cwd=str(ROOT), timeout=180)
         return proc
 
@@ -170,11 +172,28 @@ class TestLevel2RefineCode:
         assert proc.returncode == 0, proc.stderr[-2000:]
         result = json.loads(proc.stdout)
         assert result["ok"] is True
+        assert result["mode"] == "refine"
+        assert result["status"] == "accepted"
+        assert result["content_lock"] is None
+        assert result["render"] is None
         assert (tmp_path / "out" / "deck-refined.pptx").exists()
 
     def test_bad_refine_rejected(self, tmp_path):
-        proc = self._run(tmp_path, BAD_REFINE)
+        proc = self._run(tmp_path, BAD_REFINE, high_fidelity=True)
         assert proc.returncode == 1, proc.stdout
         result = json.loads(proc.stdout)
         assert result["ok"] is False
-        assert result["inspection"]["new_blocker_count"] > 0
+        assert result["content_lock"]["status"] == "fail"
+        assert result["content_lock"]["added_text"]
+        assert set(result["content_lock"]["added_text"]) == {"Unverified growth claim"}
+
+    def test_high_fidelity_requires_real_render_success(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PPTSMITH_TEST_RENDERERS", "none")
+        proc = self._run(tmp_path, GOOD_REFINE, high_fidelity=True)
+        assert proc.returncode == 1, proc.stdout
+        result = json.loads(proc.stdout)
+        assert result["mode"] == "high_fidelity"
+        assert result["content_lock"]["status"] == "pass"
+        assert result["render"]["status"] != "passed"
+        assert result["status"] == "rejected"
+        assert result["visual_review"] == {"state": "unreviewed", "required": True}

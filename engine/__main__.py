@@ -8,6 +8,31 @@ Usage:
   python3 -m engine extract-ir --source id:type:path [--json-out FILE]
   python3 -m engine verify     --ir IR.json --source id:type:path [...]
   python3 -m engine coverage   --ir IR.json --source id:type:path [...]
+  python3 -m engine plan-bespoke --request REQUEST.json --ir IR.json
+                                  --content-assessment ASSESSMENT.json
+                                  [--template-pptx REFERENCE.pptx]
+  python3 -m engine author-bespoke --script AUTHOR.py --manifest MANIFEST.json
+                                    --ir IR.json --output-dir DIR
+                                    [--template-pptx REFERENCE.pptx]
+                                    [--source ID:TYPE:PATH]
+                                    [--render-engine ENGINE]
+  python3 -m engine review-bespoke --authoring-report REPORT.json --review REVIEW.json
+  python3 -m engine strict-template --request REQUEST.json --template-pptx TEMPLATE.pptx
+                                    --plan STRICT-PLAN.json --ir IR.json
+                                    [--component-atlas ATLAS.json]
+                                    --source ID:TYPE:PATH --output-pptx OUTPUT.pptx
+  python3 -m engine component-atlas --template-pptx TEMPLATE.pptx
+                                     --review REVIEW.json [--json-out ATLAS.json]
+  python3 -m engine component-inventory --template-pptx TEMPLATE.pptx
+                                         --component-atlas ATLAS.json
+                                         [--json-out INVENTORY.json]
+  python3 -m engine compose-components --component-atlas ATLAS.json
+                                        --composition COMPOSITION.json
+                                        [--json-out STRICT-PLAN.json]
+  python3 -m engine plan-manuscript-components --component-atlas ATLAS.json
+                                                 --content-bindings BINDINGS.json
+                                                 --storyboard STORYBOARD.json
+                                                 [--json-out COMPOSITION.json]
 
 `compile` is the single entry (D2): parse -> validate/provenance ->
 policy -> layout -> QA -> deck.pptx + render-plan + decision-trace.
@@ -84,8 +109,217 @@ def main(argv: list[str] | None = None) -> int:
     rc.add_argument("--ir", required=True)
     rc.add_argument("--output-dir", required=True)
     rc.add_argument("--deck", help="refine an existing deck.pptx instead of building from IR")
+    rc.add_argument("--high-fidelity", action="store_true",
+                    help="apply content lock + real-render gate to model-authored page code")
+    rc.add_argument("--render-engine", choices=["auto", "libreoffice", "powerpoint_macos", "powerpoint_windows"],
+                    default="auto")
+
+    bespoke = sub.add_parser(
+        "plan-bespoke",
+        help="build an independent high-capability-model authoring manifest",
+    )
+    bespoke.add_argument("--request", required=True)
+    bespoke.add_argument("--ir", required=True)
+    bespoke.add_argument("--content-assessment", required=True)
+    bespoke.add_argument("--narrative-contract")
+    bespoke.add_argument("--template-pptx")
+    bespoke.add_argument("--json-out")
+
+    author_bespoke = sub.add_parser(
+        "author-bespoke",
+        help="run an independent Bespoke author script and its non-visual delivery gates",
+    )
+    author_bespoke.add_argument("--script", required=True)
+    author_bespoke.add_argument("--manifest", required=True)
+    author_bespoke.add_argument("--ir", required=True)
+    author_bespoke.add_argument("--output-dir", required=True)
+    author_bespoke.add_argument("--template-pptx")
+    author_bespoke.add_argument("--source", action="append", metavar="ID:TYPE:PATH")
+    author_bespoke.add_argument(
+        "--render-engine",
+        choices=["auto", "libreoffice", "powerpoint_macos", "powerpoint_windows"],
+        default="auto",
+    )
+    author_bespoke.add_argument("--json-out")
+
+    review_bespoke = sub.add_parser("review-bespoke", help="validate a hash-bound external visual review")
+    review_bespoke.add_argument("--authoring-report", required=True)
+    review_bespoke.add_argument("--review", required=True)
+    review_bespoke.add_argument("--json-out")
+
+    strict_template = sub.add_parser(
+        "strict-template",
+        help="apply only declared native template operations to a hash-bound strict template",
+    )
+    strict_template.add_argument("--request", required=True)
+    strict_template.add_argument("--template-pptx", required=True)
+    strict_template.add_argument("--plan", required=True)
+    strict_template.add_argument("--ir", required=True)
+    strict_template.add_argument("--component-atlas")
+    strict_template.add_argument("--source", action="append", required=True, metavar="ID:TYPE:PATH")
+    strict_template.add_argument("--output-pptx", required=True)
+    strict_template.add_argument(
+        "--render-engine",
+        choices=["auto", "libreoffice", "powerpoint_macos", "powerpoint_windows"],
+        default="auto",
+    )
+    strict_template.add_argument("--json-out")
+
+    component_atlas = sub.add_parser(
+        "component-atlas",
+        help="resolve a reviewed native component declaration against a template",
+    )
+    component_atlas.add_argument("--template-pptx", required=True)
+    component_atlas.add_argument("--review", required=True)
+    component_atlas.add_argument("--json-out")
+
+    component_inventory = sub.add_parser(
+        "component-inventory",
+        help="inventory full-template native content coverage by reviewed components",
+    )
+    component_inventory.add_argument("--template-pptx", required=True)
+    component_inventory.add_argument("--component-atlas", required=True)
+    component_inventory.add_argument("--json-out")
+
+    compose_components = sub.add_parser(
+        "compose-components",
+        help="build strict component_clone operations from semantic page slots",
+    )
+    compose_components.add_argument("--component-atlas", required=True)
+    compose_components.add_argument("--composition", required=True)
+    compose_components.add_argument("--json-out")
+
+    plan_manuscript_components = sub.add_parser(
+        "plan-manuscript-components",
+        help="derive reviewed component slots and placements for a complete manuscript",
+    )
+    plan_manuscript_components.add_argument("--component-atlas", required=True)
+    plan_manuscript_components.add_argument("--content-bindings", required=True)
+    plan_manuscript_components.add_argument("--storyboard", required=True)
+    plan_manuscript_components.add_argument("--json-out")
 
     args = parser.parse_args(argv)
+
+    if args.command == "component-inventory":
+        from .component_inventory import build_template_component_inventory
+
+        try:
+            atlas = json.loads(Path(args.component_atlas).read_text(encoding="utf-8"))
+            inventory = build_template_component_inventory(args.template_pptx, atlas)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _emit(inventory, args.json_out)
+        return 0
+
+    if args.command == "plan-manuscript-components":
+        from .manuscript_component_planner import build_manuscript_component_composition
+
+        try:
+            atlas = json.loads(Path(args.component_atlas).read_text(encoding="utf-8"))
+            content_bindings = json.loads(
+                Path(args.content_bindings).read_text(encoding="utf-8")
+            )
+            storyboard = json.loads(Path(args.storyboard).read_text(encoding="utf-8"))
+            composition = build_manuscript_component_composition(
+                atlas, content_bindings, storyboard,
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _emit(composition, args.json_out)
+        return 0
+
+    if args.command == "compose-components":
+        from .component_composer import build_component_plan
+
+        try:
+            atlas = json.loads(Path(args.component_atlas).read_text(encoding="utf-8"))
+            composition = json.loads(Path(args.composition).read_text(encoding="utf-8"))
+            plan = build_component_plan(atlas, composition)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _emit(plan, args.json_out)
+        return 0
+
+    if args.command == "component-atlas":
+        from .component_atlas import build_component_atlas
+
+        try:
+            review = json.loads(Path(args.review).read_text(encoding="utf-8"))
+            atlas = build_component_atlas(args.template_pptx, review)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _emit(atlas, args.json_out)
+        return 0
+
+    if args.command == "plan-bespoke":
+        from .bespoke import build_authoring_manifest
+        from .production_request import prepare_template_context
+
+        request = json.loads(Path(args.request).read_text(encoding="utf-8"))
+        ir = json.loads(Path(args.ir).read_text(encoding="utf-8"))
+        assessment = json.loads(Path(args.content_assessment).read_text(encoding="utf-8"))
+        narrative_contract = (
+            json.loads(Path(args.narrative_contract).read_text(encoding="utf-8"))
+            if args.narrative_contract else None
+        )
+        template_context = None
+        if request.get("template"):
+            template_context = prepare_template_context(request, args.template_pptx)
+        manifest = build_authoring_manifest(
+            request, ir, assessment, template_context,
+            narrative_contract=narrative_contract,
+        )
+        _emit(manifest, args.json_out)
+        return 0 if manifest.get("status") == "ready_for_authoring" else 1
+
+    if args.command == "author-bespoke":
+        from .bespoke_runtime import run_bespoke_author
+
+        manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))
+        ir = json.loads(Path(args.ir).read_text(encoding="utf-8"))
+        result = run_bespoke_author(
+            args.script, manifest, ir, args.output_dir,
+            template_pptx=args.template_pptx, source_specs=args.source,
+            render_engine=args.render_engine,
+        )
+        _emit(result, args.json_out)
+        return 0 if result.get("ok") else 1
+
+    if args.command == "review-bespoke":
+        from .visual_review import apply_visual_review
+
+        review = json.loads(Path(args.review).read_text(encoding="utf-8"))
+        result = apply_visual_review(args.authoring_report, review)
+        _emit(result, args.json_out)
+        return 0 if result.get("status") == "visual_approved" else 1
+
+    if args.command == "strict-template":
+        from .strict_template import execute_strict_template
+
+        try:
+            source_docs, _meta = _load_sources(args.source)
+        except (OSError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        result = execute_strict_template(
+            request=json.loads(Path(args.request).read_text(encoding="utf-8")),
+            template_pptx=args.template_pptx,
+            strict_plan=json.loads(Path(args.plan).read_text(encoding="utf-8")),
+            ir=json.loads(Path(args.ir).read_text(encoding="utf-8")),
+            source_docs=source_docs,
+            output_pptx=args.output_pptx,
+            render_engine=args.render_engine,
+            component_atlas=(
+                json.loads(Path(args.component_atlas).read_text(encoding="utf-8"))
+                if args.component_atlas else None
+            ),
+        )
+        _emit(result, args.json_out)
+        return 0 if result.get("ok") else 1
 
     if args.command == "refine-code":
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -94,7 +328,9 @@ def main(argv: list[str] | None = None) -> int:
                             *(f"--source={s}" for s in args.source),
                             "--ir", args.ir,
                             "--output-dir", args.output_dir]
-                           + (["--deck", args.deck] if args.deck else []))
+                           + (["--deck", args.deck] if args.deck else [])
+                           + (["--high-fidelity"] if args.high_fidelity else [])
+                           + (["--render-engine", args.render_engine] if args.high_fidelity else []))
 
     if args.command == "style-validate":
         from .style_validator import validate_style_pack

@@ -277,13 +277,23 @@ def compile_visual_plan(ppt_ir: dict[str, Any], visual_plan: dict[str, Any]) -> 
             # objects already present in the IR. One primary anchor is a
             # composition rule, not a one-object page rule.
             if not any(obj.get("id") == generated["id"] for obj in existing):
-                existing.append(generated)
+                existing.insert(0, generated)
             slide["objects"] = existing
             bind_records.append({"slide_id": slide_id, "planned_component": component, "actual_component": component})
             continue
         if expression in RELATIONSHIP_EXPRESSIONS and component == "unsupported":
             slide["primary_expression"] = "structured_cards"
-            slide["objects"] = [_unsupported_placeholder(slide, intent)]
+            supporting = [
+                obj
+                for obj in slide.get("objects", []) or []
+                if isinstance(obj, dict)
+                and (
+                    obj.get("priority") != "primary"
+                    or str(obj.get("semantic_role") or "").lower()
+                    in {"evidence", "interpretation", "source", "source_note"}
+                )
+            ]
+            slide["objects"] = [_unsupported_placeholder(slide, intent), *supporting]
             bind_records.append({"slide_id": slide_id, "planned_component": component, "actual_component": "unsupported_placeholder"})
             continue
         bind_records.append({"slide_id": slide_id, "planned_component": component, "actual_component": "preserved"})

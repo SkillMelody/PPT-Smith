@@ -266,9 +266,9 @@ def test_python_pptx_adapter_builds_inspectable_deck(tmp_path: Path) -> None:
     result = adapter.build(plan, tmp_path)
     assert result.status == "created"
     assert result.pptx is not None
-    inspection = inspect_package(Path(result.pptx))  # skip ppt_ir check; disclaimer page adds 1 slide
+    inspection = inspect_package(Path(result.pptx))
     assert inspection.status == "passed"
-    assert inspection.slide_count == 3  # 2 content + 1 disclaimer
+    assert inspection.slide_count == 2
 
 
 def test_python_pptx_adapter_deduplicates_title_judgment_and_message(tmp_path: Path) -> None:

@@ -194,12 +194,24 @@ class PythonPptxAdapter:
             for index, obj in enumerate(objects):
                 route = ((obj.get("delivery_plan") or {}).get("selected_route") or obj.get("delivery_preferences", {}).get("preferred_route") or "native_ppt")
                 component_type = str(obj.get("component_type") or obj.get("type") or "")
+                single_object = len(objects) == 1
+                if single_object:
+                    x, object_y, object_width, object_height = style["margin_left"], y, 11.7, content_height
+                else:
+                    x, object_y, object_width, object_height = _object_frame(objects, index, y=y, content_height=content_height, style=style)
                 renderer = _semantic_renderer(component_type)
                 if renderer is not None and route == "native_diagram":
+                    render_intent = dict(slide_plan.get("page_design_intent") or {})
+                    render_intent["render_box"] = {
+                        "x": x,
+                        "y": object_y,
+                        "w": object_width,
+                        "h": object_height,
+                    }
                     rendered = renderer(
                         slide,
                         obj,
-                        slide_plan.get("page_design_intent") if isinstance(slide_plan.get("page_design_intent"), dict) else {},
+                        render_intent,
                         slide_plan.get("style_contract") if isinstance(slide_plan.get("style_contract"), dict) else {},
                     )
                     warnings.extend(rendered.get("warnings", []))
@@ -228,11 +240,6 @@ class PythonPptxAdapter:
                         "reason_codes": ["PYTHON_PPTX_MINIMAL_NATIVE_FALLBACK"],
                         "editable_core_preserved": obj.get("editability") != "native_required",
                     })
-                single_object = len(objects) == 1
-                if single_object:
-                    x, object_y, object_width, object_height = style["margin_left"], y, 11.7, content_height
-                else:
-                    x, object_y, object_width, object_height = _object_frame(objects, index, y=y, content_height=content_height, style=style)
                 if route == "native_table" or obj.get("type") == "table":
                     _add_table(
                         slide,
@@ -300,9 +307,6 @@ class PythonPptxAdapter:
                     }
                 )
 
-        # --- quality disclaimer (final slide) ---
-        _add_disclaimer_page(presentation, style)
-
         presentation.save(deck_path)
         return BuildResult(builder=self.name, status="created", pptx=str(deck_path), object_results=object_results, fallbacks=fallbacks, warnings=warnings)
 
@@ -349,6 +353,15 @@ def _object_frame(
     """
     margin = float(style["margin_left"])
     gap = float(style["card_gap"])
+    semantic_layout = _dominant_semantic_diagram_frames(
+        objects,
+        y=y,
+        content_height=content_height,
+        margin=margin,
+        gap=gap,
+    )
+    if semantic_layout is not None:
+        return semantic_layout[index]
     sidebar_layout = _secondary_support_sidebar_frame(
         objects,
         y=y,
@@ -364,6 +377,51 @@ def _object_frame(
 
 def _component_type(obj: dict[str, Any]) -> str:
     return str(obj.get("component_type") or obj.get("type") or "").lower()
+
+
+def _is_semantic_diagram(obj: dict[str, Any]) -> bool:
+    route = str(
+        (obj.get("delivery_plan") or {}).get("selected_route")
+        or obj.get("delivery_preferences", {}).get("preferred_route")
+        or ""
+    ).lower()
+    return route == "native_diagram" and _semantic_renderer(_component_type(obj)) is not None
+
+
+def _dominant_semantic_diagram_frames(
+    objects: list[dict[str, Any]],
+    *,
+    y: float,
+    content_height: float,
+    margin: float,
+    gap: float,
+) -> list[tuple[float, float, float, float]] | None:
+    semantic_indexes = [index for index, obj in enumerate(objects) if _is_semantic_diagram(obj)]
+    if len(semantic_indexes) != 1 or len(objects) == 1:
+        return None
+
+    primary_index = semantic_indexes[0]
+    support_indexes = [index for index in range(len(objects)) if index != primary_index]
+    main_width = 8.35
+    sidebar_width = 3.83
+    sidebar_gap = max(0.24, gap)
+    sidebar_x = margin + main_width + sidebar_gap
+    stack_gap = 0.24
+    support_height = max(
+        1.1,
+        (content_height - stack_gap * max(len(support_indexes) - 1, 0))
+        / max(len(support_indexes), 1),
+    )
+    frames: list[tuple[float, float, float, float]] = [None] * len(objects)  # type: ignore[list-item]
+    frames[primary_index] = (margin, y, main_width, content_height)
+    for position, index in enumerate(support_indexes):
+        frames[index] = (
+            sidebar_x,
+            y + position * (support_height + stack_gap),
+            sidebar_width,
+            support_height,
+        )
+    return frames
 
 
 def _is_chart_like(obj: dict[str, Any]) -> bool:
@@ -1028,7 +1086,10 @@ def _add_process(slide: Any, obj: dict[str, Any], *, x: float, y: float, w: floa
     from pptx.util import Inches, Pt
 
     labels = _process_labels(obj)
-    total_width = max(w, 5.8)
+    # Respect the layout frame assigned by the page composer. Expanding a
+    # support process to a historical 5.8-inch minimum can push later nodes
+    # off-slide when the process is intentionally placed in a sidebar.
+    total_width = w
     gap = 0.28
     node_width = (total_width - gap * (len(labels) - 1)) / len(labels)
     shapes = []

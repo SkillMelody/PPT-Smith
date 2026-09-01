@@ -52,7 +52,7 @@
       "required": ["source_id", "type"],
       "properties": {
         "source_id": { "$ref": "#/$defs/idSlug" },
-        "type": { "type": "string", "enum": ["html", "markdown", "docx", "text", "data", "image"] },
+        "type": { "type": "string", "enum": ["html", "markdown", "docx", "pdf", "text", "data", "image"] },
         "title": { "type": "string", "maxLength": 200 },
         "path": { "type": "string", "maxLength": 500 },
         "url": { "type": "string", "maxLength": 1000 }
@@ -191,6 +191,12 @@
           "items": { "type": "integer", "minimum": 0 },
           "description": "Optional 0-based column indexes to keep, in order. Absent = all columns."
         },
+        "row_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Optional 0-based offset into data rows (header excluded), used to split a dense source table across readable slides."
+        },
         "row_limit": { "type": "integer", "minimum": 1, "maximum": 30 }
       }
     },
@@ -221,9 +227,13 @@
       "additionalProperties": false,
       "required": ["type", "data", "source_ref"],
       "properties": {
+        "id": {
+          "$ref": "#/$defs/idSlug",
+          "description": "Required by slides[].charts[] so every native chart has an independent binding identity; optional for the legacy singular slide.chart payload."
+        },
         "type": {
           "type": "string",
-          "enum": ["column", "bar", "line", "pie", "combo"],
+          "enum": ["column", "bar", "line", "pie", "doughnut", "combo"],
           "description": "Chart family. combo renders a column + line overlay (dual-series)."
         },
         "data": {
@@ -479,6 +489,18 @@
         "chart": {
           "$ref": "#/$defs/chart",
           "description": "Optional data-visualization payload. When present the engine renders a native chart instead of an inferred archetype. Numbers must come from the source (source_ref required)."
+        },
+        "charts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 12,
+          "items": {
+            "allOf": [
+              { "$ref": "#/$defs/chart" },
+              { "required": ["id"] }
+            ]
+          },
+          "description": "Optional named multi-chart payload for reviewed native dashboards. Each id binds independently as bind:chart:<slide_id>:<chart_id>."
         },
         "diagram_ir": {
           "$ref": "#/$defs/diagramIr",

@@ -1,0 +1,548 @@
+"""Plan reviewed template components for a complete manuscript.
+
+The planner joins evidence-bound content with a confirmed storyboard, routes
+only explicit layout patterns, and reports every unsupported page. It never
+forces a page into an unrelated component merely to increase coverage.
+"""
+from __future__ import annotations
+
+from copy import deepcopy
+import re
+
+from .component_atlas import resolve_component_binding, select_component
+
+
+ROUTES = {
+    "three-keyword cover": ("cover keywords", "icon_card_grid"),
+    "three conclusion cards": ("icon capability cards", "icon_card_grid"),
+    "two-sided contrast": ("experimentation scale contrast", "two_sided_contrast"),
+    "four-stage timeline": ("maturity journey", "timeline"),
+    "process comparison": ("phased rollout", "timeline"),
+    "multi-node comparison": ("icon capability cards", "icon_card_grid"),
+    "chapter insight": ("chapter insight", "dual_panel"),
+    "cycle relationship": ("closed-loop adoption relationship", "cycle_pair"),
+    "dual metric": ("capability cards", "card_grid"),
+    "large-small comparison": ("capability cards", "card_grid"),
+    "native chart dashboard": ("research impact evidence", "chart_dashboard"),
+    "parallel function panels": ("capability cards", "card_grid"),
+    "funnel conclusion": ("prioritization", "funnel"),
+    "objective comparison": ("capability cards", "card_grid"),
+    "progression": ("workflow redesign progression", "two_stage_progression"),
+    "parallel comparison": ("capability cards", "card_grid"),
+    "parallel leadership evidence": ("capability cards", "card_grid"),
+    "multi-node practice map": ("icon capability cards", "icon_card_grid"),
+    "workflow capability map": ("capability stack", "pyramid"),
+    "layered workforce view": ("hierarchy", "pyramid"),
+    "three-way comparison": ("icon capability cards", "icon_card_grid"),
+    "outcome cards": ("capability cards", "card_grid"),
+    "signal-uncertainty-action": ("capability cards", "card_grid"),
+    "risk and mitigation": ("capability cards", "card_grid"),
+    "pyramid": ("hierarchy", "pyramid"),
+    "method relationship map": ("capability cards", "card_grid"),
+    "funnel priorities": ("prioritization", "funnel"),
+    "capability radar": ("management action dimensions", "icon_card_grid"),
+    "closing statement": ("closing source note", "statement_card"),
+}
+
+
+PLACEMENTS = {
+    "funnel": {"x": 0.12, "y": 0.1, "w": 0.76, "h": 0.82},
+    "pyramid": {"x": 0.12, "y": 0.1, "w": 0.76, "h": 0.82},
+    "timeline": {"x": 0.05, "y": 0.08, "w": 0.9, "h": 0.84},
+    "card_grid": {"x": 0.08, "y": 0.12, "w": 0.84, "h": 0.76},
+    "icon_card_grid": {"x": 0.07, "y": 0.1, "w": 0.86, "h": 0.8},
+    "dual_panel": {"x": 0.08, "y": 0.25, "w": 0.84, "h": 0.55},
+    "statement_card": {"x": 0.28, "y": 0.24, "w": 0.44, "h": 0.54},
+    "two_sided_contrast": {"x": 0.04, "y": 0.18, "w": 0.92, "h": 0.7},
+    "cycle_pair": {"x": 0.16, "y": 0.16, "w": 0.68, "h": 0.7},
+    "two_stage_progression": {"x": 0.06, "y": 0.18, "w": 0.88, "h": 0.68},
+    "chart_dashboard": {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0},
+}
+
+
+_RECURSIVE_IMPACT_COMPONENTS = {
+    "mckinsey.quadrant-summary.impact-sequence",
+    "mckinsey.kpi-chart-row.four-metrics",
+    "mckinsey.ring-evidence.business-outcomes",
+    "mckinsey.impact-bar.business-outcome",
+    "mckinsey.insight-list.management-evidence",
+}
+
+
+def _recursive_impact_dashboard_components(atlas: dict, dashboard: dict) -> list[dict] | None:
+    """Decompose the legacy research dashboard into reviewed recursive sections."""
+    available = {
+        component.get("component_id")
+        for component in atlas.get("components", [])
+        if isinstance(component, dict)
+    }
+    if not _RECURSIVE_IMPACT_COMPONENTS <= available:
+        return None
+    charts = dashboard.get("charts")
+    text_bindings = dashboard.get("text_bindings")
+    if not isinstance(charts, list) or not isinstance(text_bindings, list):
+        return None
+    chart_by_id = {
+        chart.get("id"): chart
+        for chart in charts
+        if isinstance(chart, dict) and isinstance(chart.get("id"), str)
+    }
+    text_by_shape = {
+        binding.get("shape_name"): binding
+        for binding in text_bindings
+        if isinstance(binding, dict) and isinstance(binding.get("shape_name"), str)
+    }
+    required_charts = {
+        "innovation", "employee_satisfaction", "customer_satisfaction",
+        "competitive_differentiation", "enterprise_ebit", "cost", "profitability",
+    }
+    required_texts = {
+        "文本框 3", "文本框 14", "文本框 18", "文本框 23", "文本框 29", "文本框 31",
+        "文本框 35", "文本框 36", "文本框 37", "文本框 38", "文本框 39", "文本框 40",
+        "文本框 41", "文本框 42", "文本框 43", "文本框 44", "文本框 45", "文本框 46",
+        "文本框 53", "文本框 56", "文本框 62", "文本框 95", "文本框 100",
+        "文本框 101", "文本框 107", "文本框 108",
+    }
+    if not required_charts <= set(chart_by_id) or not required_texts <= set(text_by_shape):
+        return None
+
+    def chart(chart_id: str) -> dict:
+        return deepcopy(chart_by_id[chart_id])
+
+    def text(shape_name: str, field: str) -> dict:
+        binding = deepcopy(text_by_shape[shape_name])
+        binding.pop("shape_name", None)
+        binding["field"] = field
+        return binding
+
+    def kpi_child(chart_id: str, title_shape: str, metric_shape: str) -> dict:
+        return {
+            "chart": chart(chart_id),
+            "text_bindings": [text(title_shape, "title"), text(metric_shape, "metric")],
+        }
+
+    relation_binding = deepcopy(text_by_shape["文本框 31"])
+    relation_binding.pop("shape_name", None)
+    return [{
+        "component_id": "mckinsey.quadrant-summary.impact-sequence",
+        "semantic_use": "four-part impact summary",
+        "family": "fixed_native_group",
+        "element_count": 4,
+        "text_bindings": [text(name, "item") for name in (
+            "文本框 41", "文本框 42", "文本框 43", "文本框 44",
+        )],
+        "placement": {"x": 0.03, "y": 0.14, "w": 0.25, "h": 0.34},
+    }, {
+        "component_id": "mckinsey.kpi-chart-row.four-metrics",
+        "semantic_use": "four KPI comparison row",
+        "family": "kpi_chart_row",
+        "element_count": 4,
+        "children": {
+            "metric_1": kpi_child("innovation", "文本框 53", "文本框 56"),
+            "metric_2": kpi_child("employee_satisfaction", "文本框 62", "文本框 95"),
+            "metric_3": kpi_child("customer_satisfaction", "文本框 100", "文本框 101"),
+            "metric_4": kpi_child("competitive_differentiation", "文本框 107", "文本框 108"),
+        },
+        "placement": {"x": 0.3, "y": 0.14, "w": 0.67, "h": 0.34},
+    }, {
+        "component_id": "mckinsey.ring-evidence.business-outcomes",
+        "semantic_use": "business outcome ring evidence",
+        "family": "ring_evidence_section",
+        "element_count": 2,
+        "children": {
+            "shell": {
+                "element_count": 1,
+                "text_bindings": [text("文本框 3", "title")],
+            },
+            "comparison": {
+                "element_count": 2,
+                "children": {
+                    "before": {
+                        "chart": chart("cost"),
+                        "text_bindings": [
+                            text("文本框 14", "value"), text("文本框 23", "label"),
+                        ],
+                    },
+                    "relation": {
+                        "elements": [{
+                            "value": 1,
+                            "labels": {"text": relation_binding},
+                        }],
+                    },
+                    "after": {
+                        "chart": chart("profitability"),
+                        "text_bindings": [
+                            text("文本框 18", "value"), text("文本框 29", "label"),
+                        ],
+                    },
+                },
+            },
+        },
+        "placement": {"x": 0.03, "y": 0.52, "w": 0.34, "h": 0.36},
+    }, {
+        "component_id": "mckinsey.impact-bar.business-outcome",
+        "semantic_use": "impact gap evidence",
+        "family": "impact_bar",
+        "element_count": 1,
+        "chart": chart("enterprise_ebit"),
+        "text_bindings": [
+            text("文本框 35", "title"),
+            text("文本框 36", "positive_label"),
+            text("文本框 37", "positive_detail"),
+            text("文本框 38", "gap_label"),
+            text("文本框 39", "gap_detail"),
+        ],
+        "placement": {"x": 0.39, "y": 0.52, "w": 0.28, "h": 0.36},
+    }, {
+        "component_id": "mckinsey.insight-list.management-evidence",
+        "semantic_use": "management evidence list",
+        "family": "fixed_native_group",
+        "element_count": 2,
+        "text_bindings": [
+            text("文本框 40", "title"),
+            text("文本框 45", "detail"),
+            text("文本框 46", "detail"),
+        ],
+        "placement": {"x": 0.69, "y": 0.52, "w": 0.28, "h": 0.36},
+    }]
+
+
+def _unsupported(
+    *,
+    output_page_index: int,
+    purpose: str,
+    layout_pattern: str,
+    reason_code: str,
+    reason: str,
+) -> dict:
+    return {
+        "output_page_index": output_page_index,
+        "purpose": purpose,
+        "layout_pattern": layout_pattern,
+        "reason_code": reason_code,
+        "reason": reason,
+    }
+
+
+def _item_text(item: object, *, purpose: str, index: int) -> tuple[str, dict]:
+    if isinstance(item, str) and item.strip():
+        return item.strip(), {}
+    if isinstance(item, dict):
+        text = item.get("text") or item.get("title")
+        if isinstance(text, str) and text.strip():
+            return text.strip(), item
+    raise ValueError(f"content binding {purpose!r} item {index} requires text")
+
+
+def _binding_name(purpose: str, field: str, index: int) -> str:
+    block = {
+        "title": "component_items",
+        "detail": "component_items",
+        "badge": "component_badges",
+        "metric_label": "component_metric_labels",
+        "metric_value": "component_metric_values",
+    }.get(field, f"component_{field}")
+    suffix = "detail" if field == "detail" else "item"
+    return f"bind:block:{purpose}:{block}:{suffix}:{index}"
+
+
+def _page_items(content_page: dict, layout_pattern: str) -> list | None:
+    items = content_page.get("items")
+    if layout_pattern == "two-sided contrast" and isinstance(items, list) and len(items) >= 2:
+        normalized: list[str] = []
+        for index, item in enumerate(items):
+            try:
+                text, _data = _item_text(item, purpose="two-sided contrast", index=index)
+            except ValueError:
+                return None
+            normalized.append(text)
+        return [{
+            "title": "规模化",
+            "detail": normalized[0],
+        }, {
+            "title": "试验阶段",
+            "detail": "；".join(normalized[1:]),
+        }]
+    if isinstance(items, list) and items:
+        return items
+    subtitle = content_page.get("subtitle")
+    if layout_pattern == "three-keyword cover" and isinstance(subtitle, str):
+        keywords = [
+            keyword.strip()
+            for keyword in re.split(r"[、,，/|与]+", subtitle)
+            if keyword.strip()
+        ]
+        if len(keywords) == 3:
+            return [
+                {"title": keyword, "detail": "核心议题"}
+                for keyword in keywords
+            ]
+    if layout_pattern == "closing statement" and isinstance(subtitle, str) and subtitle.strip():
+        return [{"title": subtitle.strip()}]
+    return None
+
+
+def _label_text(
+    *,
+    field: str,
+    item_text: str,
+    item_data: dict,
+    index: int,
+    fields: set[str],
+) -> str:
+    labels = item_data.get("labels") if isinstance(item_data.get("labels"), dict) else {}
+    explicit = labels.get(field, item_data.get(field))
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip()
+    if field == "detail":
+        return item_text
+    if field == "title":
+        return f"要点 {index + 1}" if "detail" in fields else item_text
+    if field in {"badge", "metric_value"}:
+        return str(index + 1)
+    if field == "metric_label":
+        return "顺序"
+    raise ValueError(f"cannot derive component label field {field!r}")
+
+
+def _elements(*, purpose: str, items: list, resolved: dict) -> list[dict]:
+    normalized = [
+        _item_text(item, purpose=purpose, index=index)
+        for index, item in enumerate(items)
+    ]
+    if resolved.get("binding_schema_version") != "2.0.0":
+        return [{
+            "text": text,
+            "value": (
+                data.get("value")
+                if isinstance(data.get("value"), (int, float))
+                and not isinstance(data.get("value"), bool)
+                else len(items) - index
+            ),
+            "binding_name": f"bind:block:{purpose}:component_items:item:{index}",
+        } for index, (text, data) in enumerate(normalized)]
+
+    item_groups = resolved.get("item_groups")
+    if not isinstance(item_groups, list) or not item_groups:
+        raise ValueError("resolved extended component has no item_groups")
+    fields = set(item_groups[0].get("label_fields", {}))
+    if not fields:
+        raise ValueError("resolved extended component has no label fields")
+    if any(set(group.get("label_fields", {})) != fields for group in item_groups):
+        raise ValueError("resolved extended component label fields do not align")
+    return [{
+        "value": (
+            data.get("value")
+            if isinstance(data.get("value"), (int, float))
+            and not isinstance(data.get("value"), bool)
+            else None
+        ),
+        "labels": {
+            field: {
+                "text": _label_text(
+                    field=field,
+                    item_text=text,
+                    item_data=data,
+                    index=index,
+                    fields=fields,
+                ),
+                "binding_name": _binding_name(purpose, field, index),
+            }
+            for field in sorted(fields)
+        },
+    } for index, (text, data) in enumerate(normalized)]
+
+
+def build_manuscript_component_composition(
+    atlas: dict,
+    content_bindings: dict,
+    storyboard: dict,
+) -> dict:
+    if not isinstance(atlas, dict) or atlas.get("status") != "reviewed":
+        raise ValueError("manuscript component planning requires a reviewed atlas")
+    template_slide_count = atlas.get("source", {}).get("slide_count")
+    if (
+        isinstance(template_slide_count, bool)
+        or not isinstance(template_slide_count, int)
+        or template_slide_count < 1
+    ):
+        raise ValueError("reviewed atlas requires a positive source slide_count")
+    binding_slides = content_bindings.get("slides") if isinstance(content_bindings, dict) else None
+    if not isinstance(binding_slides, list) or not binding_slides:
+        raise ValueError("content bindings require a non-empty slides list")
+    storyboard_slides = storyboard.get("slides") if isinstance(storyboard, dict) else None
+    if not isinstance(storyboard_slides, list) or not storyboard_slides:
+        raise ValueError("storyboard requires a non-empty slides list")
+
+    by_id = {
+        slide.get("id"): slide
+        for slide in binding_slides
+        if isinstance(slide, dict) and isinstance(slide.get("id"), str)
+    }
+    pages: list[dict] = []
+    unsupported_pages: list[dict] = []
+    for page_offset, storyboard_page in enumerate(storyboard_slides):
+        output_page_index = page_offset + 1
+        if not isinstance(storyboard_page, dict):
+            raise ValueError(f"storyboard page {output_page_index} must be an object")
+        purpose = storyboard_page.get("purpose")
+        if not isinstance(purpose, str) or not purpose:
+            raise ValueError(f"storyboard page {output_page_index} requires purpose")
+        rationale = storyboard_page.get("layout_rationale", {})
+        layout_pattern = rationale.get("layout_pattern", "") if isinstance(rationale, dict) else ""
+        if not isinstance(layout_pattern, str):
+            layout_pattern = ""
+        route = ROUTES.get(layout_pattern)
+        if route is None:
+            unsupported_pages.append(_unsupported(
+                output_page_index=output_page_index,
+                purpose=purpose,
+                layout_pattern=layout_pattern,
+                reason_code="no_component_route",
+                reason=f"no reviewed component route for layout pattern {layout_pattern!r}",
+            ))
+            continue
+        content_page = by_id.get(purpose)
+        if content_page is None:
+            unsupported_pages.append(_unsupported(
+                output_page_index=output_page_index,
+                purpose=purpose,
+                layout_pattern=layout_pattern,
+                reason_code="missing_content_binding",
+                reason=f"no content binding found for purpose {purpose!r}",
+            ))
+            continue
+        semantic_use, family = route
+        if family == "chart_dashboard":
+            dashboard = content_page.get("dashboard")
+            charts = dashboard.get("charts") if isinstance(dashboard, dict) else None
+            text_bindings = dashboard.get("text_bindings") if isinstance(dashboard, dict) else None
+            clear_text_names = dashboard.get("clear_text_names") if isinstance(dashboard, dict) else None
+            if (
+                not isinstance(charts, list)
+                or not charts
+                or not isinstance(text_bindings, list)
+                or not isinstance(clear_text_names, list)
+            ):
+                unsupported_pages.append(_unsupported(
+                    output_page_index=output_page_index,
+                    purpose=purpose,
+                    layout_pattern=layout_pattern,
+                    reason_code="missing_dashboard_binding",
+                    reason=f"content binding {purpose!r} requires structured dashboard data",
+                ))
+                continue
+            recursive_components = _recursive_impact_dashboard_components(atlas, dashboard)
+            if recursive_components is not None:
+                pages.append({
+                    "output_page_index": output_page_index,
+                    "purpose": purpose,
+                    "destination_slide_index": template_slide_count + output_page_index,
+                    "components": recursive_components,
+                })
+                continue
+            requirement = {
+                "semantic_use": semantic_use,
+                "family": family,
+                "element_count": len(charts),
+            }
+            selection = select_component(atlas, requirement)
+            if selection.get("status") != "selected":
+                unsupported_pages.append(_unsupported(
+                    output_page_index=output_page_index,
+                    purpose=purpose,
+                    layout_pattern=layout_pattern,
+                    reason_code="no_component_match",
+                    reason=selection.get("reason", "no reviewed dashboard satisfies the chart count"),
+                ))
+                continue
+            pages.append({
+                "output_page_index": output_page_index,
+                "purpose": purpose,
+                "destination_slide_index": template_slide_count + output_page_index,
+                "components": [{
+                    "semantic_use": semantic_use,
+                    "family": family,
+                    "element_count": len(charts),
+                    "charts": deepcopy(charts),
+                    "text_bindings": deepcopy(text_bindings),
+                    "clear_text_names": deepcopy(clear_text_names),
+                    "placement": deepcopy(PLACEMENTS[family]),
+                }],
+            })
+            continue
+        items = _page_items(content_page, layout_pattern)
+        if not isinstance(items, list) or not items:
+            unsupported_pages.append(_unsupported(
+                output_page_index=output_page_index,
+                purpose=purpose,
+                layout_pattern=layout_pattern,
+                reason_code="missing_component_items",
+                reason=f"content binding {purpose!r} has no component items",
+            ))
+            continue
+
+        requirement = {
+            "semantic_use": semantic_use,
+            "family": family,
+            "element_count": len(items),
+        }
+        selection = select_component(atlas, requirement)
+        if selection.get("status") != "selected":
+            unsupported_pages.append(_unsupported(
+                output_page_index=output_page_index,
+                purpose=purpose,
+                layout_pattern=layout_pattern,
+                reason_code="no_component_match",
+                reason=selection.get(
+                    "reason",
+                    "no reviewed component satisfies semantic use and element capacity",
+                ),
+            ))
+            continue
+        try:
+            resolved = resolve_component_binding(atlas, requirement)
+            elements = _elements(purpose=purpose, items=items, resolved=resolved)
+        except ValueError as exc:
+            unsupported_pages.append(_unsupported(
+                output_page_index=output_page_index,
+                purpose=purpose,
+                layout_pattern=layout_pattern,
+                reason_code="component_binding_unavailable",
+                reason=str(exc),
+            ))
+            continue
+
+        pages.append({
+            "output_page_index": output_page_index,
+            "purpose": purpose,
+            "destination_slide_index": template_slide_count + output_page_index,
+            "components": [{
+                "semantic_use": semantic_use,
+                "family": family,
+                "elements": elements,
+                "placement": deepcopy(PLACEMENTS[family]),
+            }],
+        })
+
+    total_pages = len(storyboard_slides)
+    planned_pages = len(pages)
+    coverage_status = (
+        "complete" if planned_pages == total_pages
+        else "none" if planned_pages == 0
+        else "partial"
+    )
+    return {
+        "schema_version": "1.0.0",
+        "source_page_count": total_pages,
+        "template_slide_count": template_slide_count,
+        "pages": pages,
+        "unsupported_pages": unsupported_pages,
+        "coverage": {
+            "status": coverage_status,
+            "total_pages": total_pages,
+            "planned_pages": planned_pages,
+            "unsupported_pages": len(unsupported_pages),
+            "coverage_ratio": round(planned_pages / total_pages, 4),
+        },
+    }

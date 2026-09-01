@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -11,6 +12,7 @@ from .render_report import build_render_report
 from .renderers.base import RenderResult, select_renderer
 from .report import inspection_to_dict
 from .slide_inspector import inspect_slides
+from engine.route_policy import require_production_route
 
 
 QA_SCHEMA_VERSION = "2.1"
@@ -56,7 +58,9 @@ def run_structural_inspection(
     delivery: Optional[dict[str, Any]] = None,
     build_manifest: Optional[dict[str, Any]] = None,
     include_raw_xml: bool = False,
+    route: str = "standard",
 ) -> dict[str, Any]:
+    route = require_production_route(route)
     inspection = inspect_package(pptx_path, ppt_ir=ppt_ir, build_manifest=build_manifest)
     if not any(issue.severity == "fatal" for issue in inspection.issues):
         inspection = inspect_slides(
@@ -66,8 +70,11 @@ def run_structural_inspection(
             style=style,
             delivery=delivery,
             include_raw_xml=include_raw_xml,
+            route=route,
         )
-    return inspection_to_dict(inspection, include_raw_xml=include_raw_xml)
+    report = inspection_to_dict(inspection, include_raw_xml=include_raw_xml)
+    report["qa_route"] = route
+    return report
 
 
 def run_render_report(
@@ -98,6 +105,12 @@ def run_render_report(
         )
     else:
         output_dir.mkdir(parents=True, exist_ok=True)
+        for generated_name in ("deck.pdf", "slides", "logs"):
+            generated_path = output_dir / generated_name
+            if generated_path.is_dir():
+                shutil.rmtree(generated_path)
+            elif generated_path.exists():
+                generated_path.unlink()
         result = renderer.render(pptx_path, output_dir, timeout_seconds=timeout, dpi=dpi)  # type: ignore[call-arg]
     return build_render_report(
         pptx_path,

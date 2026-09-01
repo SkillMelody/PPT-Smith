@@ -301,6 +301,15 @@ def test_priority_renderers_are_full_in_effective_component_registry() -> None:
     }
 
 
+def test_python_native_bar_chart_is_full_in_effective_component_registry() -> None:
+    registry = json.loads(COMPONENT_REGISTRY.read_text(encoding="utf-8"))
+    capabilities = load_renderer_capabilities(RENDERER_CAPABILITIES)
+
+    support = effective_component_support(registry, capabilities, "python_pptx")
+
+    assert support["bar_chart"] == "full"
+
+
 def test_evidence_block_is_truthfully_supported_for_data_and_table_slides_in_both_builders() -> None:
     registry = json.loads(COMPONENT_REGISTRY.read_text(encoding="utf-8"))
     capabilities = load_renderer_capabilities(RENDERER_CAPABILITIES)

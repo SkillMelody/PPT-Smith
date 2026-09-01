@@ -72,6 +72,24 @@ def test_inspector_rejects_connector_that_passes_through_unrelated_node(tmp_path
     assert "PPTX_CONNECTOR_THROUGH_NODE" in codes
 
 
+def test_inspector_allows_shared_decoration_connector_inside_same_component(tmp_path: Path) -> None:
+    path = tmp_path / "component-decoration.pptx"
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    node = _node(slide, 3.0, 2.0, 2.0, 1.0)
+    node.name = "decoration:component:pyramid:preview-3:segment:0"
+    connector = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        Inches(1.0), Inches(2.5), Inches(7.0), Inches(2.5),
+    )
+    connector.name = "decoration:component:pyramid:preview-3:shared:0"
+    deck.save(path)
+
+    result = inspect_slides(path, inspect_package(path), include_raw_xml=True)
+    codes = {issue.issue_code for slide_result in result.slides for issue in slide_result.issues}
+    assert "PPTX_CONNECTOR_THROUGH_NODE" not in codes
+
+
 def test_inspector_rejects_connector_crossing(tmp_path: Path) -> None:
     path = tmp_path / "crossing.pptx"
     deck = Presentation()

@@ -12,6 +12,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from .models import InspectedObject, IssueFactory, PackageInspection, SlideInspection, Thresholds
+from engine.route_policy import allows_source_bound_component_fragmentation
 
 EMU_PER_INCH = 914400
 R_NS = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main", "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships"}
@@ -76,6 +77,14 @@ def _is_declared_visual_shape(shape: Any) -> bool:
     name = str(getattr(shape, "name", "") or "").strip().lower()
     text = str(getattr(shape, "text", "") or "").strip()
     return not text and name.startswith(DECLARED_VISUAL_PREFIXES)
+
+
+def _component_decoration_prefix(name: str, role: str) -> Optional[str]:
+    marker = f":{role}:"
+    normalized = str(name or "").strip().lower()
+    if not normalized.startswith("decoration:component:") or marker not in normalized:
+        return None
+    return normalized.split(marker, 1)[0]
 
 
 def _classify_shape(shape: Any, svg_shape_ids: set[int]) -> str:
@@ -148,12 +157,51 @@ def _image_info(shape: Any) -> tuple[Optional[str], Optional[dict[str, int]]]:
         return ext, None
 
 
-def _iter_shapes(shapes: Any) -> list[Any]:
-    collected: list[Any] = []
+def _iter_shapes(
+    shapes: Any,
+    transform: Optional[tuple[float, float, float, float, float, float]] = None,
+) -> list[tuple[Any, tuple[float, float, float, float]]]:
+    """Return shapes with slide-absolute geometry, including group children.
+
+    python-pptx exposes a grouped child's ``left`` and ``top`` in the group's
+    child coordinate system. Treating those values as slide coordinates causes
+    false out-of-bounds findings for imported vector icons whose ``chOff`` is
+    intentionally far from the slide origin. Map that local coordinate space
+    through every parent group's transform before inspecting geometry.
+    """
+    collected: list[tuple[Any, tuple[float, float, float, float]]] = []
     for shape in shapes:
-        collected.append(shape)
+        if transform is None:
+            geometry = (
+                float(shape.left),
+                float(shape.top),
+                float(shape.width),
+                float(shape.height),
+            )
+        else:
+            target_x, target_y, scale_x, scale_y, child_x, child_y = transform
+            geometry = (
+                target_x + (float(shape.left) - child_x) * scale_x,
+                target_y + (float(shape.top) - child_y) * scale_y,
+                float(shape.width) * scale_x,
+                float(shape.height) * scale_y,
+            )
+        collected.append((shape, geometry))
         if getattr(shape, "shape_type", None) == MSO_SHAPE_TYPE.GROUP:
-            collected.extend(_iter_shapes(shape.shapes))
+            xfrm = shape._element.grpSpPr.xfrm
+            child_width = float(xfrm.chExt.cx)
+            child_height = float(xfrm.chExt.cy)
+            if child_width > 0 and child_height > 0:
+                group_x, group_y, group_width, group_height = geometry
+                child_transform = (
+                    group_x,
+                    group_y,
+                    group_width / child_width,
+                    group_height / child_height,
+                    float(xfrm.chOff.x),
+                    float(xfrm.chOff.y),
+                )
+                collected.extend(_iter_shapes(shape.shapes, child_transform))
     return collected
 
 
@@ -446,6 +494,7 @@ def inspect_slides(
     delivery: Optional[dict[str, Any]] = None,
     thresholds: Optional[Thresholds] = None,
     include_raw_xml: bool = False,
+    route: str = "standard",
 ) -> PackageInspection:
     thresholds = thresholds or Thresholds()
     factory = IssueFactory("pptx-structural-inspector")
@@ -474,13 +523,14 @@ def inspect_slides(
         delivery_objects = _delivery_slide(delivery, slide_id)
         svg_ids = _collect_svg_shape_ids(pptx_path, slide_index)
         objects: list[InspectedObject] = []
+        exact_bounds: dict[str, tuple[int, int, int, int]] = {}
         image_rects: list[tuple[float, float, float, float]] = []
         shapes = _iter_shapes(slide.shapes)
-        for idx, shape in enumerate(shapes, start=1):
-            x = emu_to_in(shape.left)
-            y = emu_to_in(shape.top)
-            w = emu_to_in(shape.width)
-            h = emu_to_in(shape.height)
+        for idx, (shape, geometry) in enumerate(shapes, start=1):
+            x = emu_to_in(geometry[0])
+            y = emu_to_in(geometry[1])
+            w = emu_to_in(geometry[2])
+            h = emu_to_in(geometry[3])
             kind = _classify_shape(shape, svg_ids)
             sizes, families, font_colors = _text_font_data(shape)
             ext, image_px = _image_info(shape) if kind in {"picture", "svg"} else (None, None)
@@ -510,6 +560,7 @@ def inspect_slides(
                 } if include_raw_xml or kind == "connector" else {},
             )
             objects.append(obj)
+            exact_bounds[obj.object_id] = geometry
             if kind in {"picture", "svg"}:
                 image_rects.append((max(0.0, x), max(0.0, y), min(slide_w, x + w), min(slide_h, y + h)))
 
@@ -547,6 +598,9 @@ def inspect_slides(
             factory,
             slide_w,
             slide_h,
+            int(prs.slide_width),
+            int(prs.slide_height),
+            exact_bounds,
             thresholds,
             allowed_colors,
             allowed_fonts,
@@ -554,6 +608,7 @@ def inspect_slides(
             min_footnote_font,
             delivery_objects,
             expected_texts,
+            route,
         )
         package_inspection.slides.append(slide_result)
 
@@ -590,6 +645,9 @@ def _add_slide_issues(
     factory: IssueFactory,
     slide_w: float,
     slide_h: float,
+    slide_w_emu: int,
+    slide_h_emu: int,
+    exact_bounds: dict[str, tuple[int, int, int, int]],
     thresholds: Thresholds,
     allowed_colors: set[str],
     allowed_fonts: set[str],
@@ -597,6 +655,7 @@ def _add_slide_issues(
     min_footnote_font: Optional[float],
     delivery_objects: list[dict[str, Any]],
     expected_texts: list[str],
+    route: str,
 ) -> None:
     if not slide.objects:
         slide.issues.append(factory.create("PPTX_BLANK_SLIDE", "error", "content", "Slide contains no editable or visual objects.", slide_id=slide.slide_id, evidence={}))
@@ -631,7 +690,13 @@ def _add_slide_issues(
             and not declared_non_text_layer
         ):
             slide.issues.append(factory.create("PPTX_EMPTY_TEXT_BOX", "warning", "editability", "Text box is empty.", slide_id=slide.slide_id, object_id=obj.object_id, ppt_shape_id=obj.shape_id, evidence={"name": obj.name}))
-        if obj.x_in < 0 or obj.y_in < 0 or obj.x_in + obj.w_in > slide_w or obj.y_in + obj.h_in > slide_h:
+        x_emu, y_emu, w_emu, h_emu = exact_bounds[obj.object_id]
+        if (
+            x_emu < 0
+            or y_emu < 0
+            or x_emu + w_emu > slide_w_emu
+            or y_emu + h_emu > slide_h_emu
+        ):
             slide.issues.append(factory.create("PPTX_TEXT_OUT_OF_BOUNDS" if obj.shape_type == "text" else "GEOMETRY_OBJECT_OUT_OF_BOUNDS", "error", "geometry", "Object extends beyond slide bounds.", slide_id=slide.slide_id, object_id=obj.object_id, ppt_shape_id=obj.shape_id, evidence={"x_in": obj.x_in, "y_in": obj.y_in, "w_in": obj.w_in, "h_in": obj.h_in, "slide_w_in": slide_w, "slide_h_in": slide_h}))
         object_minimum = _minimum_for_object(
             obj,
@@ -711,6 +776,8 @@ def _add_slide_issues(
         and obj.h_in >= 0.25
     ]
     for connector in straight_connectors:
+        if _component_decoration_prefix(connector.name, "shared") is not None:
+            continue
         start, end = _connector_segment(connector)
         for node in nodes:
             rect = (
@@ -780,15 +847,41 @@ def _add_slide_issues(
         for obj in text_objects
         if obj.name.lower().startswith("component:metric_wall:")
     ]
+    source_bound_component_items = []
+    for obj in text_objects:
+        binding_parts = obj.name.lower().split(":")
+        if (
+            len(binding_parts) == 6
+            and binding_parts[:2] == ["bind", "block"]
+            and binding_parts[4] in {"item", "detail"}
+        ):
+            source_bound_component_items.append(obj)
+    exempt_component_items = allows_source_bound_component_fragmentation(route)
+    unstructured_text = [
+        obj for obj in text_objects
+        if not exempt_component_items or obj not in source_bound_component_items
+    ]
+    unstructured_characters = sum(len(obj.text.strip()) for obj in unstructured_text)
+    effective_fragmentation = round(
+        len(unstructured_text) / max(unstructured_characters, 1) * 100,
+        4,
+    )
     metric_wall_dominates = (
         bool(text_objects)
         and len(structured_metric_text) / len(text_objects) >= 0.6
     )
     if not metric_wall_dominates:
-        if fragmentation > thresholds.text_boxes_per_100_characters_error:
-            slide.issues.append(factory.create("PPTX_TEXT_FRAGMENTATION", "error", "editability", "Text is split across too many text boxes.", slide_id=slide.slide_id, evidence={"text_boxes_per_100_characters": fragmentation}))
-        elif fragmentation > thresholds.text_boxes_per_100_characters_warn:
-            slide.issues.append(factory.create("PPTX_TEXT_FRAGMENTATION", "warning", "editability", "Text box fragmentation is high.", slide_id=slide.slide_id, evidence={"text_boxes_per_100_characters": fragmentation}))
+        fragmentation_evidence = {
+            "text_boxes_per_100_characters": fragmentation,
+            "unstructured_text_boxes_per_100_characters": effective_fragmentation,
+            "source_bound_component_item_count": len(source_bound_component_items),
+            "source_bound_component_items_exempted": exempt_component_items,
+            "qa_route": route,
+        }
+        if effective_fragmentation > thresholds.text_boxes_per_100_characters_error:
+            slide.issues.append(factory.create("PPTX_TEXT_FRAGMENTATION", "error", "editability", "Text is split across too many text boxes.", slide_id=slide.slide_id, evidence=fragmentation_evidence))
+        elif effective_fragmentation > thresholds.text_boxes_per_100_characters_warn:
+            slide.issues.append(factory.create("PPTX_TEXT_FRAGMENTATION", "warning", "editability", "Text box fragmentation is high.", slide_id=slide.slide_id, evidence=fragmentation_evidence))
 
     native_text = "\n".join(obj.text for obj in slide.objects if obj.shape_type == "text")
     for expected in expected_texts:

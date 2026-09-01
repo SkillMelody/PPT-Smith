@@ -61,10 +61,12 @@ def inspect_generated(
     *,
     style: dict[str, Any] | None = None,
     ppt_ir: dict[str, Any] | None = None,
+    slide_width: int | None = None,
+    route: str = "standard",
 ) -> dict[str, Any]:
     deck_path = tmp_path / "generated.pptx"
     deck = Presentation()
-    deck.slide_width = Inches(13.333)
+    deck.slide_width = slide_width if slide_width is not None else Inches(13.333)
     deck.slide_height = Inches(7.5)
     slide = deck.slides.add_slide(deck.slide_layouts[6])
     build_slide(slide)
@@ -89,6 +91,7 @@ def inspect_generated(
                     "font_primary": ["Aptos"],
                 },
             },
+            route=route,
         )
     )
 
@@ -392,6 +395,27 @@ def test_semantic_metric_wall_is_not_reported_as_text_fragmentation(
     assert "PPTX_TEXT_FRAGMENTATION" not in issue_codes(report)
 
 
+def test_source_bound_component_items_are_not_reported_as_text_fragmentation(
+    tmp_path: Path,
+) -> None:
+    def build(slide: Any) -> None:
+        title = slide.shapes.add_textbox(Inches(0.7), Inches(0.4), Inches(8), Inches(0.5))
+        title.name = "bind:slide:multi:title"
+        title.text = "Structured labels"
+        for index, text in enumerate(tuple("ABCDEFGHIJKL")):
+            box = slide.shapes.add_textbox(
+                Inches(0.7 + (index % 4) * 2.5),
+                Inches(1.4 + (index // 4) * 2.0),
+                Inches(1.8),
+                Inches(0.5),
+            )
+            box.name = f"bind:block:multi:stages:item:{index}"
+            box.text = text
+
+    report = inspect_generated(tmp_path, build, route="template")
+    assert "PPTX_TEXT_FRAGMENTATION" not in issue_codes(report)
+
+
 def test_color_drift_detected() -> None:
     report = inspect_fixture("color-drift")
     assert "STYLE_COLOR_DRIFT" in issue_codes(report)
@@ -407,6 +431,46 @@ def test_fragmentation_thresholds_fire() -> None:
 def test_out_of_bounds_detected() -> None:
     report = inspect_fixture("object-out-of-bounds")
     assert {"PPTX_TEXT_OUT_OF_BOUNDS", "GEOMETRY_OBJECT_OUT_OF_BOUNDS"} & issue_codes(report)
+
+
+def test_object_one_emu_inside_slide_is_not_rejected_by_rounded_inches(tmp_path: Path) -> None:
+    slide_width = 12_192_000
+
+    def build(slide: Any) -> None:
+        shape = slide.shapes.add_shape(
+            MSO_AUTO_SHAPE_TYPE.RECTANGLE,
+            10_156_944,
+            Inches(1.4),
+            2_035_055,
+            Inches(2.5),
+        )
+        shape.name = "decoration:right-edge-component"
+
+    report = inspect_generated(tmp_path, build, slide_width=slide_width)
+
+    assert "GEOMETRY_OBJECT_OUT_OF_BOUNDS" not in issue_codes(report)
+
+
+def test_group_children_use_group_coordinate_space_for_bounds(tmp_path: Path) -> None:
+    def build(slide: Any) -> None:
+        group = slide.shapes.add_group_shape()
+        for index, left in enumerate((20, 22)):
+            child = group.shapes.add_shape(
+                MSO_AUTO_SHAPE_TYPE.RECTANGLE,
+                Inches(left),
+                Inches(10),
+                Inches(1),
+                Inches(1),
+            )
+            child.name = f"decoration:group-child:{index}"
+        group.name = "decoration:group-shell"
+        group.left = Inches(1)
+        group.top = Inches(1)
+        group.width = Inches(4)
+        group.height = Inches(2)
+
+    report = inspect_generated(tmp_path, build)
+    assert "GEOMETRY_OBJECT_OUT_OF_BOUNDS" not in issue_codes(report)
 
 
 @pytest.mark.parametrize(

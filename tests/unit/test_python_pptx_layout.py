@@ -53,3 +53,24 @@ def test_two_primary_objects_stack_in_main_zone_when_generated_support_is_presen
     assert chart == pytest.approx((0.55, 1.8, 8.35, 2.49))
     assert table == pytest.approx((0.55, 4.53, 8.35, 1.77))
     assert support == (9.14, 1.8, 3.83, 4.5)
+
+
+def test_semantic_diagram_gets_dominant_canvas_and_existing_objects_stack_as_support() -> None:
+    objects = [
+        {
+            "id": "roadmap",
+            "type": "diagram",
+            "component_type": "phase_roadmap",
+            "delivery_preferences": {"preferred_route": "native_diagram"},
+        },
+        {"id": "process", "type": "diagram", "component_type": "process"},
+        {"id": "evidence", "type": "shape", "component_type": "evidence_block"},
+    ]
+
+    roadmap = _object_frame(objects, 0, y=1.8, content_height=4.5, style={"margin_left": 0.55, "card_gap": 0.2})
+    process = _object_frame(objects, 1, y=1.8, content_height=4.5, style={"margin_left": 0.55, "card_gap": 0.2})
+    evidence = _object_frame(objects, 2, y=1.8, content_height=4.5, style={"margin_left": 0.55, "card_gap": 0.2})
+
+    assert roadmap == (0.55, 1.8, 8.35, 4.5)
+    assert process == pytest.approx((9.14, 1.8, 3.83, 2.13))
+    assert evidence == pytest.approx((9.14, 4.17, 3.83, 2.13))
