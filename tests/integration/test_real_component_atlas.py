@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from engine.component_atlas import (
     build_component_atlas,
@@ -17,7 +20,19 @@ from engine.manuscript_component_planner import build_manuscript_component_compo
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PROJECT = ROOT / "projects" / "state-ai-full-native-template_ppt169_20260828"
+_HISTORICAL_PROJECT = ROOT / "projects" / "state-ai-full-native-template_ppt169_20260828"
+_CONFIGURED_PROJECT = os.environ.get("PPT_SMITH_MCKINSEY_FIXTURE")
+_PROJECT_CANDIDATE = (
+    Path(_CONFIGURED_PROJECT).expanduser()
+    if _CONFIGURED_PROJECT
+    else _HISTORICAL_PROJECT
+)
+PROJECT = _PROJECT_CANDIDATE if _PROJECT_CANDIDATE.is_dir() else None
+
+pytestmark = pytest.mark.skipif(
+    PROJECT is None,
+    reason="McKinsey reference fixture not installed",
+)
 
 
 def test_real_mckinsey_pyramid_is_reviewed_for_three_and_five_levels() -> None:
