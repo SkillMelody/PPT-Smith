@@ -196,6 +196,8 @@ def main(argv: list[str] | None = None) -> int:
     plan_manuscript_components.add_argument("--component-atlas", required=True)
     plan_manuscript_components.add_argument("--content-bindings", required=True)
     plan_manuscript_components.add_argument("--storyboard", required=True)
+    plan_manuscript_components.add_argument("--evidence-ledger")
+    plan_manuscript_components.add_argument("--delivery-candidate", action="store_true")
     plan_manuscript_components.add_argument("--json-out")
 
     args = parser.parse_args(argv)
@@ -221,8 +223,14 @@ def main(argv: list[str] | None = None) -> int:
                 Path(args.content_bindings).read_text(encoding="utf-8")
             )
             storyboard = json.loads(Path(args.storyboard).read_text(encoding="utf-8"))
+            evidence_ledger = (
+                json.loads(Path(args.evidence_ledger).read_text(encoding="utf-8"))
+                if args.evidence_ledger else None
+            )
             composition = build_manuscript_component_composition(
                 atlas, content_bindings, storyboard,
+                evidence_ledger=evidence_ledger,
+                enforce_content_integrity=args.delivery_candidate,
             )
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"error: {exc}", file=sys.stderr)

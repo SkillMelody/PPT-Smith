@@ -10,6 +10,7 @@ from copy import deepcopy
 import re
 
 from .component_atlas import resolve_component_binding, select_component
+from .content_integrity_gate import evaluate_template_content_integrity
 
 
 ROUTES = {
@@ -357,6 +358,9 @@ def build_manuscript_component_composition(
     atlas: dict,
     content_bindings: dict,
     storyboard: dict,
+    *,
+    evidence_ledger: dict | None = None,
+    enforce_content_integrity: bool = False,
 ) -> dict:
     if not isinstance(atlas, dict) or atlas.get("status") != "reviewed":
         raise ValueError("manuscript component planning requires a reviewed atlas")
@@ -373,6 +377,17 @@ def build_manuscript_component_composition(
     storyboard_slides = storyboard.get("slides") if isinstance(storyboard, dict) else None
     if not isinstance(storyboard_slides, list) or not storyboard_slides:
         raise ValueError("storyboard requires a non-empty slides list")
+
+    content_integrity = {"status": "not_enforced"}
+    if enforce_content_integrity:
+        if evidence_ledger is None:
+            raise ValueError("CONTENT_INTEGRITY_LEDGER_REQUIRED")
+        content_integrity = evaluate_template_content_integrity(
+            content_bindings, evidence_ledger,
+        )
+        if content_integrity["status"] != "pass":
+            codes = sorted({issue["code"] for issue in content_integrity["issues"]})
+            raise ValueError(f"CONTENT_INTEGRITY_FAILED: {','.join(codes)}")
 
     by_id = {
         slide.get("id"): slide
@@ -538,6 +553,7 @@ def build_manuscript_component_composition(
         "template_slide_count": template_slide_count,
         "pages": pages,
         "unsupported_pages": unsupported_pages,
+        "content_integrity": content_integrity,
         "coverage": {
             "status": coverage_status,
             "total_pages": total_pages,
