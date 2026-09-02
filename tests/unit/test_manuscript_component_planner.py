@@ -69,13 +69,21 @@ def _atlas() -> dict:
     }
 
 
-def _bindings(*, finding_count: int = 3) -> dict:
+def _bindings(*, finding_count: int = 3, explicit_labels: bool = True) -> dict:
+    finding_items = (
+        [
+            {"title": f"发现 {index + 1}", "detail": f"证据 {index + 1}"}
+            for index in range(finding_count)
+        ]
+        if explicit_labels
+        else [f"发现 {index + 1}" for index in range(finding_count)]
+    )
     return {
         "schema": "state_ai_native_content_bindings.v1",
         "slides": [{
             "id": "key_findings",
             "title": "关键发现",
-            "items": [f"发现 {index + 1}" for index in range(finding_count)],
+            "items": finding_items,
         }, {
             "id": "path_forward",
             "title": "前进路径",
@@ -126,8 +134,8 @@ def test_manuscript_planner_generates_supported_slots_and_reports_partial_covera
         "x": 0.07, "y": 0.1, "w": 0.86, "h": 0.8,
     }
     first_element = composition["pages"][0]["components"][0]["elements"][0]
-    assert first_element["labels"]["title"]["text"] == "要点 1"
-    assert first_element["labels"]["detail"]["text"] == "发现 1"
+    assert first_element["labels"]["title"]["text"] == "发现 1"
+    assert first_element["labels"]["detail"]["text"] == "证据 1"
     assert composition["pages"][1]["components"][0]["semantic_use"] == "prioritization"
     assert composition["pages"][1]["components"][0]["elements"][0]["text"] == "设定雄心"
     assert composition["unsupported_pages"] == [{
@@ -149,6 +157,19 @@ def test_manuscript_planner_reports_capacity_mismatch_without_forcing_a_componen
     assert rejected["purpose"] == "key_findings"
     assert rejected["reason_code"] == "no_component_match"
     assert "capacity" in rejected["reason"]
+
+
+def test_manuscript_planner_rejects_missing_explicit_extended_labels() -> None:
+    composition = build_manuscript_component_composition(
+        _atlas(), _bindings(explicit_labels=False), _storyboard(),
+    )
+
+    rejected = next(
+        page for page in composition["unsupported_pages"]
+        if page["purpose"] == "key_findings"
+    )
+    assert rejected["reason_code"] == "component_binding_unavailable"
+    assert "requires explicit label field 'title'" in rejected["reason"]
 
 
 def test_manuscript_planner_cli_writes_composition_and_coverage(tmp_path: Path) -> None:
@@ -228,7 +249,11 @@ def test_manuscript_planner_routes_cover_chapter_and_closing_without_placeholder
     bindings = {"slides": [{
         "id": "cover",
         "title": "2025 年 AI 现状",
-        "subtitle": "Agents、创新与转型",
+        "items": [
+            {"title": "Agents", "detail": "自主执行复杂任务"},
+            {"title": "创新", "detail": "创新价值最先显现"},
+            {"title": "转型", "detail": "规模化依赖工作流重构"},
+        ],
     }, {
         "id": "commentary",
         "title": "从试验走向规模",
@@ -314,7 +339,13 @@ def test_manuscript_planner_routes_remaining_relationship_pages_without_invented
     bindings = {"slides": [{
         "id": "agents",
         "title": "Agents",
-        "items": ["23% 已规模化", "39% 正在试验", "多数仅覆盖一至两个职能"],
+        "items": [{
+            "title": "规模化",
+            "detail": "23% 已规模化",
+        }, {
+            "title": "试验阶段",
+            "detail": "39% 正在试验；多数仅覆盖一至两个职能",
+        }],
     }, {
         "id": "adoption",
         "title": "采用闭环",
@@ -322,11 +353,23 @@ def test_manuscript_planner_routes_remaining_relationship_pages_without_invented
     }, {
         "id": "workflow",
         "title": "工作流",
-        "items": ["从单点用例升级为端到端重构", "高绩效者正在重塑工作流"],
+        "items": [{
+            "title": "单点用例",
+            "detail": "从局部效率工具开始",
+        }, {
+            "title": "端到端重构",
+            "detail": "高绩效者正在重塑工作流",
+        }],
     }, {
         "id": "actions",
         "title": "行动框架",
-        "items": ["界定价值目标", "选择高价值工作流", "规模化部署并治理"],
+        "items": [{
+            "title": "界定价值目标", "detail": "明确业务结果与衡量指标",
+        }, {
+            "title": "选择高价值工作流", "detail": "优先重构端到端流程",
+        }, {
+            "title": "规模化部署并治理", "detail": "同步建立风险控制",
+        }],
     }]}
     storyboard = {"slides": [{
         "purpose": "agents",

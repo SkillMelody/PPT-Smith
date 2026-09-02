@@ -7,7 +7,6 @@ forces a page into an unrelated component merely to increase coverage.
 from __future__ import annotations
 
 from copy import deepcopy
-import re
 
 from .component_atlas import resolve_component_binding, select_component
 from .content_integrity_gate import evaluate_template_content_integrity
@@ -249,35 +248,9 @@ def _binding_name(purpose: str, field: str, index: int) -> str:
 
 def _page_items(content_page: dict, layout_pattern: str) -> list | None:
     items = content_page.get("items")
-    if layout_pattern == "two-sided contrast" and isinstance(items, list) and len(items) >= 2:
-        normalized: list[str] = []
-        for index, item in enumerate(items):
-            try:
-                text, _data = _item_text(item, purpose="two-sided contrast", index=index)
-            except ValueError:
-                return None
-            normalized.append(text)
-        return [{
-            "title": "规模化",
-            "detail": normalized[0],
-        }, {
-            "title": "试验阶段",
-            "detail": "；".join(normalized[1:]),
-        }]
     if isinstance(items, list) and items:
         return items
     subtitle = content_page.get("subtitle")
-    if layout_pattern == "three-keyword cover" and isinstance(subtitle, str):
-        keywords = [
-            keyword.strip()
-            for keyword in re.split(r"[、,，/|与]+", subtitle)
-            if keyword.strip()
-        ]
-        if len(keywords) == 3:
-            return [
-                {"title": keyword, "detail": "核心议题"}
-                for keyword in keywords
-            ]
     if layout_pattern == "closing statement" and isinstance(subtitle, str) and subtitle.strip():
         return [{"title": subtitle.strip()}]
     return None
@@ -297,13 +270,11 @@ def _label_text(
         return explicit.strip()
     if field == "detail":
         return item_text
-    if field == "title":
-        return f"要点 {index + 1}" if "detail" in fields else item_text
-    if field in {"badge", "metric_value"}:
-        return str(index + 1)
-    if field == "metric_label":
-        return "顺序"
-    raise ValueError(f"cannot derive component label field {field!r}")
+    if field == "title" and fields == {"title"}:
+        return item_text
+    raise ValueError(
+        f"content item {index} requires explicit label field {field!r}"
+    )
 
 
 def _elements(*, purpose: str, items: list, resolved: dict) -> list[dict]:

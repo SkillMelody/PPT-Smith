@@ -80,6 +80,23 @@ def test_gate_passes_complete_source_backed_contract() -> None:
     assert result["coverage"]["weighted_ratio"] == 1.0
 
 
+@pytest.mark.parametrize("text", ["要点 1", "顺序", "核心议题", "阶段 3"])
+def test_delivery_gate_rejects_generic_copy(text: str) -> None:
+    bindings = _bindings(["src:para_1", "src:para_2"])
+    bindings["slides"][0]["items"] = [{
+        "title": text,
+        "detail": "Revenue increased 36%",
+    }]
+
+    result = evaluate_template_content_integrity(bindings, _ledger())
+
+    assert any(
+        issue["code"] == "GENERIC_DELIVERY_LABEL"
+        and issue["text"] == text
+        for issue in result["issues"]
+    )
+
+
 def test_delivery_planner_refuses_without_evidence_ledger() -> None:
     with pytest.raises(ValueError, match="CONTENT_INTEGRITY_LEDGER_REQUIRED"):
         build_manuscript_component_composition(
