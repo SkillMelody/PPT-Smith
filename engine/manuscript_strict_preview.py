@@ -24,7 +24,15 @@ def _indexed_item(items: list[dict], index: int) -> dict:
     return items[index]
 
 
-def _add_component_binding(blocks: dict[str, dict], binding_name: str, text: str, purpose: str) -> None:
+def _add_component_binding(
+    blocks: dict[str, dict],
+    binding_name: str,
+    text: str,
+    purpose: str,
+    *,
+    source_ref: dict | None = None,
+    evidence_id: str | None = None,
+) -> None:
     parts = binding_name.split(":")
     if (
         len(parts) != 6
@@ -47,6 +55,18 @@ def _add_component_binding(blocks: dict[str, dict], binding_name: str, text: str
     if existing is not None and existing != text:
         raise ValueError(f"conflicting component binding value for {binding_name!r}")
     item[target_field] = text
+    for metadata_field, value in (
+        ("source_ref", deepcopy(source_ref) if isinstance(source_ref, dict) else None),
+        ("evidence_id", evidence_id if isinstance(evidence_id, str) else None),
+    ):
+        if value is None:
+            continue
+        existing_metadata = item.get(metadata_field)
+        if existing_metadata is not None and existing_metadata != value:
+            raise ValueError(
+                f"conflicting {metadata_field} for component item {item_index}"
+            )
+        item[metadata_field] = value
 
 
 def _component_bindings(operation: dict, blocks: dict[str, dict], purpose: str) -> None:
@@ -60,7 +80,11 @@ def _component_bindings(operation: dict, blocks: dict[str, dict], purpose: str) 
             text = element.get("text")
             if not isinstance(text, str):
                 raise ValueError("legacy component element requires text")
-            _add_component_binding(blocks, element["binding_name"], text, purpose)
+            _add_component_binding(
+                blocks, element["binding_name"], text, purpose,
+                source_ref=element.get("source_ref"),
+                evidence_id=element.get("evidence_id"),
+            )
             continue
         labels = element.get("labels")
         if not isinstance(labels, dict) or not labels:
@@ -71,7 +95,11 @@ def _component_bindings(operation: dict, blocks: dict[str, dict], purpose: str) 
             text, binding_name = label.get("text"), label.get("binding_name")
             if not isinstance(text, str) or not isinstance(binding_name, str):
                 raise ValueError("component label requires text and binding_name")
-            _add_component_binding(blocks, binding_name, text, purpose)
+            _add_component_binding(
+                blocks, binding_name, text, purpose,
+                source_ref=label.get("source_ref"),
+                evidence_id=label.get("evidence_id"),
+            )
 
 
 def _text_bindings(operation: dict, blocks: dict[str, dict], purpose: str) -> None:
@@ -85,7 +113,11 @@ def _text_bindings(operation: dict, blocks: dict[str, dict], purpose: str) -> No
         text = text_binding.get("text")
         if not isinstance(binding_name, str) or not isinstance(text, str):
             raise ValueError("component text binding requires binding_name and text")
-        _add_component_binding(blocks, binding_name, text, purpose)
+        _add_component_binding(
+            blocks, binding_name, text, purpose,
+            source_ref=text_binding.get("source_ref"),
+            evidence_id=text_binding.get("evidence_id"),
+        )
 
 
 def _append_chart(ir_slide: dict, chart: dict) -> None:
@@ -319,6 +351,21 @@ def build_manuscript_strict_preview_bundle(
         ir_slide["blocks"] = list(blocks_by_purpose[ir_slide["id"]].values())
 
     combined_operations = title_operations + deepcopy(operations) + placeholder_operations
+    evidence_ids: set[str] = set()
+    source_references: set[tuple[str, str]] = set()
+    for ir_slide in ir_slides:
+        for block in ir_slide["blocks"]:
+            for item in block.get("items", []):
+                evidence_id = item.get("evidence_id")
+                if isinstance(evidence_id, str):
+                    evidence_ids.add(evidence_id)
+                source_ref = item.get("source_ref")
+                if (
+                    isinstance(source_ref, dict)
+                    and isinstance(source_ref.get("source_id"), str)
+                    and isinstance(source_ref.get("loc"), str)
+                ):
+                    source_references.add((source_ref["source_id"], source_ref["loc"]))
     return {
         "schema_version": "1.0.0",
         "ir": {"slides": ir_slides},
@@ -332,5 +379,7 @@ def build_manuscript_strict_preview_bundle(
             "title_operations": len(title_operations),
             "placeholder_operations": len(placeholder_operations),
             "total_operations": len(combined_operations),
+            "evidence_units": len(evidence_ids),
+            "source_references": len(source_references),
         },
     }

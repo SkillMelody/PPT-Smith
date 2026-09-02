@@ -292,6 +292,10 @@ def _elements(*, purpose: str, items: list, resolved: dict) -> list[dict]:
                 else len(items) - index
             ),
             "binding_name": f"bind:block:{purpose}:component_items:item:{index}",
+            **({"source_ref": deepcopy(data["source_ref"])}
+               if isinstance(data.get("source_ref"), dict) else {}),
+            **({"evidence_id": data["evidence_id"]}
+               if isinstance(data.get("evidence_id"), str) else {}),
         } for index, (text, data) in enumerate(normalized)]
 
     item_groups = resolved.get("item_groups")
@@ -319,6 +323,10 @@ def _elements(*, purpose: str, items: list, resolved: dict) -> list[dict]:
                     fields=fields,
                 ),
                 "binding_name": _binding_name(purpose, field, index),
+                **({"source_ref": deepcopy(data["source_ref"])}
+                   if isinstance(data.get("source_ref"), dict) else {}),
+                **({"evidence_id": data["evidence_id"]}
+                   if isinstance(data.get("evidence_id"), str) else {}),
             }
             for field in sorted(fields)
         },

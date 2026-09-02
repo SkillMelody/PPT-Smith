@@ -49,7 +49,7 @@ def test_preview_bundle_builds_ir_titles_components_and_honest_placeholders() ->
             "value": None,
             "labels": {
                 "title": {
-                    "text": "要点 1",
+                    "text": "市场信号",
                     "binding_name": "bind:block:planned:component_items:item:0",
                 },
                 "detail": {
@@ -65,7 +65,7 @@ def test_preview_bundle_builds_ir_titles_components_and_honest_placeholders() ->
                     "binding_name": "bind:block:planned:component_badges:item:1",
                 },
                 "title": {
-                    "text": "要点 2",
+                    "text": "客户反馈",
                     "binding_name": "bind:block:planned:component_items:item:1",
                 },
                 "detail": {
@@ -89,13 +89,15 @@ def test_preview_bundle_builds_ir_titles_components_and_honest_placeholders() ->
         "title_operations": 2,
         "placeholder_operations": 1,
         "total_operations": 4,
+        "evidence_units": 0,
+        "source_references": 0,
     }
     slides = {slide["id"]: slide for slide in bundle["ir"]["slides"]}
     assert slides["planned"]["title"] == "已覆盖页"
     blocks = {block["id"]: block for block in slides["planned"]["blocks"]}
     assert blocks["component_items"]["items"] == [
-        {"text": "要点 1", "detail": "发现 A"},
-        {"text": "要点 2", "detail": "发现 B"},
+        {"text": "市场信号", "detail": "发现 A"},
+        {"text": "客户反馈", "detail": "发现 B"},
     ]
     assert blocks["component_badges"]["items"][1]["text"] == "2"
     unsupported = {block["id"]: block for block in slides["unsupported"]["blocks"]}
@@ -289,3 +291,57 @@ def test_recursive_component_counts_use_semantic_elements_and_bound_native_objec
     assert expected_component_element_count(native_group_operation) == 4
     assert rendered_component_element_count(chart_operation, shapes) == 1
     assert rendered_component_element_count(native_group_operation, shapes) == 4
+
+
+def test_preview_bundle_preserves_item_source_refs_and_evidence_counts() -> None:
+    operation = {
+        "kind": "component_clone",
+        "destination_slide_index": 38,
+        "component_requirement": {
+            "semantic_use": "capability cards",
+            "family": "card_grid",
+            "element_count": 1,
+        },
+        "elements": [{
+            "value": None,
+            "labels": {
+                "title": {
+                    "text": "Revenue increased",
+                    "binding_name": "bind:block:growth:component_items:item:0",
+                    "source_ref": {"source_id": "src", "loc": "para_1"},
+                    "evidence_id": "src:para_1",
+                },
+                "detail": {
+                    "text": "Revenue increased 36%",
+                    "binding_name": "bind:block:growth:component_items:detail:0",
+                    "source_ref": {"source_id": "src", "loc": "para_1"},
+                    "evidence_id": "src:para_1",
+                },
+            },
+        }],
+    }
+    bundle = build_manuscript_strict_preview_bundle(
+        content_bindings={"slides": [{
+            "id": "growth",
+            "title": "Revenue increased",
+            "items": ["Revenue increased 36%"],
+        }]},
+        storyboard={"slides": [{"purpose": "growth"}]},
+        composition={
+            "source_page_count": 1,
+            "template_slide_count": 37,
+            "pages": [{
+                "output_page_index": 1,
+                "purpose": "growth",
+                "destination_slide_index": 38,
+            }],
+            "unsupported_pages": [],
+        },
+        component_plan={"operations": [operation]},
+    )
+
+    item = bundle["ir"]["slides"][0]["blocks"][0]["items"][0]
+    assert item["source_ref"] == {"source_id": "src", "loc": "para_1"}
+    assert item["evidence_id"] == "src:para_1"
+    assert bundle["summary"]["evidence_units"] == 1
+    assert bundle["summary"]["source_references"] == 1

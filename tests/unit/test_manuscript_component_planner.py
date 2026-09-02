@@ -172,6 +172,24 @@ def test_manuscript_planner_rejects_missing_explicit_extended_labels() -> None:
     assert "requires explicit label field 'title'" in rejected["reason"]
 
 
+def test_manuscript_planner_carries_item_evidence_metadata_into_labels() -> None:
+    bindings = _bindings()
+    bindings["slides"][0]["items"][0].update({
+        "evidence_id": "src:para_1",
+        "source_ref": {"source_id": "src", "loc": "para_1"},
+    })
+
+    composition = build_manuscript_component_composition(
+        _atlas(), bindings, _storyboard(),
+    )
+
+    labels = composition["pages"][0]["components"][0]["elements"][0]["labels"]
+    assert labels["title"]["evidence_id"] == "src:para_1"
+    assert labels["detail"]["source_ref"] == {
+        "source_id": "src", "loc": "para_1",
+    }
+
+
 def test_manuscript_planner_cli_writes_composition_and_coverage(tmp_path: Path) -> None:
     atlas_path = tmp_path / "atlas.json"
     bindings_path = tmp_path / "bindings.json"
