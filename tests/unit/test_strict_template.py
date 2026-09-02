@@ -18,6 +18,7 @@ from pptx.util import Inches
 from engine.component_atlas import build_component_atlas
 from engine.component_composer import build_component_plan
 from engine.strict_template import (
+    _asset_preservation,
     _inspection_delta,
     execute_strict_template as _execute_strict_template,
 )
@@ -132,6 +133,82 @@ def execute_strict_template(**kwargs) -> dict:
     kwargs.setdefault("evidence_ledger", evidence_ledger)
     kwargs.setdefault("content_bindings", content_bindings)
     return _execute_strict_template(**kwargs)
+
+
+def _asset_zip(
+    path: Path,
+    *,
+    media: dict[str, bytes],
+    relationships: dict[str, str] | None = None,
+) -> Path:
+    relationship_xml = "".join(
+        f'<Relationship Id="{relationship_id}" '
+        f'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+        f'Target="{target}"/>'
+        for relationship_id, target in (relationships or {}).items()
+    )
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, payload in media.items():
+            archive.writestr(f"ppt/media/{name}", payload)
+        if relationships is not None:
+            archive.writestr(
+                "ppt/slides/_rels/slide1.xml.rels",
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                f"{relationship_xml}</Relationships>",
+            )
+    return path
+
+
+def test_asset_preservation_ignores_unreachable_source_media(tmp_path: Path) -> None:
+    source = _asset_zip(
+        tmp_path / "source.pptx",
+        media={"image1.png": b"used", "image2.png": b"unused"},
+    )
+    output = _asset_zip(
+        tmp_path / "output.pptx",
+        media={"image1.png": b"used"},
+    )
+
+    assert _asset_preservation(source, output) == {
+        "status": "pass",
+        "verified_parts": 1,
+        "changed_parts": [],
+        "broken_relationships": [],
+    }
+
+
+def test_asset_preservation_rejects_changed_output_media(tmp_path: Path) -> None:
+    source = _asset_zip(
+        tmp_path / "source.pptx", media={"image1.png": b"original"},
+    )
+    output = _asset_zip(
+        tmp_path / "output.pptx", media={"image1.png": b"changed"},
+    )
+
+    report = _asset_preservation(source, output)
+
+    assert report["status"] == "fail"
+    assert report["changed_parts"] == ["ppt/media/image1.png"]
+
+
+def test_asset_preservation_rejects_broken_output_asset_relationship(tmp_path: Path) -> None:
+    source = _asset_zip(
+        tmp_path / "source.pptx", media={"image1.png": b"original"},
+    )
+    output = _asset_zip(
+        tmp_path / "output.pptx",
+        media={},
+        relationships={"rId1": "../media/missing.png"},
+    )
+
+    report = _asset_preservation(source, output)
+
+    assert report["status"] == "fail"
+    assert report["broken_relationships"] == [{
+        "relationship_part": "ppt/slides/_rels/slide1.xml.rels",
+        "relationship_id": "rId1",
+        "target": "ppt/media/missing.png",
+    }]
 
 
 def test_strict_delivery_rejects_missing_content_integrity_inputs(tmp_path: Path) -> None:

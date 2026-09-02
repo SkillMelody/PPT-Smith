@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import shutil
+import posixpath
 from pathlib import Path
 import zipfile
 import json
 from tempfile import TemporaryDirectory
+from xml.etree import ElementTree
 
 from .authored_page import verify_authored_page
 from .component_atlas import (
@@ -37,12 +39,49 @@ ASSET_PREFIXES = ("ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/", "ppt/m
 
 def _asset_preservation(template_pptx: Path, output_pptx: Path) -> dict:
     with zipfile.ZipFile(template_pptx) as source, zipfile.ZipFile(output_pptx) as output:
-        source_assets = [name for name in source.namelist() if name.startswith(ASSET_PREFIXES)]
-        changed = [name for name in source_assets if name not in output.namelist() or source.read(name) != output.read(name)]
+        source_names = set(source.namelist())
+        output_names = set(output.namelist())
+        output_assets = sorted(
+            name for name in output_names if name.startswith(ASSET_PREFIXES)
+        )
+        changed = [
+            name for name in output_assets
+            if name not in source_names or source.read(name) != output.read(name)
+        ]
+        broken_relationships: list[dict] = []
+        for relationship_part in sorted(
+            name for name in output_names if name.endswith(".rels")
+        ):
+            root = ElementTree.fromstring(output.read(relationship_part))
+            relationship_name = posixpath.basename(relationship_part)[:-5]
+            owner_directory = posixpath.dirname(
+                posixpath.dirname(relationship_part)
+            )
+            owner_part = posixpath.join(owner_directory, relationship_name)
+            target_base = posixpath.dirname(owner_part)
+            for relationship in root:
+                if not relationship.tag.endswith("Relationship"):
+                    continue
+                if relationship.get("TargetMode") == "External":
+                    continue
+                raw_target = relationship.get("Target", "")
+                if raw_target.startswith("/"):
+                    target = posixpath.normpath(raw_target.lstrip("/"))
+                else:
+                    target = posixpath.normpath(
+                        posixpath.join(target_base, raw_target)
+                    )
+                if target.startswith(ASSET_PREFIXES) and target not in output_names:
+                    broken_relationships.append({
+                        "relationship_part": relationship_part,
+                        "relationship_id": relationship.get("Id"),
+                        "target": target,
+                    })
     return {
-        "status": "pass" if not changed else "fail",
-        "verified_parts": len(source_assets),
+        "status": "pass" if not changed and not broken_relationships else "fail",
+        "verified_parts": len(output_assets),
         "changed_parts": changed,
+        "broken_relationships": broken_relationships,
     }
 
 
