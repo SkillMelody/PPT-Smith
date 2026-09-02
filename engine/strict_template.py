@@ -939,6 +939,8 @@ def execute_strict_template(
     output_pptx: str | Path,
     render_engine: str = "auto",
     component_atlas: dict | None = None,
+    evidence_ledger: dict | None = None,
+    content_bindings: dict | None = None,
 ) -> dict:
     """Create a strictly template-native candidate and prove its delivery gates.
 
@@ -966,6 +968,20 @@ def execute_strict_template(
                 "component_atlas_source_sha256": atlas_sha,
                 "template_source_sha256": template_sha,
             }
+    if evidence_ledger is None or content_bindings is None:
+        return {"ok": False, "code": "CONTENT_INTEGRITY_REQUIRED"}
+
+    from .content_integrity_gate import evaluate_template_content_integrity
+
+    content_integrity = evaluate_template_content_integrity(
+        content_bindings, evidence_ledger,
+    )
+    if content_integrity.get("status") != "pass":
+        return {
+            "ok": False,
+            "code": "CONTENT_INTEGRITY_FAILED",
+            "content_integrity": content_integrity,
+        }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix=".pptsmith-template-work-", dir=output_path.parent) as work_dir:
         working_path = Path(work_dir) / "candidate-with-template-pages.pptx"
@@ -1030,6 +1046,7 @@ def execute_strict_template(
         "inspection": inspection,
         "render": render,
         "asset_preservation": assets,
+        "content_integrity": content_integrity,
         "output_pptx": str(output_path),
         "visual_review": "required_before_final_delivery",
     }

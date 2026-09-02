@@ -17,7 +17,10 @@ from pptx.util import Inches
 
 from engine.component_atlas import build_component_atlas
 from engine.component_composer import build_component_plan
-from engine.strict_template import _inspection_delta, execute_strict_template
+from engine.strict_template import (
+    _inspection_delta,
+    execute_strict_template as _execute_strict_template,
+)
 from engine.structural_parser import parse_source
 
 
@@ -94,6 +97,85 @@ def _plan() -> dict:
             },
         ],
     }
+
+
+def _content_integrity_inputs() -> tuple[dict, dict]:
+    evidence_ledger = {
+        "schema_version": "1.0.0",
+        "sources": [{"source_id": "doc", "sha256": "sha256:test"}],
+        "evidence_units": [{
+            "evidence_id": "doc:para_1",
+            "source_ref": {"source_id": "doc", "loc": "para_1"},
+            "kind": "claim",
+            "text": "The delivery assertion is source-backed.",
+            "entities": [],
+            "numbers": [],
+            "relations": [],
+            "salience": 1.0,
+            "must_keep": False,
+            "exhibit_id": None,
+        }],
+    }
+    content_bindings = {"slides": [{
+        "id": "growth",
+        "archetype": "body",
+        "assertion": "The delivery assertion is source-backed.",
+        "evidence_ids": ["doc:para_1"],
+        "required_evidence_ids": [],
+        "omissions": [],
+    }]}
+    return evidence_ledger, content_bindings
+
+
+def execute_strict_template(**kwargs) -> dict:
+    evidence_ledger, content_bindings = _content_integrity_inputs()
+    kwargs.setdefault("evidence_ledger", evidence_ledger)
+    kwargs.setdefault("content_bindings", content_bindings)
+    return _execute_strict_template(**kwargs)
+
+
+def test_strict_delivery_rejects_missing_content_integrity_inputs(tmp_path: Path) -> None:
+    template = tmp_path / "template.pptx"
+    _reference_template(template)
+
+    result = _execute_strict_template(
+        request=_request(template),
+        template_pptx=template,
+        strict_plan=_plan(),
+        ir=_ir(),
+        source_docs={},
+        output_pptx=tmp_path / "candidate.pptx",
+    )
+
+    assert result == {"ok": False, "code": "CONTENT_INTEGRITY_REQUIRED"}
+
+
+def test_strict_delivery_rejects_failed_content_integrity_before_writing(tmp_path: Path) -> None:
+    template = tmp_path / "template.pptx"
+    output = tmp_path / "candidate.pptx"
+    _reference_template(template)
+    evidence_ledger, _ = _content_integrity_inputs()
+
+    result = _execute_strict_template(
+        request=_request(template),
+        template_pptx=template,
+        strict_plan=_plan(),
+        ir=_ir(),
+        source_docs={},
+        output_pptx=output,
+        evidence_ledger=evidence_ledger,
+        content_bindings={"slides": [{
+            "id": "growth",
+            "archetype": "body",
+            "assertion": "Unsupported assertion",
+            "evidence_ids": [],
+        }]},
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "CONTENT_INTEGRITY_FAILED"
+    assert result["content_integrity"]["status"] == "fail"
+    assert not output.exists()
 
 
 def test_strict_template_preserves_template_assets_and_only_applies_bound_operations(tmp_path: Path) -> None:
@@ -1256,6 +1338,8 @@ def test_strict_template_cli_runs_only_the_declared_native_operations(tmp_path: 
     output = tmp_path / "strict-output.pptx"
     report = tmp_path / "report.json"
     atlas_path = tmp_path / "component-atlas.json"
+    evidence_path = tmp_path / "evidence-ledger.json"
+    bindings_path = tmp_path / "content-bindings.json"
     _reference_template(template)
     request.write_text(json.dumps(_request(template)), encoding="utf-8")
     plan.write_text(json.dumps(_plan()), encoding="utf-8")
@@ -1267,12 +1351,17 @@ def test_strict_template_cli_runs_only_the_declared_native_operations(tmp_path: 
         "source": {"sha256": _sha(template)},
         "components": [],
     }), encoding="utf-8")
+    evidence_ledger, content_bindings = _content_integrity_inputs()
+    evidence_path.write_text(json.dumps(evidence_ledger), encoding="utf-8")
+    bindings_path.write_text(json.dumps(content_bindings), encoding="utf-8")
 
     completed = subprocess.run(
         [
             sys.executable, "-m", "engine", "strict-template",
             "--request", str(request), "--template-pptx", str(template),
             "--plan", str(plan), "--ir", str(ir),
+            "--evidence-ledger", str(evidence_path),
+            "--content-bindings", str(bindings_path),
             "--component-atlas", str(atlas_path),
             "--source", f"doc:markdown:{source}", "--output-pptx", str(output),
             "--render-engine", "libreoffice", "--json-out", str(report),

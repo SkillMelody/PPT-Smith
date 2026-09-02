@@ -155,6 +155,8 @@ def main(argv: list[str] | None = None) -> int:
     strict_template.add_argument("--template-pptx", required=True)
     strict_template.add_argument("--plan", required=True)
     strict_template.add_argument("--ir", required=True)
+    strict_template.add_argument("--evidence-ledger", required=True)
+    strict_template.add_argument("--content-bindings", required=True)
     strict_template.add_argument("--component-atlas")
     strict_template.add_argument("--source", action="append", required=True, metavar="ID:TYPE:PATH")
     strict_template.add_argument("--output-pptx", required=True)
@@ -324,6 +326,12 @@ def main(argv: list[str] | None = None) -> int:
             component_atlas=(
                 json.loads(Path(args.component_atlas).read_text(encoding="utf-8"))
                 if args.component_atlas else None
+            ),
+            evidence_ledger=json.loads(
+                Path(args.evidence_ledger).read_text(encoding="utf-8")
+            ),
+            content_bindings=json.loads(
+                Path(args.content_bindings).read_text(encoding="utf-8")
             ),
         )
         _emit(result, args.json_out)
