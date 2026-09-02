@@ -13,6 +13,7 @@ thresholds so CLI users get a signal without extra wiring.
 
 from __future__ import annotations
 
+from .evidence_ledger import evidence_by_id
 from .source_doc import SourceDoc, parse_anchor
 
 DEFAULT_SECTION_THRESHOLD = 0.6
@@ -95,4 +96,65 @@ def coverage_report(ir: dict, docs: dict[str, SourceDoc], *,
         "section_threshold": section_threshold,
         "table_threshold": table_threshold,
         "sources": per_source,
+    }
+
+
+def _ratio(numerator: int | float, denominator: int | float) -> float:
+    return round(numerator / denominator, 4) if denominator else 1.0
+
+
+def evidence_coverage_report(content_bindings: dict, ledger: dict) -> dict:
+    """Measure selected and deliberately omitted evidence independently."""
+    units = evidence_by_id(ledger)
+    selected: set[str] = set()
+    omitted: set[str] = set()
+    for slide in content_bindings.get("slides", []) if isinstance(content_bindings, dict) else []:
+        if not isinstance(slide, dict):
+            continue
+        selected.update(
+            evidence_id for evidence_id in slide.get("evidence_ids", [])
+            if isinstance(evidence_id, str) and evidence_id in units
+        )
+        for omission in slide.get("omissions", []) or []:
+            if not isinstance(omission, dict):
+                continue
+            evidence_id, reason = omission.get("evidence_id"), omission.get("reason")
+            if (
+                isinstance(evidence_id, str)
+                and evidence_id in units
+                and isinstance(reason, str)
+                and reason.strip()
+            ):
+                omitted.add(evidence_id)
+
+    handled = selected | omitted
+    total_weight = sum(float(unit.get("salience", 0)) for unit in units.values())
+    selected_weight = sum(
+        float(units[evidence_id].get("salience", 0)) for evidence_id in selected
+    )
+    required = {
+        evidence_id for evidence_id, unit in units.items() if unit.get("must_keep")
+    }
+    numeric = {
+        evidence_id for evidence_id, unit in units.items()
+        if unit.get("kind") == "metric" or unit.get("numbers")
+    }
+    exhibits = {
+        evidence_id for evidence_id, unit in units.items()
+        if unit.get("kind") == "exhibit"
+    }
+    return {
+        "total_evidence": len(units),
+        "selected_evidence": len(selected),
+        "omitted_evidence": len(omitted),
+        "weighted_ratio": _ratio(selected_weight, total_weight),
+        "required_ratio": _ratio(len(required & handled), len(required)),
+        "numeric_ratio": _ratio(len(numeric & selected), len(numeric)),
+        "exhibit_ratio": _ratio(len(exhibits & handled), len(exhibits)),
+        "selected_evidence_ids": sorted(selected),
+        "omitted_evidence_ids": sorted(omitted),
+        "uncovered_evidence_ids": sorted(set(units) - handled),
+        "missing_required_evidence_ids": sorted(required - handled),
+        "missing_numeric_evidence_ids": sorted(numeric - selected),
+        "unhandled_exhibit_ids": sorted(exhibits - handled),
     }
