@@ -27,7 +27,9 @@ def evaluate_family_diversity(pages: list[dict]) -> dict:
             })
     generic_count = sum(page.get("family") in GENERIC_FAMILIES for page in body)
     generic_ratio = round(generic_count / len(body), 4) if body else 0.0
-    if generic_ratio > MAX_GENERIC_BODY_RATIO:
+    # A one- or two-page deck has no meaningful family distribution; the
+    # delivery floor applies once there are enough body pages to diversify.
+    if len(body) >= 3 and generic_ratio > MAX_GENERIC_BODY_RATIO:
         issues.append({
             "code": "GENERIC_COMPONENT_FAMILY_OVERUSED",
             "generic_family_ratio": generic_ratio,

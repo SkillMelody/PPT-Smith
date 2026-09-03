@@ -10,6 +10,7 @@ from copy import deepcopy
 
 from .component_atlas import resolve_component_binding, select_component
 from .content_integrity_gate import evaluate_template_content_integrity
+from .deck_diversity import evaluate_family_diversity
 from .topology import infer_topology
 
 
@@ -561,6 +562,17 @@ def build_manuscript_component_composition(
         else "none" if planned_pages == 0
         else "partial"
     )
+    diversity = evaluate_family_diversity([
+        {
+            "family": component.get("family"),
+            "archetype": by_id.get(page.get("purpose"), {}).get("archetype", "body"),
+        }
+        for page in pages
+        for component in page.get("components", [])
+    ])
+    if enforce_content_integrity and diversity["status"] != "pass":
+        codes = sorted({issue["code"] for issue in diversity["issues"]})
+        raise ValueError(f"COMPONENT_DIVERSITY_FAILED: {','.join(codes)}")
     return {
         "schema_version": "1.0.0",
         "source_page_count": total_pages,
@@ -568,6 +580,7 @@ def build_manuscript_component_composition(
         "pages": pages,
         "unsupported_pages": unsupported_pages,
         "content_integrity": content_integrity,
+        "family_diversity": diversity,
         "coverage": {
             "status": coverage_status,
             "total_pages": total_pages,
