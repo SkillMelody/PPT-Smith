@@ -363,6 +363,7 @@ def select_component(atlas: dict, requirement: dict) -> dict:
     element_count = requirement.get("element_count")
     family = requirement.get("family")
     topology = requirement.get("topology")
+    required_slots = requirement.get("required_slots", [])
     requested_component_id = requirement.get("component_id")
     if not isinstance(semantic_use, str) or not semantic_use:
         raise ValueError("component requirement needs semantic_use")
@@ -372,6 +373,11 @@ def select_component(atlas: dict, requirement: dict) -> dict:
         raise ValueError("component requirement family must be a non-empty string")
     if topology is not None and (not isinstance(topology, str) or topology not in TOPOLOGIES):
         raise ValueError("component requirement topology must be a supported topology")
+    if (
+        not isinstance(required_slots, list)
+        or any(not isinstance(slot, str) or not slot for slot in required_slots)
+    ):
+        raise ValueError("component requirement required_slots must be a list of non-empty strings")
     if requested_component_id is not None and (
         not isinstance(requested_component_id, str) or not requested_component_id
     ):
@@ -388,6 +394,9 @@ def select_component(atlas: dict, requirement: dict) -> dict:
             continue
         if topology is not None and topology not in component.get("topologies", []):
             continue
+        available_slots = set(component.get("semantic_contract", {}).get("required_fields", []))
+        if not set(required_slots) <= available_slots:
+            continue
         count = component.get("parameters", {}).get("element_count", {})
         minimum, maximum = count.get("minimum"), count.get("maximum")
         if not isinstance(minimum, int) or not isinstance(maximum, int):
@@ -402,6 +411,8 @@ def select_component(atlas: dict, requirement: dict) -> dict:
             "reason": (
                 "no reviewed component satisfies topology, semantic use and element capacity"
                 if topology is not None
+                else "no reviewed component satisfies required semantic slots, semantic use and element capacity"
+                if required_slots
                 else "no reviewed component satisfies semantic use and element capacity"
             ),
         }

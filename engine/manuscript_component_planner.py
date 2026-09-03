@@ -470,6 +470,7 @@ def build_manuscript_component_composition(
                 "family": family,
                 "element_count": len(charts),
                 "topology": topology["topology"] if topology["source"] == "content_binding" else None,
+                "required_slots": content_page.get("required_slots", []),
             }
             selection = select_component(atlas, requirement)
             if selection.get("status") != "selected":
@@ -512,6 +513,7 @@ def build_manuscript_component_composition(
             "family": family,
             "element_count": len(items),
             "topology": topology["topology"] if topology["source"] == "content_binding" else None,
+            "required_slots": content_page.get("required_slots", []),
         }
         selection = select_component(atlas, requirement)
         if selection.get("status") != "selected":
