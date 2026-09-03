@@ -166,6 +166,7 @@ def test_explicit_topology_selects_a_matching_component_before_legacy_layout() -
         "component_id": "contrast.two-sided",
         "family": "two_sided_contrast",
         "semantic_uses": ["experimentation scale contrast"],
+        "topologies": ["comparison"],
         "parameters": {"element_count": {"minimum": 2, "maximum": 2}},
     })
     bindings = {"slides": [{

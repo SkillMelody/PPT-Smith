@@ -469,6 +469,7 @@ def build_manuscript_component_composition(
                 "semantic_use": semantic_use,
                 "family": family,
                 "element_count": len(charts),
+                "topology": topology["topology"] if topology["source"] == "content_binding" else None,
             }
             selection = select_component(atlas, requirement)
             if selection.get("status") != "selected":
@@ -510,6 +511,7 @@ def build_manuscript_component_composition(
             "semantic_use": semantic_use,
             "family": family,
             "element_count": len(items),
+            "topology": topology["topology"] if topology["source"] == "content_binding" else None,
         }
         selection = select_component(atlas, requirement)
         if selection.get("status") != "selected":

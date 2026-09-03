@@ -290,6 +290,31 @@ def test_component_selector_refuses_to_force_an_over_capacity_component(tmp_path
     assert selection["reason"] == "no reviewed component satisfies semantic use and element capacity"
 
 
+def test_component_selector_requires_reviewed_topology_capability(tmp_path: Path) -> None:
+    template = tmp_path / "template.pptx"
+    _component_template(template)
+    review = _review()
+    review["components"][0]["topologies"] = ["sequence"]
+    atlas = build_component_atlas(template, review)
+
+    selected = select_component(atlas, {
+        "semantic_use": "conversion",
+        "element_count": 4,
+        "topology": "sequence",
+    })
+    rejected = select_component(atlas, {
+        "semantic_use": "conversion",
+        "element_count": 4,
+        "topology": "comparison",
+    })
+
+    assert selected["status"] == "selected"
+    assert rejected == {
+        "status": "no_match",
+        "reason": "no reviewed component satisfies topology, semantic use and element capacity",
+    }
+
+
 def test_component_binding_resolves_semantics_to_native_shape_groups(tmp_path: Path) -> None:
     template = tmp_path / "template.pptx"
     _component_template(template)

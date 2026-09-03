@@ -14,6 +14,8 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
+from .topology import TOPOLOGIES
+
 
 _GRANULARITIES = {"atomic", "micro", "composite", "section", "page_recipe"}
 
@@ -285,12 +287,21 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
                 "slide_index": instance_slide_index,
                 "groups": instance_groups,
             })
+        declared_topologies = declaration.get("topologies", [])
+        if not isinstance(declared_topologies, list) or any(
+            not isinstance(topology, str) or topology not in TOPOLOGIES
+            for topology in declared_topologies
+        ):
+            raise ValueError(
+                f"component {component_id!r} has invalid reviewed topologies"
+            )
         resolved_component = {
             "component_id": component_id,
             "family": declaration.get("family"),
             "granularity": granularity,
             "slide_index": slide_index,
             "semantic_uses": deepcopy(declaration.get("semantic_uses", [])),
+            "topologies": deepcopy(declared_topologies),
             "groups": resolved_groups,
             "parameters": deepcopy(declaration.get("parameters", {})),
         }
@@ -351,6 +362,7 @@ def select_component(atlas: dict, requirement: dict) -> dict:
     semantic_use = requirement.get("semantic_use")
     element_count = requirement.get("element_count")
     family = requirement.get("family")
+    topology = requirement.get("topology")
     requested_component_id = requirement.get("component_id")
     if not isinstance(semantic_use, str) or not semantic_use:
         raise ValueError("component requirement needs semantic_use")
@@ -358,6 +370,8 @@ def select_component(atlas: dict, requirement: dict) -> dict:
         raise ValueError("component requirement needs a positive element_count")
     if family is not None and (not isinstance(family, str) or not family):
         raise ValueError("component requirement family must be a non-empty string")
+    if topology is not None and (not isinstance(topology, str) or topology not in TOPOLOGIES):
+        raise ValueError("component requirement topology must be a supported topology")
     if requested_component_id is not None and (
         not isinstance(requested_component_id, str) or not requested_component_id
     ):
@@ -372,6 +386,8 @@ def select_component(atlas: dict, requirement: dict) -> dict:
             continue
         if family is not None and component.get("family") != family:
             continue
+        if topology is not None and topology not in component.get("topologies", []):
+            continue
         count = component.get("parameters", {}).get("element_count", {})
         minimum, maximum = count.get("minimum"), count.get("maximum")
         if not isinstance(minimum, int) or not isinstance(maximum, int):
@@ -383,7 +399,11 @@ def select_component(atlas: dict, requirement: dict) -> dict:
     if not matches:
         return {
             "status": "no_match",
-            "reason": "no reviewed component satisfies semantic use and element capacity",
+            "reason": (
+                "no reviewed component satisfies topology, semantic use and element capacity"
+                if topology is not None
+                else "no reviewed component satisfies semantic use and element capacity"
+            ),
         }
     _, _, selected, minimum, maximum = min(matches)
     return {
