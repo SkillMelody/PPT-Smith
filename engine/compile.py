@@ -52,6 +52,7 @@ def _subset_validate(document: dict, schema_file: str) -> list[dict]:
 def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = None,
                  style_path: str | None = None, output_dir: str,
                  degrade_on_error: bool = True,
+                 allow_content_truncation: bool = True,
                  refine_spec_path: str | None = None) -> dict:
     """sources: [(source_id, type, path)]. Returns the compile report."""
     out = Path(output_dir)
@@ -129,6 +130,26 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
     laid = layout_deck(ir, decisions, style, docs)
     report["degradations"].extend(laid["degradations"])
     report["stages"].append("layout")
+
+    truncations = [
+        item for item in report["degradations"]
+        if item.get("kind") == "content_truncation"
+    ]
+    if truncations and not allow_content_truncation:
+        report.update(
+            ok=False,
+            stage="content_capacity",
+            errors=[{
+                "code": "CONTENT_TRUNCATION_FORBIDDEN",
+                "count": len(truncations),
+                "slide_ids": sorted({item.get("slide_id") for item in truncations if item.get("slide_id")}),
+            }],
+        )
+        (out / "ir.json").write_text(
+            json.dumps(ir, ensure_ascii=False, indent=2), encoding="utf-8")
+        (out / "compile-result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return report
 
     ir_sha = _canonical_sha(ir)
     run_id = f"run-{ir_sha[:12]}"

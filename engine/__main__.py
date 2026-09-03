@@ -101,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
                         "(page-level composition intent per slide)")
     c.add_argument("--no-degrade", action="store_true",
                    help="fail on invalid IR instead of falling back to extraction")
+    c.add_argument("--allow-content-truncation", action="store_true",
+                   help="allow truncated diagnostic output; delivery CLI fails closed by default")
 
     rc = sub.add_parser("refine-code",
                         help="P12 Level 2: run a python-pptx refine script with QA safety net")
@@ -368,6 +370,7 @@ def main(argv: list[str] | None = None) -> int:
         report = compile_deck(sources=specs, ir_path=args.ir, style_path=args.style,
                               output_dir=args.output_dir,
                               degrade_on_error=not args.no_degrade,
+                              allow_content_truncation=args.allow_content_truncation,
                               refine_spec_path=args.refine_spec_path)
         print(json.dumps({k: report[k] for k in
                           ("ok", "ir_origin", "slide_count", "pptx", "stage")

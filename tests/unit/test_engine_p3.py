@@ -93,6 +93,29 @@ def test_invalid_ir_fails_closed_without_degrade(tmp_path):
     assert not (tmp_path / "out" / "deck.pptx").exists()
 
 
+def test_compile_rejects_layout_content_truncation(tmp_path):
+    article = _write_article(tmp_path)
+    crowded = json.loads(json.dumps(LLM_IR))
+    crowded["slides"] = [{
+        "id": "s1", "title": "信息密度超过页面容量",
+        "blocks": [{
+            "role": "fact", "text": "Revenue reached $100m in 2025.",
+            "source_ref": {"source_id": "src", "loc": "para_1"},
+        } for _ in range(13)],
+    }]
+    ir_path = tmp_path / "crowded.json"
+    ir_path.write_text(json.dumps(crowded, ensure_ascii=False), encoding="utf-8")
+
+    report = compile_deck(sources=[("src", "markdown", str(article))],
+                          ir_path=str(ir_path), output_dir=str(tmp_path / "out"),
+                          allow_content_truncation=False)
+
+    assert report["ok"] is False
+    assert report["stage"] == "content_capacity"
+    assert any(item["code"] == "CONTENT_TRUNCATION_FORBIDDEN" for item in report["errors"])
+    assert not (tmp_path / "out" / "deck.pptx").exists()
+
+
 def test_render_plan_is_deterministic(tmp_path):
     article = _write_article(tmp_path)
     for run in ("a", "b"):
