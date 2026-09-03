@@ -49,6 +49,7 @@ import sys
 from pathlib import Path
 
 from .coverage import coverage_report
+from .evidence_outline import build_evidence_outline
 from .extractive_ir import build_extractive_ir
 from .provenance import verify_ir
 from .structural_parser import parse_source
@@ -79,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="engine", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    for name in ("parse", "extract-ir", "verify", "coverage"):
+    for name in ("parse", "extract-ir", "evidence-outline", "verify", "coverage"):
         p = sub.add_parser(name)
         p.add_argument("--source", action="append", required=True,
                        metavar="ID:TYPE:PATH")
@@ -386,12 +387,16 @@ def main(argv: list[str] | None = None) -> int:
         _emit({"documents": [doc.to_dict() for doc in docs.values()]}, args.json_out)
         return 0
 
-    if args.command == "extract-ir":
+    if args.command in {"extract-ir", "evidence-outline"}:
         if len(docs) != 1:
-            print("error: extract-ir expects exactly one --source", file=sys.stderr)
+            print(f"error: {args.command} expects exactly one --source", file=sys.stderr)
             return 2
         (source_id, doc), = docs.items()
-        result = build_extractive_ir(doc, source_meta=meta[source_id])
+        result = (
+            build_extractive_ir(doc, source_meta=meta[source_id])
+            if args.command == "extract-ir"
+            else build_evidence_outline(doc)
+        )
         _emit(result, args.json_out)
         return 0
 
