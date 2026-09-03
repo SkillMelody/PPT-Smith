@@ -159,6 +159,37 @@ def test_manuscript_planner_reports_capacity_mismatch_without_forcing_a_componen
     assert "capacity" in rejected["reason"]
 
 
+def test_explicit_topology_selects_a_matching_component_before_legacy_layout() -> None:
+    atlas = _atlas()
+    atlas["components"].append({
+        **atlas["components"][0],
+        "component_id": "contrast.two-sided",
+        "family": "two_sided_contrast",
+        "semantic_uses": ["experimentation scale contrast"],
+        "parameters": {"element_count": {"minimum": 2, "maximum": 2}},
+    })
+    bindings = {"slides": [{
+        "id": "finding",
+        "topology": "comparison",
+        "items": [
+            {"title": "试验", "detail": "局部采用"},
+            {"title": "规模化", "detail": "重塑工作流"},
+        ],
+    }]}
+    storyboard = {"slides": [{
+        "purpose": "finding",
+        "layout_rationale": {"layout_pattern": "three conclusion cards"},
+    }]}
+
+    composition = build_manuscript_component_composition(atlas, bindings, storyboard)
+
+    assert composition["unsupported_pages"] == []
+    assert composition["pages"][0]["topology"] == {
+        "topology": "comparison", "source": "content_binding",
+    }
+    assert composition["pages"][0]["components"][0]["family"] == "two_sided_contrast"
+
+
 def test_manuscript_planner_rejects_missing_explicit_extended_labels() -> None:
     composition = build_manuscript_component_composition(
         _atlas(), _bindings(explicit_labels=False), _storyboard(),

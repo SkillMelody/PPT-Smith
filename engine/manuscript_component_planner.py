@@ -10,6 +10,7 @@ from copy import deepcopy
 
 from .component_atlas import resolve_component_binding, select_component
 from .content_integrity_gate import evaluate_template_content_integrity
+from .topology import infer_topology
 
 
 ROUTES = {
@@ -42,6 +43,19 @@ ROUTES = {
     "funnel priorities": ("prioritization", "funnel"),
     "capability radar": ("management action dimensions", "icon_card_grid"),
     "closing statement": ("closing source note", "statement_card"),
+}
+
+
+# Content bindings may make these information structures explicit.  This is
+# deliberately narrower than ``ROUTES``: statement pages still use their
+# reviewed page archetype during migration, while relational/data structures
+# must not be silently flattened into generic cards.
+TOPOLOGY_ROUTES = {
+    "comparison": ("experimentation scale contrast", "two_sided_contrast"),
+    "sequence": ("maturity journey", "timeline"),
+    "causal": ("closed-loop adoption relationship", "cycle_pair"),
+    "hierarchy": ("hierarchy", "pyramid"),
+    "dashboard": ("research impact evidence", "chart_dashboard"),
 }
 
 
@@ -386,16 +400,6 @@ def build_manuscript_component_composition(
         layout_pattern = rationale.get("layout_pattern", "") if isinstance(rationale, dict) else ""
         if not isinstance(layout_pattern, str):
             layout_pattern = ""
-        route = ROUTES.get(layout_pattern)
-        if route is None:
-            unsupported_pages.append(_unsupported(
-                output_page_index=output_page_index,
-                purpose=purpose,
-                layout_pattern=layout_pattern,
-                reason_code="no_component_route",
-                reason=f"no reviewed component route for layout pattern {layout_pattern!r}",
-            ))
-            continue
         content_page = by_id.get(purpose)
         if content_page is None:
             unsupported_pages.append(_unsupported(
@@ -406,6 +410,32 @@ def build_manuscript_component_composition(
                 reason=f"no content binding found for purpose {purpose!r}",
             ))
             continue
+        topology = infer_topology(content_page, storyboard_page)
+        if topology["source"] == "content_binding":
+            route = TOPOLOGY_ROUTES.get(topology["topology"])
+            if route is None:
+                unsupported_pages.append(_unsupported(
+                    output_page_index=output_page_index,
+                    purpose=purpose,
+                    layout_pattern=layout_pattern,
+                    reason_code="topology_route_unavailable",
+                    reason=(
+                        "no reviewed component route for explicit topology "
+                        f"{topology['topology']!r}"
+                    ),
+                ))
+                continue
+        else:
+            route = ROUTES.get(layout_pattern)
+            if route is None:
+                unsupported_pages.append(_unsupported(
+                    output_page_index=output_page_index,
+                    purpose=purpose,
+                    layout_pattern=layout_pattern,
+                    reason_code="no_component_route",
+                    reason=f"no reviewed component route for layout pattern {layout_pattern!r}",
+                ))
+                continue
         semantic_use, family = route
         if family == "chart_dashboard":
             dashboard = content_page.get("dashboard")
@@ -510,6 +540,7 @@ def build_manuscript_component_composition(
         pages.append({
             "output_page_index": output_page_index,
             "purpose": purpose,
+            "topology": topology,
             "destination_slide_index": template_slide_count + output_page_index,
             "components": [{
                 "semantic_use": semantic_use,
