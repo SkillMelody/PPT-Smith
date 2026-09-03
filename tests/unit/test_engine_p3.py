@@ -116,6 +116,31 @@ def test_compile_rejects_layout_content_truncation(tmp_path):
     assert not (tmp_path / "out" / "deck.pptx").exists()
 
 
+def test_compile_rejects_source_that_exceeds_extractive_slide_capacity(tmp_path):
+    article = tmp_path / "long.md"
+    article.write_text(
+        "# Long report\n\n" + "\n\n".join(
+            f"Evidence item {index}: Revenue reached $100m in 2025."
+            for index in range(245)
+        ),
+        encoding="utf-8",
+    )
+
+    report = compile_deck(
+        sources=[("src", "markdown", str(article))],
+        output_dir=str(tmp_path / "out"),
+        allow_content_truncation=False,
+    )
+
+    assert report["ok"] is False
+    assert report["stage"] == "source_capacity"
+    assert report["errors"] == [{
+        "code": "STRUCTURED_IR_REQUIRED",
+        "message": "The source exceeds extractive fallback page capacity; provide a structured, source-anchored IR.",
+    }]
+    assert not (tmp_path / "out" / "deck.pptx").exists()
+
+
 def test_render_plan_is_deterministic(tmp_path):
     article = _write_article(tmp_path)
     for run in ("a", "b"):

@@ -93,6 +93,20 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
                 {"kind": "extractive_ir_fallback", "detail_code": "ir_rejected"})
             report["ir_rejection_errors"] = ir_findings
         report["extraction_warnings"] = extraction["warnings"]
+        if any(warning.startswith("deck truncated from ") for warning in extraction["warnings"]):
+            report.update(
+                ok=False,
+                stage="source_capacity",
+                errors=[{
+                    "code": "STRUCTURED_IR_REQUIRED",
+                    "message": "The source exceeds extractive fallback page capacity; provide a structured, source-anchored IR.",
+                }],
+            )
+            (out / "ir.json").write_text(
+                json.dumps(ir, ensure_ascii=False, indent=2), encoding="utf-8")
+            (out / "compile-result.json").write_text(
+                json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            return report
     report["stages"].append("ir")
 
     # P12-refine: apply a compile-time refine spec (user chose refinement at
