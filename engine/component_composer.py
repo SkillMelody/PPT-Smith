@@ -100,6 +100,8 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                 }
                 if spec.get("family") is not None:
                     requirement["family"] = spec["family"]
+                if spec.get("required_slots") is not None:
+                    requirement["required_slots"] = spec["required_slots"]
                 requested_component_id = exact_component_id or spec.get("component_id")
                 if requested_component_id is not None:
                     requirement["component_id"] = requested_component_id

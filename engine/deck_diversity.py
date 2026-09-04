@@ -8,6 +8,21 @@ MAX_CONSECUTIVE_FAMILY = 2
 MAX_GENERIC_BODY_RATIO = 0.35
 
 
+def _page_family(page: dict) -> str | None:
+    family = page.get("family")
+    if isinstance(family, str):
+        return family
+    families = page.get("families")
+    if isinstance(families, list):
+        distinct = {
+            item for item in families
+            if isinstance(item, str) and item
+        }
+        if len(distinct) == 1:
+            return next(iter(distinct))
+    return None
+
+
 def evaluate_family_diversity(pages: list[dict]) -> dict:
     """Report repeated component families without treating a style as a topology."""
     body = [page for page in pages if page.get("archetype", "body") == "body"]
@@ -15,7 +30,7 @@ def evaluate_family_diversity(pages: list[dict]) -> dict:
     current_family: str | None = None
     run_start = 0
     for index, page in enumerate(body, 1):
-        family = page.get("family")
+        family = _page_family(page)
         if family != current_family:
             current_family, run_start = family, index
         if isinstance(family, str) and index - run_start + 1 == MAX_CONSECUTIVE_FAMILY + 1:
@@ -25,7 +40,7 @@ def evaluate_family_diversity(pages: list[dict]) -> dict:
                 "first_page_index": run_start,
                 "last_page_index": index,
             })
-    generic_count = sum(page.get("family") in GENERIC_FAMILIES for page in body)
+    generic_count = sum(_page_family(page) in GENERIC_FAMILIES for page in body)
     generic_ratio = round(generic_count / len(body), 4) if body else 0.0
     # A one- or two-page deck has no meaningful family distribution; the
     # delivery floor applies once there are enough body pages to diversify.

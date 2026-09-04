@@ -215,6 +215,115 @@ def test_explicit_required_slots_reject_an_infeasible_component() -> None:
     assert composition["unsupported_pages"][0]["reason_code"] == "no_component_match"
 
 
+def test_metric_comparisons_use_repeated_native_kpi_cards() -> None:
+    atlas = _atlas()
+    atlas["components"].append({
+        "component_id": "kpi.metric-comparison",
+        "family": "kpi_chart_card",
+        "slide_index": 16,
+        "semantic_uses": ["single KPI comparison"],
+        "groups": [{
+            "role": "chart",
+            "members": [{"shape_name": "metric-chart", "kind": "chart"}],
+        }, {
+            "role": "label",
+            "bind_field": "title",
+            "members": [{"shape_name": "metric-title", "kind": "text"}],
+        }, {
+            "role": "label",
+            "bind_field": "metric",
+            "members": [{"shape_name": "metric-value", "kind": "text"}],
+        }],
+        "parameters": {"element_count": {"minimum": 1, "maximum": 1}},
+    })
+    bindings = {"slides": [{
+        "id": "cost_benefits",
+        "title": "成本收益集中在可度量职能",
+        "topology": "dashboard",
+        "metric_comparisons": [{
+            "title": "软件工程",
+            "metric": "56%",
+            "categories": ["报告下降", "其他"],
+            "values": [56, 44],
+            "source_ref": {"source_id": "report", "loc": "para_108"},
+            "evidence_id": "report:para_108",
+        }, {
+            "title": "制造",
+            "metric": "56%",
+            "categories": ["报告下降", "其他"],
+            "values": [56, 44],
+            "source_ref": {"source_id": "report", "loc": "para_109"},
+            "evidence_id": "report:para_109",
+        }],
+    }]}
+    storyboard = {"slides": [{
+        "purpose": "cost_benefits",
+        "layout_rationale": {"layout_pattern": "parallel function panels"},
+    }]}
+
+    composition = build_manuscript_component_composition(atlas, bindings, storyboard)
+
+    assert composition["coverage"]["status"] == "complete"
+    components = composition["pages"][0]["components"]
+    assert [item["family"] for item in components] == [
+        "kpi_chart_card", "kpi_chart_card",
+    ]
+    assert components[0]["chart"]["data"]["series"][0]["values"] == [56, 44]
+    assert components[0]["chart"]["id"] == "metric_1"
+    assert components[0]["chart"]["binding_name"] == "bind:chart:cost_benefits:metric_1"
+    assert components[0]["text_bindings"][0]["evidence_id"] == "report:para_108"
+    assert components[0]["placement"]["x"] + components[0]["placement"]["w"] <= (
+        components[1]["placement"]["x"]
+    )
+
+
+def test_dual_metric_uses_a_reviewed_dual_panel() -> None:
+    atlas = _atlas()
+    atlas["components"].append({
+        **atlas["components"][0],
+        "component_id": "insight.dual-panel",
+        "family": "dual_panel",
+        "semantic_uses": ["industry adoption contrast"],
+        "groups": [{
+            "role": "segment",
+            "scope": "item",
+            "members": [{"shape_name": "panel-1"}, {"shape_name": "panel-2"}],
+        }, {
+            "role": "label",
+            "scope": "item",
+            "bind_field": "title",
+            "members": [{"shape_name": "title-1"}, {"shape_name": "title-2"}],
+        }],
+        "parameters": {"element_count": {"minimum": 2, "maximum": 2}},
+    })
+    bindings = {"slides": [{
+        "id": "industry_sidebar",
+        "title": "行业采用呈现两个并行信号",
+        "items": [
+            {"title": "行业普涨", "detail": "几乎所有行业采用率都在提升"},
+            {"title": "职能分化", "detail": "领先行业随业务职能变化"},
+        ],
+    }]}
+    storyboard = {"slides": [{
+        "purpose": "industry_sidebar",
+        "layout_rationale": {"layout_pattern": "dual metric"},
+    }]}
+
+    composition = build_manuscript_component_composition(atlas, bindings, storyboard)
+
+    assert composition["coverage"]["status"] == "complete"
+    assert composition["pages"][0]["components"][0]["family"] == "dual_panel"
+    assert composition["pages"][0]["components"][0]["elements"][0]["labels"]["title"]["text"] == (
+        "行业普涨\n几乎所有行业采用率都在提升"
+    )
+
+    bindings["slides"][0]["items"][0]["compact_label"] = True
+    compact = build_manuscript_component_composition(atlas, bindings, storyboard)
+    assert compact["pages"][0]["components"][0]["elements"][0]["labels"]["title"]["text"] == (
+        "行业普涨"
+    )
+
+
 def test_manuscript_planner_rejects_missing_explicit_extended_labels() -> None:
     composition = build_manuscript_component_composition(
         _atlas(), _bindings(explicit_labels=False), _storyboard(),

@@ -23,7 +23,7 @@ ROUTES = {
     "multi-node comparison": ("icon capability cards", "icon_card_grid"),
     "chapter insight": ("chapter insight", "dual_panel"),
     "cycle relationship": ("closed-loop adoption relationship", "cycle_pair"),
-    "dual metric": ("capability cards", "card_grid"),
+    "dual metric": ("industry adoption contrast", "dual_panel"),
     "large-small comparison": ("capability cards", "card_grid"),
     "native chart dashboard": ("research impact evidence", "chart_dashboard"),
     "parallel function panels": ("capability cards", "card_grid"),
@@ -271,6 +271,92 @@ def _page_items(content_page: dict, layout_pattern: str) -> list | None:
     return None
 
 
+def _metric_card_placements(count: int) -> list[dict]:
+    if count < 2 or count > 5:
+        raise ValueError("metric comparisons require between two and five items")
+    if count <= 4:
+        gap = 0.02
+        width = (0.92 - gap * (count - 1)) / count
+        return [
+            {"x": round(0.04 + index * (width + gap), 4), "y": 0.18, "w": round(width, 4), "h": 0.66}
+            for index in range(count)
+        ]
+    return [
+        {"x": 0.04, "y": 0.16, "w": 0.29, "h": 0.31},
+        {"x": 0.355, "y": 0.16, "w": 0.29, "h": 0.31},
+        {"x": 0.67, "y": 0.16, "w": 0.29, "h": 0.31},
+        {"x": 0.195, "y": 0.53, "w": 0.29, "h": 0.31},
+        {"x": 0.515, "y": 0.53, "w": 0.29, "h": 0.31},
+    ]
+
+
+def _metric_card_components(content_page: dict, purpose: str) -> list[dict] | None:
+    metrics = content_page.get("metric_comparisons")
+    if metrics is None:
+        return None
+    if not isinstance(metrics, list):
+        raise ValueError("metric_comparisons must be a list")
+    placements = _metric_card_placements(len(metrics))
+    components: list[dict] = []
+    for index, metric in enumerate(metrics):
+        if not isinstance(metric, dict):
+            raise ValueError(f"metric comparison {index} must be an object")
+        title, metric_text = metric.get("title"), metric.get("metric")
+        categories, values = metric.get("categories"), metric.get("values")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError(f"metric comparison {index} requires a title")
+        if not isinstance(metric_text, str) or not metric_text.strip():
+            raise ValueError(f"metric comparison {index} requires display text")
+        if (
+            not isinstance(categories, list)
+            or len(categories) < 2
+            or any(not isinstance(item, str) or not item.strip() for item in categories)
+        ):
+            raise ValueError(f"metric comparison {index} requires named categories")
+        if (
+            not isinstance(values, list)
+            or len(values) != len(categories)
+            or any(isinstance(item, bool) or not isinstance(item, (int, float)) for item in values)
+        ):
+            raise ValueError(f"metric comparison {index} values must match categories")
+        metadata = {
+            **({"source_ref": deepcopy(metric["source_ref"])}
+               if isinstance(metric.get("source_ref"), dict) else {}),
+            **({"evidence_id": metric["evidence_id"]}
+               if isinstance(metric.get("evidence_id"), str) else {}),
+        }
+        components.append({
+            "semantic_use": "single KPI comparison",
+            "family": "kpi_chart_card",
+            "element_count": 1,
+            "required_slots": ["chart", "title", "metric"],
+            "chart": {
+                "id": f"metric_{index + 1}",
+                "binding_name": f"bind:chart:{purpose}:metric_{index + 1}",
+                "data": {
+                    "categories": [item.strip() for item in categories],
+                    "series": [{
+                        "name": metric.get("series_name", "Share"),
+                        "values": values,
+                    }],
+                },
+            },
+            "text_bindings": [{
+                "field": "title",
+                "binding_name": f"bind:block:{purpose}:metric_titles:item:{index}",
+                "text": title.strip(),
+                **metadata,
+            }, {
+                "field": "metric",
+                "binding_name": f"bind:block:{purpose}:metric_values:item:{index}",
+                "text": metric_text.strip(),
+                **metadata,
+            }],
+            "placement": placements[index],
+        })
+    return components
+
+
 def _label_text(
     *,
     field: str,
@@ -281,6 +367,14 @@ def _label_text(
 ) -> str:
     labels = item_data.get("labels") if isinstance(item_data.get("labels"), dict) else {}
     explicit = labels.get(field, item_data.get(field))
+    if field == "title" and fields == {"title"}:
+        title = explicit if isinstance(explicit, str) and explicit.strip() else item_text
+        if item_data.get("compact_label") is True:
+            return title.strip()
+        detail = labels.get("detail", item_data.get("detail"))
+        if isinstance(detail, str) and detail.strip() and detail.strip() not in title:
+            return f"{title.strip()}\n{detail.strip()}"
+        return title.strip()
     if isinstance(explicit, str) and explicit.strip():
         return explicit.strip()
     if field == "detail":
@@ -412,6 +506,26 @@ def build_manuscript_component_composition(
             ))
             continue
         topology = infer_topology(content_page, storyboard_page)
+        try:
+            metric_components = _metric_card_components(content_page, purpose)
+        except ValueError as exc:
+            unsupported_pages.append(_unsupported(
+                output_page_index=output_page_index,
+                purpose=purpose,
+                layout_pattern=layout_pattern,
+                reason_code="invalid_metric_comparisons",
+                reason=str(exc),
+            ))
+            continue
+        if metric_components is not None:
+            pages.append({
+                "output_page_index": output_page_index,
+                "purpose": purpose,
+                "topology": topology,
+                "destination_slide_index": template_slide_count + output_page_index,
+                "components": metric_components,
+            })
+            continue
         if topology["source"] == "content_binding":
             route = TOPOLOGY_ROUTES.get(topology["topology"])
             if route is None:
@@ -564,11 +678,13 @@ def build_manuscript_component_composition(
     )
     diversity = evaluate_family_diversity([
         {
-            "family": component.get("family"),
+            "families": [
+                component.get("family")
+                for component in page.get("components", [])
+            ],
             "archetype": by_id.get(page.get("purpose"), {}).get("archetype", "body"),
         }
         for page in pages
-        for component in page.get("components", [])
     ])
     if enforce_content_integrity and diversity["status"] != "pass":
         codes = sorted({issue["code"] for issue in diversity["issues"]})
