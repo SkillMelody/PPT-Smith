@@ -22,6 +22,15 @@ def test_evidence_outline_preserves_section_anchors_and_numbers() -> None:
     assert "450" in outline["sections"][1]["evidence"][0]["numbers"]
 
 
+def test_evidence_outline_skips_an_empty_contents_section() -> None:
+    doc = parse_plain_text("CONTENTS\n\nCHAPTER 1\n\nRevenue reached 450.", "src")
+
+    outline = build_evidence_outline(doc)
+
+    assert [section["title"] for section in outline["sections"]] == ["CHAPTER 1"]
+    assert outline["sections"][0]["evidence"][0]["text"] == "Revenue reached 450."
+
+
 def test_evidence_outline_creates_preamble_for_unheaded_plain_text() -> None:
     outline = build_evidence_outline(parse_plain_text("Evidence 57%.", "src"))
 

@@ -14,17 +14,23 @@ def build_evidence_outline(doc: SourceDoc) -> dict:
     """
     sections: list[dict] = []
     current: dict | None = None
+    in_contents = False
     for element in doc.elements:
         if element.etype in {"h1", "h2", "h3"}:
+            title = element.text.strip()
+            in_contents = title.casefold() in {"contents", "table of contents"}
             current = {
                 "id": element.anchor,
-                "title": element.text,
+                "title": title,
                 "level": element.level,
                 "evidence": [],
             }
             sections.append(current)
             continue
         if element.etype not in {"para", "list", "table", "blockquote", "img"}:
+            continue
+        # Contents pages are navigation metadata, not source evidence.
+        if in_contents:
             continue
         if current is None:
             current = {"id": "preamble", "title": "Preamble", "level": 0, "evidence": []}
@@ -37,6 +43,7 @@ def build_evidence_outline(doc: SourceDoc) -> dict:
         if numbers:
             item["numbers"] = numbers
         current["evidence"].append(item)
+    sections = [section for section in sections if section["evidence"]]
     return {
         "schema_version": "4.0.0",
         "source_id": doc.source_id,
