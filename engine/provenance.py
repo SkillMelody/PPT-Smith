@@ -135,4 +135,10 @@ def verify_ir(ir: dict, docs: dict[str, SourceDoc]) -> list[dict]:
                 if isinstance(item_ref, dict):
                     errors.extend(_check_ref(
                         item_ref, f"{path}/items/{i_idx}/source_ref", docs))
+                for r_idx, multi_ref in enumerate(item.get("source_refs", []) or []):
+                    errors.extend(_check_ref(
+                        multi_ref,
+                        f"{path}/items/{i_idx}/source_refs/{r_idx}",
+                        docs,
+                    ))
     return errors

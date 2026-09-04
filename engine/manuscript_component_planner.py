@@ -322,6 +322,8 @@ def _metric_card_components(content_page: dict, purpose: str) -> list[dict] | No
         metadata = {
             **({"source_ref": deepcopy(metric["source_ref"])}
                if isinstance(metric.get("source_ref"), dict) else {}),
+            **({"source_refs": deepcopy(metric["source_refs"])}
+               if isinstance(metric.get("source_refs"), list) else {}),
             **({"evidence_id": metric["evidence_id"]}
                if isinstance(metric.get("evidence_id"), str) else {}),
         }
@@ -403,6 +405,8 @@ def _elements(*, purpose: str, items: list, resolved: dict) -> list[dict]:
             "binding_name": f"bind:block:{purpose}:component_items:item:{index}",
             **({"source_ref": deepcopy(data["source_ref"])}
                if isinstance(data.get("source_ref"), dict) else {}),
+            **({"source_refs": deepcopy(data["source_refs"])}
+               if isinstance(data.get("source_refs"), list) else {}),
             **({"evidence_id": data["evidence_id"]}
                if isinstance(data.get("evidence_id"), str) else {}),
         } for index, (text, data) in enumerate(normalized)]
@@ -434,6 +438,8 @@ def _elements(*, purpose: str, items: list, resolved: dict) -> list[dict]:
                 "binding_name": _binding_name(purpose, field, index),
                 **({"source_ref": deepcopy(data["source_ref"])}
                    if isinstance(data.get("source_ref"), dict) else {}),
+                **({"source_refs": deepcopy(data["source_refs"])}
+                   if isinstance(data.get("source_refs"), list) else {}),
                 **({"evidence_id": data["evidence_id"]}
                    if isinstance(data.get("evidence_id"), str) else {}),
             }

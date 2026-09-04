@@ -139,6 +139,27 @@ def test_presentation_ir_schema_accepts_named_multi_chart_pages():
     assert not errors, [error.message for error in errors[:3]]
 
 
+def test_list_items_accept_and_verify_multiple_source_refs():
+    doc = _doc()
+    ir = build_extractive_ir(doc, source_meta={"type": "markdown"})["ir"]
+    ir["slides"][0]["blocks"].append({
+        "role": "list",
+        "items": [{
+            "text": "Two source-backed findings",
+            "source_refs": [
+                {"source_id": "src", "loc": "para_1"},
+                {"source_id": "src", "loc": "para_2"},
+            ],
+        }],
+    })
+
+    assert not list(Draft202012Validator(IR_SCHEMA).iter_errors(ir))
+    assert verify_ir(ir, {"src": doc}) == []
+
+    ir["slides"][0]["blocks"][-1]["items"][0]["source_refs"][1]["loc"] = "para_99"
+    assert any(error["code"] == "LOC_NOT_FOUND" for error in verify_ir(ir, {"src": doc}))
+
+
 def test_provenance_rejects_fabrication():
     doc = _doc()
     result = build_extractive_ir(doc, source_meta={"type": "markdown"})

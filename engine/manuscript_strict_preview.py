@@ -31,6 +31,7 @@ def _add_component_binding(
     purpose: str,
     *,
     source_ref: dict | None = None,
+    source_refs: list[dict] | None = None,
     evidence_id: str | None = None,
 ) -> None:
     parts = binding_name.split(":")
@@ -67,6 +68,16 @@ def _add_component_binding(
                 f"conflicting {metadata_field} for component item {item_index}"
             )
         item[metadata_field] = value
+    if isinstance(source_refs, list):
+        merged = [
+            ref for ref in item.get("source_refs", [])
+            if isinstance(ref, dict)
+        ]
+        for ref in source_refs:
+            if isinstance(ref, dict) and ref not in merged:
+                merged.append(deepcopy(ref))
+        if merged:
+            item["source_refs"] = merged
 
 
 def _component_bindings(operation: dict, blocks: dict[str, dict], purpose: str) -> None:
@@ -83,6 +94,7 @@ def _component_bindings(operation: dict, blocks: dict[str, dict], purpose: str) 
             _add_component_binding(
                 blocks, element["binding_name"], text, purpose,
                 source_ref=element.get("source_ref"),
+                source_refs=element.get("source_refs"),
                 evidence_id=element.get("evidence_id"),
             )
             continue
@@ -98,6 +110,7 @@ def _component_bindings(operation: dict, blocks: dict[str, dict], purpose: str) 
             _add_component_binding(
                 blocks, binding_name, text, purpose,
                 source_ref=label.get("source_ref"),
+                source_refs=label.get("source_refs"),
                 evidence_id=label.get("evidence_id"),
             )
 
@@ -116,6 +129,7 @@ def _text_bindings(operation: dict, blocks: dict[str, dict], purpose: str) -> No
         _add_component_binding(
             blocks, binding_name, text, purpose,
             source_ref=text_binding.get("source_ref"),
+            source_refs=text_binding.get("source_refs"),
             evidence_id=text_binding.get("evidence_id"),
         )
 
@@ -366,6 +380,15 @@ def build_manuscript_strict_preview_bundle(
                     and isinstance(source_ref.get("loc"), str)
                 ):
                     source_references.add((source_ref["source_id"], source_ref["loc"]))
+                for multi_ref in item.get("source_refs", []) or []:
+                    if (
+                        isinstance(multi_ref, dict)
+                        and isinstance(multi_ref.get("source_id"), str)
+                        and isinstance(multi_ref.get("loc"), str)
+                    ):
+                        source_references.add((
+                            multi_ref["source_id"], multi_ref["loc"],
+                        ))
     return {
         "schema_version": "1.0.0",
         "ir": {"slides": ir_slides},

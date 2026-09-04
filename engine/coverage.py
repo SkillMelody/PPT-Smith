@@ -38,6 +38,8 @@ def _referenced_anchors(ir: dict) -> dict[str, set[str]]:
                 note(multi_ref)
             for item in block.get("items", []) or []:
                 note(item.get("source_ref"))
+                for multi_ref in item.get("source_refs", []) or []:
+                    note(multi_ref)
     return refs
 
 

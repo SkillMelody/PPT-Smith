@@ -309,6 +309,10 @@ def test_preview_bundle_preserves_item_source_refs_and_evidence_counts() -> None
                     "text": "Revenue increased",
                     "binding_name": "bind:block:growth:component_items:item:0",
                     "source_ref": {"source_id": "src", "loc": "para_1"},
+                    "source_refs": [
+                        {"source_id": "src", "loc": "para_1"},
+                        {"source_id": "src", "loc": "para_2"},
+                    ],
                     "evidence_id": "src:para_1",
                 },
                 "detail": {
@@ -342,6 +346,10 @@ def test_preview_bundle_preserves_item_source_refs_and_evidence_counts() -> None
 
     item = bundle["ir"]["slides"][0]["blocks"][0]["items"][0]
     assert item["source_ref"] == {"source_id": "src", "loc": "para_1"}
+    assert item["source_refs"] == [
+        {"source_id": "src", "loc": "para_1"},
+        {"source_id": "src", "loc": "para_2"},
+    ]
     assert item["evidence_id"] == "src:para_1"
     assert bundle["summary"]["evidence_units"] == 1
-    assert bundle["summary"]["source_references"] == 1
+    assert bundle["summary"]["source_references"] == 2

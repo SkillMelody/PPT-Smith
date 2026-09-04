@@ -170,7 +170,12 @@
                 "items": { "type": "string", "minLength": 1, "maxLength": 120 },
                 "description": "Concrete actions under this step (render as accent bullet points). Content semantics, not layout."
               },
-              "source_ref": { "$ref": "#/$defs/sourceRef" }
+              "source_ref": { "$ref": "#/$defs/sourceRef" },
+              "source_refs": {
+                "type": "array",
+                "maxItems": 16,
+                "items": { "$ref": "#/$defs/sourceRef" }
+              }
             }
           }
         }
