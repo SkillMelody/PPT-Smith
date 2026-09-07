@@ -64,6 +64,54 @@ def test_compile_provided_ir_selects_archetypes(tmp_path):
     assert all(d["chosen_by"] == "rule" for d in trace["decisions"])
 
 
+def test_final_delivery_requires_model_authored_ir(tmp_path):
+    article = _write_article(tmp_path)
+
+    report = compile_deck(
+        sources=[("src", "markdown", str(article))],
+        output_dir=str(tmp_path / "out"),
+        final_delivery=True,
+    )
+
+    assert report["ok"] is False
+    assert report["stage"] == "model_authoring"
+    assert report["errors"][0]["code"] == "MODEL_AUTHORING_REQUIRED"
+
+
+def test_final_delivery_writes_and_reads_back_speaker_notes(tmp_path):
+    article = _write_article(tmp_path)
+    authored = json.loads(json.dumps(LLM_IR))
+    authored["schema_version"] = "4.1.0"
+    for index, slide in enumerate(authored["slides"], 1):
+        loc = "para_2" if index == 1 else "table_1"
+        slide["message"] = (
+            "Overseas growth drives the result."
+            if index == 1 else
+            "Regional detail shows where growth is concentrated."
+        )
+        slide["speaker_notes"] = {
+            "narrative": (
+                "Explain the evidence, the decision implication, and how the audience should "
+                "interpret this page without reading dense source prose from the slide itself."
+            ),
+            "evidence_ids": [f"src:{loc}"],
+            "source_refs": [{"source_id": "src", "loc": loc}],
+        }
+    ir_path = tmp_path / "authored.json"
+    ir_path.write_text(json.dumps(authored, ensure_ascii=False), encoding="utf-8")
+
+    report = compile_deck(
+        sources=[("src", "markdown", str(article))],
+        ir_path=str(ir_path),
+        output_dir=str(tmp_path / "out"),
+        final_delivery=True,
+    )
+
+    assert report["ok"] is True, report
+    assert report["speaker_notes"]["contract"]["status"] == "pass"
+    assert report["speaker_notes"]["inspection"]["status"] == "pass"
+
+
 def test_invalid_ir_degrades_but_still_ships(tmp_path):
     article = _write_article(tmp_path)
     bad = json.loads(json.dumps(LLM_IR))

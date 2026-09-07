@@ -141,4 +141,13 @@ def verify_ir(ir: dict, docs: dict[str, SourceDoc]) -> list[dict]:
                         f"{path}/items/{i_idx}/source_refs/{r_idx}",
                         docs,
                     ))
+        notes = slide.get("speaker_notes")
+        if isinstance(notes, dict):
+            for r_idx, note_ref in enumerate(notes.get("source_refs", []) or []):
+                if isinstance(note_ref, dict):
+                    errors.extend(_check_ref(
+                        note_ref,
+                        f"/slides/{s_idx}/speaker_notes/source_refs/{r_idx}",
+                        docs,
+                    ))
     return errors

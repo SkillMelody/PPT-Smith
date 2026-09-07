@@ -9,6 +9,7 @@ from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.util import Inches, Pt
 
 from engine.bespoke_quality import inspect_bespoke_visual_quality
+from engine.template_readability import enforce_bound_text_floor
 
 
 def _save(tmp_path, build):
@@ -138,3 +139,21 @@ def test_accepts_readable_wrapped_text_and_portable_pie(tmp_path):
     report = inspect_bespoke_visual_quality(path)
 
     assert report == {"status": "pass", "findings": []}
+
+
+def test_template_delivery_can_raise_bound_body_text_without_enlarging_page_numbers(tmp_path):
+    def build(slide):
+        body = _bound_text(slide, size=9)
+        page = slide.shapes.add_textbox(Inches(8), Inches(7), Inches(0.5), Inches(0.2))
+        page.name = "bind:block:s1:page_no:value"
+        run = page.text_frame.paragraphs[0].add_run()
+        run.text = "1"
+        run.font.size = Pt(9)
+
+    path = _save(tmp_path, build)
+
+    normalization = enforce_bound_text_floor(path)
+    report = inspect_bespoke_visual_quality(path)
+
+    assert normalization["adjusted_run_count"] == 1
+    assert report["status"] == "pass"

@@ -262,6 +262,9 @@ try {
 
   for (const slideSpec of plan.slides || []) {
     const slide = pptx.addSlide();
+    if (typeof slideSpec.notes === "string" && slideSpec.notes.trim()) {
+      slide.addNotes(slideSpec.notes.trim());
+    }
     slide.background = slideSpec.background
       ? { color: hex(slideSpec.background.color) }
       : { color: "FFFFFF" };

@@ -9,6 +9,8 @@ import json
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree
 
+from pptx import Presentation
+
 from .authored_page import verify_authored_page
 from .component_atlas import (
     resolve_chart_component_binding,
@@ -87,6 +89,52 @@ def _asset_preservation(template_pptx: Path, output_pptx: Path) -> dict:
 
 def _operation_error(message: str) -> ValueError:
     return ValueError(f"STRICT_TEMPLATE_PLAN_INVALID: {message}")
+
+
+def _ensure_destination_slides(pptx_path: Path, strict_plan: dict) -> dict:
+    """Append native blank canvases when a model plan extends the template.
+
+    Component plans address delivery canvases after the template's reviewed
+    source pages.  Appending with a layout already owned by the presentation
+    preserves its master/theme relationship instead of fabricating a foreign
+    blank deck.
+    """
+    operations = strict_plan.get("operations") if isinstance(strict_plan, dict) else None
+    if not isinstance(operations, list) or not operations:
+        raise _operation_error("operations must be a non-empty list")
+    destinations = [
+        operation.get("destination_slide_index")
+        for operation in operations
+        if isinstance(operation, dict)
+    ]
+    if any(
+        isinstance(index, bool) or not isinstance(index, int) or index < 1
+        for index in destinations
+    ):
+        raise _operation_error("every operation requires a positive destination slide index")
+    presentation = Presentation(str(pptx_path))
+    before = len(presentation.slides)
+    required = max(destinations)
+    if required <= before:
+        return {"status": "unchanged", "before": before, "after": before, "appended": 0}
+    layout_candidates = list(enumerate(presentation.slide_layouts))
+    if not layout_candidates:
+        raise _operation_error("template contains no slide layouts")
+    layout_index, layout = min(
+        layout_candidates,
+        key=lambda item: (len(item[1].placeholders), -item[0]),
+    )
+    for _ in range(required - before):
+        presentation.slides.add_slide(layout)
+    presentation.save(str(pptx_path))
+    return {
+        "status": "expanded",
+        "before": before,
+        "after": required,
+        "appended": required - before,
+        "layout_index": layout_index,
+        "layout_name": str(getattr(layout, "name", "") or ""),
+    }
 
 
 def _issue_signature(issue: dict) -> str:
@@ -191,11 +239,14 @@ def _apply_operations(
     strict_plan: dict,
     *,
     component_atlas: dict | None = None,
+    ir: dict | None = None,
 ) -> tuple[list[dict], set[str], set[int], set[str]]:
     operations = strict_plan.get("operations") if isinstance(strict_plan, dict) else None
     if not isinstance(operations, list) or not operations:
         raise _operation_error("operations must be a non-empty list")
     applied: list[dict] = []
+    if not isinstance(ir, dict):
+        ir = {}
     slide_ids: set[str] = set()
     physical_slide_indices: set[int] = set()
     binding_names: set[str] = set()
@@ -209,7 +260,7 @@ def _apply_operations(
             raise _operation_error(f"operation {index} is missing a valid destination slide index") from exc
         if kind in {
             "component_clone", "chart_component_clone", "chart_dashboard_clone",
-            "native_group_component_clone",
+            "native_group_component_clone", "model_authored_native_component",
         } and operation.get("source_slide_index") is None:
             source_slide = None
         else:
@@ -221,11 +272,36 @@ def _apply_operations(
         if kind not in {
             "component_bind_existing", "component_clone", "native_group_clone",
             "chart_component_clone", "chart_dashboard_bind_existing", "chart_dashboard_clone",
-            "native_group_component_clone",
+            "native_group_component_clone", "model_authored_native_component",
         }:
             if not isinstance(binding_name, str) or not binding_name:
                 raise _operation_error(f"operation {index} requires binding_name")
-        if kind == "chart_component_clone":
+        if kind == "model_authored_native_component":
+            try:
+                from .model_template_component_runtime import author_model_template_component
+
+                copied = author_model_template_component(
+                    output_pptx,
+                    template_pptx=template_pptx,
+                    script_path=operation["author_script"],
+                    slide_index=destination_slide,
+                    slide_id=operation["slide_id"],
+                    component_id=operation["component_id"],
+                    placement=operation["placement"],
+                    ir=ir,
+                    required_binding_names=operation.get("required_binding_names"),
+                    asset_bindings=operation.get("asset_bindings"),
+                    author_context=operation.get("author_context"),
+                )
+                binding = {
+                    "binding_names": copied["binding_names"],
+                    "slide_index": destination_slide,
+                }
+            except (KeyError, TypeError, ValueError) as exc:
+                raise _operation_error(
+                    f"model_authored_native_component operation {index} is invalid: {exc}"
+                ) from exc
+        elif kind == "chart_component_clone":
             if component_atlas is None:
                 raise _operation_error(
                     f"chart_component_clone operation {index} requires a reviewed component atlas"
@@ -980,6 +1056,7 @@ def execute_strict_template(
     component_atlas: dict | None = None,
     evidence_ledger: dict | None = None,
     content_bindings: dict | None = None,
+    final_delivery: bool = False,
 ) -> dict:
     """Create a strictly template-native candidate and prove its delivery gates.
 
@@ -1021,18 +1098,92 @@ def execute_strict_template(
             "code": "CONTENT_INTEGRITY_FAILED",
             "content_integrity": content_integrity,
         }
+    from .speaker_notes import (
+        inspect_speaker_notes,
+        validate_speaker_notes,
+        write_speaker_notes,
+    )
+
+    notes_contract = validate_speaker_notes(
+        ir,
+        evidence_ledger=evidence_ledger,
+        require_body_notes=final_delivery,
+    )
+    if final_delivery and notes_contract["status"] != "pass":
+        return {
+            "ok": False,
+            "code": "SPEAKER_NOTES_FAILED",
+            "speaker_notes": notes_contract,
+            "content_integrity": content_integrity,
+        }
+    from .component_atlas import validate_model_authoring_atlas
+    from .component_intent import evaluate_component_intents
+
+    atlas_contract = validate_model_authoring_atlas(
+        component_atlas or {"components": []},
+    )
+    if final_delivery and atlas_contract["status"] != "pass":
+        return {
+            "ok": False,
+            "code": "COMPONENT_ATLAS_INCOMPLETE",
+            "component_atlas": atlas_contract,
+            "speaker_notes": notes_contract,
+            "content_integrity": content_integrity,
+        }
+
+    component_intent = evaluate_component_intents(
+        ir,
+        component_atlas or {"status": "reviewed", "components": []},
+        require_all_content_slides=final_delivery,
+    )
+    if final_delivery and component_intent["status"] != "pass":
+        return {
+            "ok": False,
+            "code": "COMPONENT_INTENT_FAILED",
+            "component_intent": component_intent,
+            "speaker_notes": notes_contract,
+            "content_integrity": content_integrity,
+        }
+    from .model_authored_quality import evaluate_model_authored_quality
+
+    authored_quality = evaluate_model_authored_quality(
+        ir, require_assertions=final_delivery,
+    )
+    if final_delivery and authored_quality["status"] != "pass":
+        return {
+            "ok": False,
+            "code": "MODEL_AUTHORED_QUALITY_FAILED",
+            "model_authored_quality": authored_quality,
+            "component_intent": component_intent,
+            "speaker_notes": notes_contract,
+            "content_integrity": content_integrity,
+        }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix=".pptsmith-template-work-", dir=output_path.parent) as work_dir:
         working_path = Path(work_dir) / "candidate-with-template-pages.pptx"
+        expanded_baseline_path = Path(work_dir) / "expanded-template-baseline.pptx"
         baseline_path = Path(work_dir) / "baseline-delivery-pages.pptx"
         shutil.copyfile(template_path, working_path)
         try:
+            canvas = _ensure_destination_slides(working_path, strict_plan)
+            shutil.copyfile(working_path, expanded_baseline_path)
             applied, slide_ids, physical_slide_indices, binding_names = _apply_operations(
                 template_path,
                 working_path,
                 strict_plan,
                 component_atlas=component_atlas,
+                ir=ir,
             )
+            if final_delivery:
+                from .template_readability import enforce_bound_text_floor
+
+                readability_normalization = enforce_bound_text_floor(working_path)
+            else:
+                readability_normalization = {
+                    "status": "not_applied",
+                    "adjusted_run_count": 0,
+                    "adjustments": [],
+                }
         except ValueError as exc:
             return {"ok": False, "code": str(exc).split(":", 1)[0], "message": str(exc), "template": context}
 
@@ -1042,8 +1193,42 @@ def execute_strict_template(
             output_path,
             slide_numbers=delivery_slide_numbers,
         )
+        physical_to_slide_id: dict[int, str] = {}
+        for operation in applied:
+            destination = operation.get("binding", {}).get("slide_index")
+            names = operation.get("binding", {}).get("binding_names")
+            if not isinstance(names, list):
+                single = operation.get("binding", {}).get("binding_name")
+                names = [single] if isinstance(single, str) else []
+            for name in names:
+                parts = name.split(":") if isinstance(name, str) else []
+                if isinstance(destination, int) and len(parts) >= 3:
+                    physical_to_slide_id[destination] = parts[2]
+        ir_by_id = {
+            slide.get("id"): slide
+            for slide in ir.get("slides", [])
+            if isinstance(slide, dict) and isinstance(slide.get("id"), str)
+        }
+        notes_by_output_index: dict[int, dict] = {}
+        required_note_indices: list[int] = []
+        for output_index, physical_index in enumerate(delivery_slide_numbers, 1):
+            slide = ir_by_id.get(physical_to_slide_id.get(physical_index))
+            if not isinstance(slide, dict):
+                continue
+            if slide.get("slide_role", "content") not in {"cover", "section", "closing"}:
+                required_note_indices.append(output_index)
+            if isinstance(slide.get("speaker_notes"), dict):
+                notes_by_output_index[output_index] = slide["speaker_notes"]
+        notes_write = (
+            write_speaker_notes(output_path, notes_by_output_index)
+            if notes_by_output_index else {"status": "not_written", "count": 0, "slide_indices": []}
+        )
+        notes_inspection = inspect_speaker_notes(
+            output_path,
+            required_slide_indices=required_note_indices if final_delivery else sorted(notes_by_output_index),
+        )
         write_slide_subset(
-            template_path,
+            expanded_baseline_path,
             baseline_path,
             slide_numbers=delivery_slide_numbers,
         )
@@ -1069,23 +1254,47 @@ def execute_strict_template(
         expected_aspect=aspect, dpi=96,
     )
     assets = _asset_preservation(template_path, output_path)
+    from .template_readability import inspect_template_native_visual_floor
+    from .template_visual_quality import inspect_template_visual_quality
+
+    native_visual_floor = inspect_template_native_visual_floor(output_path)
+    template_visual_quality = inspect_template_visual_quality(
+        output_path,
+        ir=ir,
+        render_report=render,
+    )
     ok = (
         binding.get("status") == "pass"
         and inspection.get("status") == "passed"
         and render.get("status") == "passed"
         and assets["status"] == "pass"
+        and (not final_delivery or native_visual_floor["status"] == "pass")
+        and (not final_delivery or template_visual_quality["status"] == "pass")
+        and (not final_delivery or notes_inspection["status"] == "pass")
     )
     return {
         "ok": ok,
         "status": "strict_candidate_verified" if ok else "strict_candidate_rejected",
         "template": context,
         "operations": applied,
+        "canvas": canvas,
+        "readability_normalization": readability_normalization,
         "delivery": delivery,
         "binding": binding,
         "inspection": inspection,
         "render": render,
         "asset_preservation": assets,
+        "native_visual_floor": native_visual_floor,
+        "template_visual_quality": template_visual_quality,
         "content_integrity": content_integrity,
+        "component_intent": component_intent,
+        "component_atlas_contract": atlas_contract,
+        "model_authored_quality": authored_quality,
+        "speaker_notes": {
+            "contract": notes_contract,
+            "write": notes_write,
+            "inspection": notes_inspection,
+        },
         "output_pptx": str(output_path),
         "visual_review": "required_before_final_delivery",
     }

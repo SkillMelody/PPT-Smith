@@ -205,6 +205,8 @@ def build_pptx(plan: dict, output_path: str | Path) -> Path:
 
     for slide_spec in plan["slides"]:
         slide = prs.slides.add_slide(blank)
+        if isinstance(slide_spec.get("notes"), str) and slide_spec["notes"].strip():
+            slide.notes_slide.notes_text_frame.text = slide_spec["notes"].strip()
         background = slide_spec.get("background")
         if background:
             slide.background.fill.solid()

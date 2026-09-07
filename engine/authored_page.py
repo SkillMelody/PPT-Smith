@@ -197,6 +197,37 @@ def verify_authored_page(pptx_path: str | Path, ir: dict, *, slide_ids: list[str
             # preserved rather than silently treated as model-authored text.
             if declared_binding_names is not None and name not in declared_binding_names:
                 continue
+            if getattr(shape, "shape_type", None) in {
+                MSO_SHAPE_TYPE.PICTURE, MSO_SHAPE_TYPE.LINKED_PICTURE,
+            }:
+                parts = name.split(":")
+                if len(parts) != 4 or parts[:2] != ["bind", "image"]:
+                    invalid.append({"binding": name, "reason": "unknown image binding"})
+                    continue
+                slide_id, block_id = parts[2], parts[3]
+                target = slides.get(slide_id)
+                block = _block_map(target).get(block_id) if target else None
+                if block is None or block.get("role") != "image":
+                    invalid.append({"binding": name, "reason": "unknown image block"})
+                    continue
+                crop = block.get("crop_audit")
+                contaminated = (
+                    block.get("asset_kind") == "page_screenshot"
+                    or not isinstance(crop, dict)
+                    or any(crop.get(field) is True for field in (
+                        "includes_page_header", "includes_page_footer",
+                        "includes_navigation", "includes_body_prose",
+                    ))
+                )
+                if contaminated:
+                    invalid.append({
+                        "binding": name,
+                        "reason": "image is not an audited standalone source asset",
+                    })
+                    continue
+                covered.add(f"{slide_id}:{block_id}")
+                valid_bindings.add(f"image:{slide_id}:{block_id}")
+                continue
             if getattr(shape, "has_table", False):
                 parts = name.split(":")
                 if len(parts) != 4 or parts[:2] != ["bind", "table"]:

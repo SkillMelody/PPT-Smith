@@ -1,61 +1,103 @@
 # PPT Smith V4 Template / Path C 路线
 
-## 目标
+## 定位
 
-Template 路线从哈希锁定的用户模板开始，只执行显式声明的原生图表、表格、文本和
-reviewed Component Atlas 操作。它不调用 Bespoke 作者脚本，不让模型自由改写几何，
-也不把 Standard 的布局策略套进模板。
-
-## 生产链路
+Template 是强模型主导的模板组件编排路线。用户模板提供原生视觉语言和可复用组件，模型
+负责理解内容、规划叙事、匹配与组合组件，并在组件不足时按模板风格创作新原生组件。
+引擎负责验证组件合同、执行绑定、保持资产、真实渲染和 QA。
 
 ```text
-只读模板 → Evidence Ledger → 逐页内容合同 → 内容完整性硬门禁
-        → Template Evidence → reviewed Component Atlas
-        → 语义/容量匹配 → strict plan → 原生对象绑定与克隆
-        → 仅抽取目标交付页 → Template QA → 候选页真实渲染
+完整源材料 + 用户目标 + 用户模板
+              ↓
+强模型：Content/Evidence Map + Narrative Contract + 高质量 IR + notes
+              ↓
+模板分析：视觉 token + reviewed Component Atlas + 可组合关系
+              ↓
+模型：逐页候选匹配 → 组件组合 → 缺口组件原生创作
+              ↓
+strict plan → 原生绑定/克隆 → 真实渲染 → 内容与视觉复审
 ```
 
-`strict-template` 的最终 PPTX 只包含 strict plan 实际触达的目标页。完整模板副本仅存在于
-自动清理的内部工作目录；未使用的模板页不会进入成品，也不会进入 `qa/candidate/slides`。
+## Component Atlas
 
-## 内容完整性门禁
+Atlas 不只是形状清单。每个 reviewed 组件必须记录：
 
-交付候选必须同时提供 `--evidence-ledger` 和 `--content-bindings`。Ledger 将来源中的
-claim、metric 和 exhibit 固定为可追踪证据单元；逐页合同声明 assertion、选用证据、
-必需证据及有理由的省略。`strict-template` 在任何原生对象操作和 PPTX 写出之前检查：
+- 语义用途和支持的信息拓扑；
+- 必需槽位、字段类型和文本容量；
+- 元素数量、图表 series/category 容量和表格容量；
+- 可组合的父子槽位、等价实例和原生保真度；
+- 支持的 archetype、编辑性和已知风险。
 
-- 加权证据覆盖率至少 90%；
-- 必需证据处理率 100%；
-- 数字证据选用率至少 95%；
-- Exhibit 必须选用或给出明确省略理由；
-- 正文页必须有 assertion 和已知 evidence ID；
-- `要点 1`、`顺序`、`核心议题`、`阶段 3` 等通用占位文案不得进入交付候选。
+应覆盖模板中可复用的图表、表格、KPI 卡、时间线、流程、比较、矩阵、层级、图标卡、
+图片框、章节结构、页脚和装饰系统。仅登记两个通用卡片不构成完整模板分析。
 
-缺少输入时返回 `CONTENT_INTEGRITY_REQUIRED`；合同或覆盖率不合格时返回
-`CONTENT_INTEGRITY_FAILED`。通过报告会保存在结果的 `content_integrity` 字段中。
+## 模型组件编排
 
-## QA 边界
+每页模型先声明 assertion、证据、拓扑、数据形态、可见文案和 speaker notes，再执行：
 
-Template 路线允许 reviewed 组件中 `bind:block:*:*:item/detail` 形成多个原生文本框，
-因此其碎片检查可扣除这些已声明组件文本。该豁免只在 `route="template"` 生效；Standard
-与 Bespoke 仍按全部文本框计算碎片度。
+1. 计算全部可行模板组件；
+2. 优先选择精确匹配的原生组件；
+3. 一个组件不足时组合多个 reviewed 组件；
+4. 对所有未选择的可行组件记录原因；
+5. 没有可行组件时，使用模板 token 编写新的原生组件；
+6. 新组件通过 QA 后可进入待审核 Atlas 扩展，但不能自动冒充 reviewed 组件。
 
-模板资产保真按交付文件的可达边界验证：输出中存在的母版、版式、主题和媒体必须与
-源模板字节一致，且输出关系不得指向缺失资产；源模板中未被交付页引用的媒体无需复制。
+最终报告必须给出 `eligible_component_coverage`：所有存在可行模板组件的页面中，实际复用
+模板组件的比例。目标是 100%；低于 100% 必须阻断或逐页解释。
 
-## 集成测试边界
+## 内容与备注
 
-`tests/integration/test_template_content_integrity.py` 使用仓库内生成的三段报告，始终运行，
-用于证明中段数字证据遗漏会被拒绝、完整证据会通过。它是可复现的内容完整性回归基线。
+页面只承载一个完整判断和少量高价值内容。禁止 OCR 碎片、通用标签、自动省略号和微型
+正文。每个正文页必须有 speaker notes，至少包含：
 
-McKinsey Component Atlas 测试依赖未随仓库分发的参考模板，属于可选参考覆盖。安装后可将
-`PPT_SMITH_MCKINSEY_FIXTURE` 指向包含 `sources/` 与 `analysis/` 的项目目录；未配置或目录
-不存在时，`tests/integration/test_real_component_atlas.py` 会整组明确跳过。该跳过不能被
-解释为真实模板验收通过，也不替代始终运行的生成式集成测试。
+- 演讲叙事；
+- 关键证据与来源锚点；
+- 数据口径和限制；
+- 对图表/插图的解释；
+- 建议的讲述顺序。
 
-## 当前状态
+## 图表、插图和截图
 
-已支持模板哈希、可达资产校验、证据账本、逐页内容合同、内容完整性硬门禁、原生
-chart/table/text，Atlas 语义与容量匹配，多组件编排，以及漏斗、金字塔、时间线、图表
-组件和固定原生组。完整长稿仍取决于模板组件审核覆盖率和内容拓扑匹配；无合适组件时
-必须报告缺口，不能硬套。
+- 可恢复数据的图表、表格必须生成原生可编辑对象，并优先绑定模板图表组件；
+- 非数据插图或无法重建的复杂视觉可使用图片，但只允许隔离插图本身；
+- 禁止包含源页面正文、导航、页眉、页脚的大面积截图；
+- 每幅插图必须有 Exhibit Interpretation Contract：结论、关键数字、说明、影响、限制、
+  来源和 notes；
+- “把源页裁下来贴进 PPT”不是 Template authoring。
+
+## Fail-closed 门禁
+
+交付候选必须同时通过：
+
+- 内容与来源覆盖；
+- 数字和图表数据 provenance；
+- speaker-notes 覆盖；
+- 可行模板组件复用率；
+- 新组件模板风格一致性；
+- 原生图表/表格编辑性；
+- 无源页截图、无 OCR 碎片、无自动省略号；
+- 页面密度、层级、节奏和全稿样式完整性；
+- 结构检查、真实渲染、资产保真和 hash-bound 视觉复审。
+
+机器门禁通过只产生 candidate。最终状态必须有人工或高能力视觉模型批准。
+
+## 当前工程入口
+
+- `component-atlas`：构建 reviewed Atlas；
+- `component-inventory`：检查模板组件覆盖；
+- `plan-model-template-components`：编译模型显式给出的逐页多组件方案；
+- `compose-components`：生成 strict plan；
+- `strict-template --final-delivery`：执行组件克隆、原生新组件脚本、备注写入和最终机器门禁；
+- `review-template`：将人工或高能力视觉模型的逐页复核绑定到候选 PPTX 与真实渲染哈希。
+
+当 `component_intent.mode=model_authored` 时，模型计划必须给出
+`new_component_id`、`author_script`、目标区域和完整内容绑定。运行时调用
+`build(slide, context)`，拒绝未绑定正文、区域越界、模板外字体/色彩，以及未在 IR 和
+哈希清单中声明的图片。合规的独立源插图使用 `bind:image:<slide_id>:<block_id>`；源页
+截图、含正文的裁剪和可重建数据图一律不允许通过该通道。
+
+`template_composition` 也可包含一个显式 `model_authored` 辅助组件，用来补足 Atlas 没有
+覆盖的标题条、注释或关系层；已存在可行模板组件的主体槽位仍必须复用，不能借混合编排
+绕过候选审计。
+
+旧的确定性长文自动规划和源页截图实验只作为失败样本，不属于正式交付路线。

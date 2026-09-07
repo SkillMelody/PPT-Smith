@@ -87,6 +87,58 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
             component_instance_id = f"slide-{destination_slide_index}-component-{component_index + 1}"
 
             def expand(spec: dict, box: dict, instance_id: str, *, exact_component_id: str | None = None) -> None:
+                if spec.get("model_authored") is True:
+                    script = spec.get("author_script")
+                    slide_id = spec.get("slide_id")
+                    component_id = spec.get("component_id")
+                    if not all(isinstance(value, str) and value for value in (
+                        script, slide_id, component_id,
+                    )):
+                        raise ValueError(
+                            f"model-authored component {instance_id} requires script, slide_id and component_id"
+                        )
+                    required_binding_names = spec.get("required_binding_names", [])
+                    if not isinstance(required_binding_names, list) or any(
+                        not isinstance(name, str) or not name
+                        for name in required_binding_names
+                    ):
+                        raise ValueError(
+                            f"model-authored component {instance_id} has invalid required bindings"
+                        )
+                    asset_bindings = spec.get("asset_bindings", [])
+                    if not isinstance(asset_bindings, list) or any(
+                        not isinstance(asset, dict) for asset in asset_bindings
+                    ):
+                        raise ValueError(
+                            f"model-authored component {instance_id} has invalid asset bindings"
+                        )
+                    author_context = spec.get("author_context", {})
+                    if not isinstance(author_context, dict):
+                        raise ValueError(
+                            f"model-authored component {instance_id} has invalid author context"
+                        )
+                    selections.append({
+                        "destination_slide_index": destination_slide_index,
+                        "component_index": component_index,
+                        "component_instance_id": instance_id,
+                        "component_id": component_id,
+                        "family": "model_authored_native",
+                        "granularity": "model_authored",
+                        "reason": "no feasible reviewed template component; model-authored native component",
+                    })
+                    operations.append({
+                        "kind": "model_authored_native_component",
+                        "destination_slide_index": destination_slide_index,
+                        "component_instance_id": instance_id,
+                        "component_id": component_id,
+                        "slide_id": slide_id,
+                        "author_script": script,
+                        "required_binding_names": deepcopy(required_binding_names),
+                        "asset_bindings": deepcopy(asset_bindings),
+                        "author_context": deepcopy(author_context),
+                        "placement": box,
+                    })
+                    return
                 elements = spec.get("elements")
                 if isinstance(elements, list) and elements:
                     element_count = len(elements)
@@ -102,12 +154,18 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                     requirement["family"] = spec["family"]
                 if spec.get("required_slots") is not None:
                     requirement["required_slots"] = spec["required_slots"]
+                for field in (
+                    "topology", "archetype", "composition_role",
+                    "text_requirements", "data_shape",
+                ):
+                    if spec.get(field) is not None:
+                        requirement[field] = spec[field]
                 requested_component_id = exact_component_id or spec.get("component_id")
                 if requested_component_id is not None:
                     requirement["component_id"] = requested_component_id
                 selection = select_component(atlas, requirement)
                 if selection["status"] != "selected":
-                    raise ValueError(selection["reason"])
+                    raise ValueError(f"component {instance_id}: {selection['reason']}")
                 selected = next(
                     item for item in atlas.get("components", [])
                     if item.get("component_id") == selection["component_id"]

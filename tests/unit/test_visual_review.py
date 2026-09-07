@@ -6,7 +6,11 @@ from pathlib import Path
 import subprocess
 import sys
 
-from engine.visual_review import apply_visual_review
+from engine.visual_review import (
+    _canonical_sha,
+    apply_template_visual_review,
+    apply_visual_review,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -101,3 +105,64 @@ def test_review_bespoke_cli_writes_visual_approval(tmp_path: Path) -> None:
 
     assert completed.returncode == 0, completed.stderr or completed.stdout
     assert json.loads(output.read_text(encoding="utf-8"))["status"] == "visual_approved"
+
+
+def _strict_report(tmp_path: Path) -> Path:
+    deck = tmp_path / "template-candidate.pptx"
+    deck.write_bytes(b"native template deck")
+    render = {"status": "passed", "slides": [{"slide_index": 1, "blank_score": 0.4}]}
+    report = tmp_path / "strict-report.json"
+    report.write_text(json.dumps({
+        "ok": True,
+        "status": "strict_candidate_verified",
+        "output_pptx": str(deck),
+        "render": render,
+        "native_visual_floor": {"status": "pass", "findings": []},
+        "template_visual_quality": {"status": "pass", "issues": []},
+    }), encoding="utf-8")
+    return report
+
+
+def _template_review(report: Path, *, status: str = "approved") -> dict:
+    strict = json.loads(report.read_text(encoding="utf-8"))
+    return {
+        "schema_version": "1.0.0",
+        "status": status,
+        "round": 1,
+        "deck_sha256": _sha(Path(strict["output_pptx"])),
+        "render_report_sha256": _canonical_sha(strict["render"]),
+        "reviewer": {
+            "provider": "test",
+            "model": "vision-1",
+            "method": "rendered_contact_sheet",
+        },
+        "findings": [] if status == "approved" else [{
+            "slide_index": 1,
+            "criterion": "visual hierarchy",
+            "instruction": "Increase the quantitative focal point.",
+        }],
+    }
+
+
+def test_template_visual_review_is_hash_bound_and_marks_final_delivery_ready(
+    tmp_path: Path,
+) -> None:
+    report = _strict_report(tmp_path)
+
+    result = apply_template_visual_review(report, _template_review(report))
+
+    assert result["ok"] is True
+    assert result["status"] == "final_delivery_ready"
+
+
+def test_template_visual_review_rejects_a_different_render_fingerprint(
+    tmp_path: Path,
+) -> None:
+    report = _strict_report(tmp_path)
+    review = _template_review(report)
+    review["render_report_sha256"] = "sha256:" + "0" * 64
+
+    result = apply_template_visual_review(report, review)
+
+    assert result["ok"] is False
+    assert result["code"] == "VISUAL_REVIEW_RENDER_HASH_MISMATCH"

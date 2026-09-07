@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from pptx import Presentation
+
 
 GENERIC_FAMILIES = frozenset({"card_grid", "icon_card_grid"})
 
@@ -66,3 +70,47 @@ def evaluate_template_visual_quality(pages: list[dict]) -> dict:
         "pages": page_reports,
         "issues": issues,
     }
+
+
+def inspect_template_visual_quality(
+    pptx_path: str | Path,
+    *,
+    ir: dict,
+    render_report: dict,
+) -> dict:
+    """Build density evidence from the actual PPTX and real-render report."""
+    presentation = Presentation(str(pptx_path))
+    ir_slides = [slide for slide in ir.get("slides", []) if isinstance(slide, dict)]
+    rendered_by_index = {
+        item.get("slide_index"): item
+        for item in render_report.get("slides", [])
+        if isinstance(item, dict)
+    }
+    pages: list[dict] = []
+    for index, slide in enumerate(presentation.slides, 1):
+        contract = ir_slides[index - 1] if index <= len(ir_slides) else {}
+        text = " ".join(
+            str(getattr(shape, "text", "") or "").strip()
+            for shape in slide.shapes
+            if getattr(shape, "has_text_frame", False)
+        )
+        intent = contract.get("component_intent", {})
+        selected_ids = intent.get("selected_component_ids", [])
+        families = (
+            selected_ids
+            if selected_ids
+            else [f"model_authored:{intent.get('new_component_id')}"]
+            if intent.get("mode") == "model_authored"
+            else []
+        )
+        slide_role = contract.get("slide_role", "content")
+        pages.append({
+            "slide_id": contract.get("id", f"S{index:02d}"),
+            "archetype": "body" if slide_role == "content" else slide_role,
+            "visible_text_chars": len("".join(text.split())),
+            "chart_count": sum(bool(getattr(shape, "has_chart", False)) for shape in slide.shapes),
+            "semantic_element_count": int(intent.get("element_count", 1)),
+            "families": families,
+            "blank_score": rendered_by_index.get(index, {}).get("blank_score"),
+        })
+    return evaluate_template_visual_quality(pages)

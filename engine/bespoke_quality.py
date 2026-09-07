@@ -37,13 +37,19 @@ def _text_runs(shape: Any):
 
 
 def _font_floor(name: str) -> tuple[float, str]:
-    if name.startswith("bind:source:") or name.endswith(":caption"):
+    if (
+        name.startswith("bind:source:")
+        or name.endswith(":caption")
+        or ":page_no:" in name
+    ):
         return 9.0, "source_or_caption"
     if name.startswith("bind:slide:") and name.endswith(":title"):
         return 22.0, "title"
     if name.startswith("bind:slide:") and name.endswith(":message"):
         return 12.0, "message"
     return 12.0, "body"
+
+
 
 
 def _color_key(fill: Any) -> str | None:

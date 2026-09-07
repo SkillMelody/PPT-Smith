@@ -296,7 +296,16 @@ def build_manuscript_strict_preview_bundle(
         destination = template_slide_count + page_index
         page_by_destination[destination] = (purpose, title.strip())
         blocks_by_purpose[purpose] = {}
-        ir_slide = {"id": purpose, "title": title.strip(), "blocks": []}
+        ir_slide = {
+            "id": purpose,
+            "title": title.strip(),
+            "slide_role": content.get("archetype", "body").replace("body", "content"),
+            "blocks": [],
+        }
+        if isinstance(content.get("speaker_notes"), dict):
+            ir_slide["speaker_notes"] = deepcopy(content["speaker_notes"])
+        if isinstance(content.get("component_intent"), dict):
+            ir_slide["component_intent"] = deepcopy(content["component_intent"])
         ir_slides.append(ir_slide)
         ir_by_purpose[purpose] = ir_slide
         title_operations.append(_title_operation(

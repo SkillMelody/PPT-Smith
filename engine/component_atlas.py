@@ -18,6 +18,8 @@ from .topology import TOPOLOGIES
 
 
 _GRANULARITIES = {"atomic", "micro", "composite", "section", "page_recipe"}
+_NATIVE_FIDELITY = {"exact", "transformed", "style_authored"}
+_COMPOSITION_ROLES = {"primary", "supporting", "context", "navigation", "decoration"}
 
 
 def _sha256(path: Path) -> str:
@@ -295,6 +297,31 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
             raise ValueError(
                 f"component {component_id!r} has invalid reviewed topologies"
             )
+        archetypes = declaration.get("archetypes", [])
+        if not isinstance(archetypes, list) or any(
+            not isinstance(archetype, str) or not archetype for archetype in archetypes
+        ):
+            raise ValueError(f"component {component_id!r} has invalid archetypes")
+        composition_roles = declaration.get("composition_roles", [])
+        if not isinstance(composition_roles, list) or any(
+            role not in _COMPOSITION_ROLES for role in composition_roles
+        ):
+            raise ValueError(f"component {component_id!r} has invalid composition roles")
+        text_capacity = declaration.get("text_capacity", {})
+        if not isinstance(text_capacity, dict) or any(
+            not isinstance(field, str)
+            or isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or limit < 1
+            for field, limit in text_capacity.items()
+        ):
+            raise ValueError(f"component {component_id!r} has invalid text capacity")
+        data_contract = declaration.get("data_contract", {})
+        if not isinstance(data_contract, dict):
+            raise ValueError(f"component {component_id!r} data contract must be an object")
+        native_fidelity = declaration.get("native_fidelity")
+        if native_fidelity is not None and native_fidelity not in _NATIVE_FIDELITY:
+            raise ValueError(f"component {component_id!r} has invalid native fidelity")
         resolved_component = {
             "component_id": component_id,
             "family": declaration.get("family"),
@@ -305,6 +332,16 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
             "groups": resolved_groups,
             "parameters": deepcopy(declaration.get("parameters", {})),
         }
+        if archetypes:
+            resolved_component["archetypes"] = deepcopy(archetypes)
+        if composition_roles:
+            resolved_component["composition_roles"] = deepcopy(composition_roles)
+        if text_capacity:
+            resolved_component["text_capacity"] = deepcopy(text_capacity)
+        if data_contract:
+            resolved_component["data_contract"] = deepcopy(data_contract)
+        if native_fidelity is not None:
+            resolved_component["native_fidelity"] = native_fidelity
         if semantic_contract:
             resolved_component["semantic_contract"] = deepcopy(semantic_contract)
         if renderer is not None:
@@ -354,6 +391,44 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
     }
 
 
+def validate_model_authoring_atlas(atlas: dict) -> dict:
+    """Require semantic/capacity metadata before final model orchestration."""
+    issues: list[dict] = []
+    components = atlas.get("components") if isinstance(atlas, dict) else None
+    if not isinstance(components, list) or not components:
+        return {"status": "fail", "issues": [{"code": "COMPONENT_ATLAS_EMPTY"}]}
+    for component in components:
+        if not isinstance(component, dict):
+            issues.append({"code": "COMPONENT_METADATA_INVALID"})
+            continue
+        component_id = component.get("component_id")
+        required = {
+            "topologies": component.get("topologies"),
+            "semantic_contract": component.get("semantic_contract"),
+            "archetypes": component.get("archetypes"),
+            "composition_roles": component.get("composition_roles"),
+            "text_capacity": component.get("text_capacity"),
+            "native_fidelity": component.get("native_fidelity"),
+        }
+        for field, value in required.items():
+            if value in (None, [], {}):
+                issues.append({
+                    "code": "COMPONENT_METADATA_INCOMPLETE",
+                    "component_id": component_id,
+                    "field": field,
+                })
+        has_chart = any(
+            group.get("role") == "chart" for group in component.get("groups", [])
+            if isinstance(group, dict)
+        )
+        if has_chart and not component.get("data_contract"):
+            issues.append({
+                "code": "CHART_COMPONENT_DATA_CONTRACT_MISSING",
+                "component_id": component_id,
+            })
+    return {"status": "pass" if not issues else "fail", "issues": issues}
+
+
 def select_component(atlas: dict, requirement: dict) -> dict:
     if not isinstance(atlas, dict) or atlas.get("status") != "reviewed":
         raise ValueError("component selection requires a reviewed atlas")
@@ -364,6 +439,10 @@ def select_component(atlas: dict, requirement: dict) -> dict:
     family = requirement.get("family")
     topology = requirement.get("topology")
     required_slots = requirement.get("required_slots", [])
+    archetype = requirement.get("archetype")
+    composition_role = requirement.get("composition_role")
+    text_requirements = requirement.get("text_requirements", {})
+    data_shape = requirement.get("data_shape", {"kind": "none"})
     requested_component_id = requirement.get("component_id")
     if not isinstance(semantic_use, str) or not semantic_use:
         raise ValueError("component requirement needs semantic_use")
@@ -378,6 +457,20 @@ def select_component(atlas: dict, requirement: dict) -> dict:
         or any(not isinstance(slot, str) or not slot for slot in required_slots)
     ):
         raise ValueError("component requirement required_slots must be a list of non-empty strings")
+    if archetype is not None and (not isinstance(archetype, str) or not archetype):
+        raise ValueError("component requirement archetype must be a string")
+    if composition_role is not None and composition_role not in _COMPOSITION_ROLES:
+        raise ValueError("component requirement composition role is invalid")
+    if not isinstance(text_requirements, dict) or any(
+        not isinstance(field, str)
+        or isinstance(length, bool)
+        or not isinstance(length, int)
+        or length < 1
+        for field, length in text_requirements.items()
+    ):
+        raise ValueError("component requirement text requirements are invalid")
+    if not isinstance(data_shape, dict) or not isinstance(data_shape.get("kind"), str):
+        raise ValueError("component requirement data shape is invalid")
     if requested_component_id is not None and (
         not isinstance(requested_component_id, str) or not requested_component_id
     ):
@@ -394,6 +487,13 @@ def select_component(atlas: dict, requirement: dict) -> dict:
             continue
         if topology is not None and topology not in component.get("topologies", []):
             continue
+        if archetype is not None and archetype not in component.get("archetypes", []):
+            continue
+        if (
+            composition_role is not None
+            and composition_role not in component.get("composition_roles", [])
+        ):
+            continue
         available_slots = set(component.get("semantic_contract", {}).get("required_fields", []))
         if not set(required_slots) <= available_slots:
             continue
@@ -403,6 +503,26 @@ def select_component(atlas: dict, requirement: dict) -> dict:
             continue
         if not minimum <= element_count <= maximum:
             continue
+        text_capacity = component.get("text_capacity", {})
+        if any(text_capacity.get(field, 0) < length for field, length in text_requirements.items()):
+            continue
+        component_data = component.get("data_contract", {})
+        data_kind = data_shape.get("kind", "none")
+        if data_kind not in component_data.get("kinds", ["none"]):
+            continue
+        if data_kind == "chart":
+            chart_type = data_shape.get("chart_type")
+            if chart_type and chart_type not in component_data.get("chart_types", []):
+                continue
+            if data_shape.get("series_count", 0) > component_data.get("max_series", 0):
+                continue
+            if data_shape.get("category_count", 0) > component_data.get("max_categories", 0):
+                continue
+        if data_kind == "table":
+            if data_shape.get("row_count", 0) > component_data.get("max_rows", 0):
+                continue
+            if data_shape.get("column_count", 0) > component_data.get("max_columns", 0):
+                continue
         matches.append((maximum - element_count, component["component_id"], component, minimum, maximum))
 
     if not matches:
@@ -426,6 +546,119 @@ def select_component(atlas: dict, requirement: dict) -> dict:
             f"within {minimum}..{maximum}"
         ),
     }
+
+
+def find_feasible_components(atlas: dict, requirement: dict) -> list[dict]:
+    """Return every reviewed component that satisfies the model requirement.
+
+    Unlike ``select_component`` this is an audit surface: the model must see
+    the complete feasible set before choosing reuse, composition, or a new
+    component.
+    """
+    if not isinstance(atlas, dict) or atlas.get("status") != "reviewed":
+        raise ValueError("component feasibility requires a reviewed atlas")
+    if not isinstance(requirement, dict):
+        raise ValueError("component requirement must be an object")
+    semantic_use = requirement.get("semantic_use")
+    element_count = requirement.get("element_count")
+    family = requirement.get("family")
+    topology = requirement.get("topology")
+    required_slots = requirement.get("required_slots", [])
+    archetype = requirement.get("archetype")
+    composition_role = requirement.get("composition_role")
+    text_requirements = requirement.get("text_requirements", {})
+    data_shape = requirement.get("data_shape", {"kind": "none"})
+    if not isinstance(semantic_use, str) or not semantic_use:
+        raise ValueError("component requirement needs semantic_use")
+    if (
+        isinstance(element_count, bool)
+        or not isinstance(element_count, int)
+        or element_count < 1
+    ):
+        raise ValueError("component requirement needs a positive element_count")
+    if family is not None and (not isinstance(family, str) or not family):
+        raise ValueError("component requirement family must be a non-empty string")
+    if topology is not None and topology not in TOPOLOGIES:
+        raise ValueError("component requirement topology must be a supported topology")
+    if (
+        not isinstance(required_slots, list)
+        or any(not isinstance(slot, str) or not slot for slot in required_slots)
+    ):
+        raise ValueError("component requirement required_slots must be strings")
+    if archetype is not None and (not isinstance(archetype, str) or not archetype):
+        raise ValueError("component requirement archetype must be a string")
+    if composition_role is not None and composition_role not in _COMPOSITION_ROLES:
+        raise ValueError("component requirement composition role is invalid")
+    if not isinstance(text_requirements, dict) or any(
+        not isinstance(field, str)
+        or isinstance(length, bool)
+        or not isinstance(length, int)
+        or length < 1
+        for field, length in text_requirements.items()
+    ):
+        raise ValueError("component requirement text requirements are invalid")
+    if not isinstance(data_shape, dict) or not isinstance(data_shape.get("kind"), str):
+        raise ValueError("component requirement data shape is invalid")
+
+    feasible: list[dict] = []
+    for component in atlas.get("components", []):
+        if semantic_use not in component.get("semantic_uses", []):
+            continue
+        if family is not None and component.get("family") != family:
+            continue
+        if topology is not None and topology not in component.get("topologies", []):
+            continue
+        if archetype is not None and archetype not in component.get("archetypes", []):
+            continue
+        if (
+            composition_role is not None
+            and composition_role not in component.get("composition_roles", [])
+        ):
+            continue
+        available_slots = set(
+            component.get("semantic_contract", {}).get("required_fields", [])
+        )
+        if not set(required_slots) <= available_slots:
+            continue
+        count = component.get("parameters", {}).get("element_count", {})
+        minimum, maximum = count.get("minimum"), count.get("maximum")
+        if not isinstance(minimum, int) or not isinstance(maximum, int):
+            continue
+        if not minimum <= element_count <= maximum:
+            continue
+        text_capacity = component.get("text_capacity", {})
+        if any(text_capacity.get(field, 0) < length for field, length in text_requirements.items()):
+            continue
+        component_data = component.get("data_contract", {})
+        data_kind = data_shape.get("kind", "none")
+        supported_kinds = component_data.get("kinds", ["none"])
+        if data_kind not in supported_kinds:
+            continue
+        if data_kind == "chart":
+            chart_type = data_shape.get("chart_type")
+            if chart_type and chart_type not in component_data.get("chart_types", []):
+                continue
+            if data_shape.get("series_count", 0) > component_data.get("max_series", 0):
+                continue
+            if data_shape.get("category_count", 0) > component_data.get("max_categories", 0):
+                continue
+        if data_kind == "table":
+            if data_shape.get("row_count", 0) > component_data.get("max_rows", 0):
+                continue
+            if data_shape.get("column_count", 0) > component_data.get("max_columns", 0):
+                continue
+        feasible.append({
+            "component_id": component["component_id"],
+            "family": component.get("family"),
+            "capacity": {"minimum": minimum, "maximum": maximum},
+            "capacity_slack": maximum - element_count,
+            "granularity": component.get("granularity", "micro"),
+            "native_fidelity": component.get("native_fidelity", "reviewed"),
+        })
+    return sorted(
+        feasible,
+        key=lambda item: (item["capacity_slack"], item["component_id"]),
+    )
 
 
 def resolve_chart_component_binding(atlas: dict, requirement: dict) -> dict:

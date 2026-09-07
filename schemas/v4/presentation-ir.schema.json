@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/SkillMelody/PPT-Smith/main/schemas/v4/presentation-ir.schema.json",
   "title": "Presentation IR v4",
-  "description": "Content-only semantic contract between any LLM and the PPT Smith engine. The model describes WHAT each slide says (facts, metrics, relations, insights) with source anchoring; the engine decides HOW it looks. This schema intentionally contains no layout, archetype, color, typography, or density fields: visual decisions are engine-owned and recorded in decision-trace, not authored here. Minimal viable protocol: deck.title + slides[].{id,title,blocks>=1}. Everything else is progressive enrichment that stronger models may add and the engine may exploit.",
+  "description": "Model-authored semantic contract for PPT Smith. The model owns source understanding, narrative, visible content, chart/diagram data, speaker notes, and—on Template route—component intent. Route runtimes validate and execute those decisions.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "deck", "sources", "slides"],
   "properties": {
     "schema_version": {
       "enum": ["4.0.0", "4.1.0"],
-      "description": "Contract version. 4.1.0 adds optional chart/diagram_ir on slides (stronger visuals for capable models); 4.0.0 IRs remain valid. Visual decisions stay engine-owned either way."
+      "description": "Contract version. 4.1.0 adds native chart/diagram payloads and model-directed authoring metadata; 4.0.0 IRs remain valid for diagnostic compatibility."
     },
     "deck": {
       "type": "object",
@@ -213,8 +213,30 @@
         "id": { "$ref": "#/$defs/idSlug" },
         "role": { "const": "image" },
         "asset_ref": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Key into the asset manifest, or a source image anchor img_N." },
+        "asset_kind": {
+          "type": "string",
+          "enum": ["illustration", "photo", "non_reconstructable_figure", "data_figure", "page_screenshot"]
+        },
+        "reconstructable": { "type": "boolean" },
+        "crop_audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["includes_page_header", "includes_page_footer", "includes_navigation", "includes_body_prose"],
+          "properties": {
+            "includes_page_header": { "type": "boolean" },
+            "includes_page_footer": { "type": "boolean" },
+            "includes_navigation": { "type": "boolean" },
+            "includes_body_prose": { "type": "boolean" },
+            "text_area_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
         "caption": { "type": "string", "maxLength": 200 },
-        "source_ref": { "$ref": "#/$defs/sourceRef" }
+        "source_ref": { "$ref": "#/$defs/sourceRef" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/sourceRef" }
+        }
       }
     },
     "block": {
@@ -406,7 +428,7 @@
           "description": "spotlight: supporting blocks below the emphasized one."
         }
       },
-      "description": "Page-level composition intent (P12-refine Level 1). The model picks a composition family and assigns block ids to its slots; the engine owns geometry, colors, fonts and QA. Unsupported types or invalid block references degrade honestly to the rule archetype."
+      "description": "Legacy Standard-route composition hint. Bespoke and Template delivery use the model-authored component_intent and authoring code instead."
     },
     "refineSlot": {
       "type": "object",
@@ -416,7 +438,7 @@
           "type": "array",
           "minItems": 1,
           "maxItems": 6,
-          "items": { "$ref": "#/$defs/idSlug" }
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
         },
         "visual": {
           "type": "object",
@@ -461,7 +483,116 @@
           "description": "L2: the proposed row/column grid assignment of this slide's blocks. The engine lays out the grid and QA-gates it; a rejected proposal falls back to the rule archetype."
         }
       },
-      "description": "Autonomy proposal (P11): bounded, engine-validated influence over composition. The engine owns layout either way; this only lets a capable model steer WHICH composition is tried first."
+      "description": "Legacy Standard-route proposal surface retained for compatibility; it is not the V4 production authoring authority."
+    },
+    "speakerNotes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["narrative", "evidence_ids", "source_refs"],
+      "properties": {
+        "narrative": {
+          "type": "string",
+          "minLength": 80,
+          "maxLength": 5000,
+          "description": "Speaker-ready explanation that expands the concise visible slide without duplicating it verbatim."
+        },
+        "talking_points": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/sourceRef" }
+        },
+        "caveats": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      }
+    },
+    "componentIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "semantic_use", "element_count", "topology", "required_slots"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["template_reuse", "template_composition", "model_authored"]
+        },
+        "semantic_use": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "element_count": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "family": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "archetype": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "composition_role": {
+          "type": "string",
+          "enum": ["primary", "supporting", "context", "navigation", "decoration"]
+        },
+        "text_requirements": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 5000 }
+        },
+        "data_shape": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["none", "chart", "table", "image", "diagram"] },
+            "chart_type": { "type": "string", "enum": ["column", "bar", "line", "pie", "doughnut", "combo", "scatter"] },
+            "series_count": { "type": "integer", "minimum": 1, "maximum": 32 },
+            "category_count": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "row_count": { "type": "integer", "minimum": 1, "maximum": 1000 },
+            "column_count": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        },
+        "topology": {
+          "type": "string",
+          "enum": ["statement", "comparison", "trend", "sequence", "causal", "hierarchy", "matrix", "risk_mitigation", "dashboard", "method"]
+        },
+        "required_slots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 80 }
+        },
+        "candidate_component_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "selected_component_ids": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "rejected_candidates": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["component_id", "reason"],
+            "properties": {
+              "component_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+            }
+          }
+        },
+        "new_component_id": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
     },
     "slide": {
       "type": "object",
@@ -511,9 +642,17 @@
           "$ref": "#/$defs/diagramIr",
           "description": "Optional relationship/process diagram. When present the engine renders a native diagram (causal chain, roadmap, architecture, matrix…). Nodes/edges describe structure only — never positions, colors, or shapes."
         },
+        "speaker_notes": {
+          "$ref": "#/$defs/speakerNotes",
+          "description": "Detailed evidence, interpretation, caveats, and delivery narrative kept out of visible slide copy."
+        },
+        "component_intent": {
+          "$ref": "#/$defs/componentIntent",
+          "description": "Template-route model decision describing reuse, composition, or a new native component."
+        },
         "proposal": {
           "$ref": "#/$defs/proposal",
-          "description": "Optional autonomy-tier proposal (P11): a stronger model may ask for constrained influence over composition. L1 selects an archetype from the engine's own candidate menu; L2 proposes a row/column grid assignment of blocks. Both are validated by the engine, QA-gated, and fall back to the rule archetype if rejected. Never required; weak models omit it and stay at L0."
+          "description": "Standard-route constrained composition proposal. Bespoke and model-authored Template components use their route-specific authoring contracts."
         },
         "refine": {
           "$ref": "#/$defs/refine",
@@ -531,7 +670,7 @@
             },
             "tone": { "type": "string", "enum": ["professional", "editorial", "technical", "energetic", "minimal"] }
           },
-          "description": "The only model-supplied influence on presentation, expressed as bounded declared knobs. Everything visual beyond this is engine-owned."
+          "description": "Bounded emphasis metadata; route-specific authoring contracts may grant the model broader composition authority."
         },
         "x_semantics": {
           "type": "object",

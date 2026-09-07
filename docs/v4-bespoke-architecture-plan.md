@@ -1,57 +1,53 @@
 # PPT Smith V4 Bespoke 高定路线
 
-> 路线边界：本文只描述 Bespoke。模板原生复用见
-> [v4-template-route.md](v4-template-route.md)，三路线总览见
-> [v4-three-route-architecture.md](v4-three-route-architecture.md)。
+## 定位
 
-## 目标与决策权
-
-Bespoke 面向视觉上限。高配模型拥有叙事、视觉编码、构图和几何决策权；
-PPT Smith 只提供原材料整理、来源锁、原生可编辑门禁、真实渲染、视觉复审和
-有限精修闭环。它不以 Standard 成品为起点，也不调用 Template 路线的
-Component Atlas、strict plan 或模板页克隆器。
+Bespoke 继承 V3 高定路线，是 V4 默认的质量上限。强模型不是“可选 IR 生成器”，而是
+内容导演、叙事导演、设计导演和 PPT 作者。引擎提供来源锁、构建原语、真实渲染和
+fail-closed QA。
 
 ```text
-源材料 + 用户目标 + 页数合同 + 参考模板（可选）
+源材料 + 用户目标 + 页数合同 + 参考视觉（可选）
                          ↓
-Content & Evidence Map → Narrative Director → Design Director
+强模型完整阅读 → Content & Evidence Map → Narrative Contract
                          ↓
-高配作者从空白 Presentation 创作原生对象
+判断句标题、图表数据、关系拓扑、可见文案、speaker notes
                          ↓
-来源/数字/可编辑性/结构/真实渲染门禁
+模型编写原生 PPTX 作者代码与新组件
                          ↓
-外部视觉复审 → 最多两轮定向精修
+来源/数字/备注/可编辑性/结构/渲染/视觉复审
 ```
+
+## 模型交付合同
+
+模型必须提供：
+
+- 受众、决策目标、叙事主线和页数理由；
+- 全文证据映射，不得只读局部；
+- 每页 assertion、证据、可见内容和完整 speaker notes；
+- 原生图表数据、关系图和必要的新组件；
+- 真实渲染后的逐页视觉复审与定向修订。
+
+源文件截图不能替代页面创作。插图只有在无法原生重建且其本身具有视觉价值时才可作为
+图片使用；图片周围的标题、结论、关键数字和解释仍由模型以原生对象创作。
 
 ## 页数合同
 
-Production Request 支持 `auto`、`target`、`range` 和 `exact`。内容评估必须给出
-`minimum_viable_pages`、`recommended_pages` 和 `maximum_useful_pages`；不足时不
-压缩丢内容，过多时不编造填充。
+Production Request 支持 `auto`、`target`、`range` 和 `exact`。模型根据内容形成
+`minimum_viable_pages`、`recommended_pages` 和 `maximum_useful_pages`。源文件页数不等于
+输出页数；不得通过压字、截断或编造页面满足数字。
 
-## 模板在 Bespoke 中的角色
+## 参考模板
 
-模板只可作为 `style_transfer` 或 `inspiration` 视觉证据。Bespoke 从空白文稿创作，
-因此不能宣称保留企业母版或受保护品牌资产，也不接受 `strict` 复用请求。严格复用
-属于独立 Template 路线。
+在 Bespoke 中，参考模板是 `style_transfer` 或 `inspiration` 证据。模型可以学习字体、
+色彩、留白、层级、图形语言和节奏，但从空白 Presentation 创作，不能声称严格复用母版。
+需要原生组件复用时选择 Template 路线。
 
-## Authoring Manifest
+## 运行与验收
 
-`python3 -m engine plan-bespoke` 生成哈希锁定的 manifest；
-`python3 -m engine author-bespoke` 执行作者脚本并完成非视觉交付门禁；
-`python3 -m engine review-bespoke` 接收与 deck、render report 哈希绑定的人工或视觉模型
-复审。完整长稿还需 Narrative Contract，锁定受众决策、核心论点、章节任务、
-Assertion–Evidence 和跨页推进，但禁止指定布局、坐标、构图或模板页。
+- `plan-bespoke`：锁定 Production Request、Narrative Contract 和内容评估；
+- `author-bespoke`：执行模型作者脚本并完成非视觉门禁；
+- `review-bespoke`：应用与 deck/render hash 绑定的视觉复审。
 
-## 验收状态
-
-当前已具备 Production Request、页数协调、来源绑定、原生可编辑检查、真实渲染、
-Bespoke 视觉底线与外部视觉复审门禁。尚未自动化的部分包括长文可信内容评估、
-模板视觉解释、真实高配模型调用和按复审结果自动改写作者脚本。
-
-## 不可跨越的边界
-
-- Bespoke runtime 必须显式使用 `route="bespoke"` 的 QA 语义。
-- Template 的组件碎片豁免不得作用于 Bespoke。
-- Bespoke 输出目录不得包含 Template 路线的模板副本、组件清单或 strict-plan 中间件。
-- Template 路线代码、样例和生成物不得在 Bespoke 专用 worktree 中继续开发。
+没有模型作者脚本、没有完整备注、只有 extractive IR 或没有视觉复审时，Bespoke 不得进入
+最终状态。

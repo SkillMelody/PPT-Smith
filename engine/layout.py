@@ -632,7 +632,11 @@ def _cover_slide(ir: dict, style: ResolvedStyle) -> dict:
     subtitle = deck.get("purpose")
     if not subtitle:
         first_source = ir.get("sources", [{}])[0]
-        subtitle = first_source.get("title") or first_source.get("path")
+        source_path = first_source.get("path")
+        subtitle = first_source.get("title") or (
+            str(source_path).replace("\\", "/").rsplit("/", 1)[-1]
+            if source_path else None
+        )
     if subtitle:
         elements.append({
             "element_id": "cover-subtitle", "type": "textbox",
@@ -660,6 +664,7 @@ def layout_deck(ir: dict, decisions: list, style: ResolvedStyle,
                 docs: dict[str, SourceDoc] | None = None) -> dict:
     """Returns {"canvas", "fonts_used", "slides", "degradations"}."""
     docs = docs or {}
+    from .speaker_notes import format_speaker_notes
     degradations: list[dict] = []
     plan_slides = [_cover_slide(ir, style)]
     decision_map = {d.slide_id: d for d in decisions}
@@ -676,11 +681,14 @@ def layout_deck(ir: dict, decisions: list, style: ResolvedStyle,
         doc = docs.get(first_ref) if first_ref else next(iter(docs.values()), None)
         _layout_content(ctx, slide, archetype, doc)
         ctx.add_footer(f"来源：{source_note}" if source_note else " ", page_index)
-        plan_slides.append({
+        plan_slide = {
             "slide_id": slide["id"],
             "background": {"color": style.color("background")},
             "elements": ctx.elements,
-        })
+        }
+        if isinstance(slide.get("speaker_notes"), dict):
+            plan_slide["notes"] = format_speaker_notes(slide["speaker_notes"])
+        plan_slides.append(plan_slide)
     fonts = sorted({run["font"]
                     for s in plan_slides for e in s["elements"]
                     for p in e.get("paragraphs", []) for run in p["runs"]}

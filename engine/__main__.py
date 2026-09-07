@@ -17,6 +17,7 @@ Usage:
                                     [--source ID:TYPE:PATH]
                                     [--render-engine ENGINE]
   python3 -m engine review-bespoke --authoring-report REPORT.json --review REVIEW.json
+  python3 -m engine review-template --strict-report REPORT.json --review REVIEW.json
   python3 -m engine strict-template --request REQUEST.json --template-pptx TEMPLATE.pptx
                                     --plan STRICT-PLAN.json --ir IR.json
                                     [--component-atlas ATLAS.json]
@@ -33,6 +34,10 @@ Usage:
                                                  --content-bindings BINDINGS.json
                                                  --storyboard STORYBOARD.json
                                                  [--json-out COMPOSITION.json]
+  python3 -m engine plan-model-template-components --ir IR.json
+                                                    --component-atlas ATLAS.json
+                                                    --model-plan MODEL-PLAN.json
+                                                    [--json-out COMPOSITION.json]
 
 `compile` is the single entry (D2): parse -> validate/provenance ->
 policy -> layout -> QA -> deck.pptx + render-plan + decision-trace.
@@ -104,6 +109,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="fail on invalid IR instead of falling back to extraction")
     c.add_argument("--allow-content-truncation", action="store_true",
                    help="allow truncated diagnostic output; delivery CLI fails closed by default")
+    c.add_argument(
+        "--final-delivery",
+        action="store_true",
+        help="require model-authored IR, complete speaker notes, and no truncation",
+    )
 
     rc = sub.add_parser("refine-code",
                         help="P12 Level 2: run a python-pptx refine script with QA safety net")
@@ -150,6 +160,14 @@ def main(argv: list[str] | None = None) -> int:
     review_bespoke.add_argument("--review", required=True)
     review_bespoke.add_argument("--json-out")
 
+    review_template = sub.add_parser(
+        "review-template",
+        help="validate a hash-bound visual review for a strict Template candidate",
+    )
+    review_template.add_argument("--strict-report", required=True)
+    review_template.add_argument("--review", required=True)
+    review_template.add_argument("--json-out")
+
     strict_template = sub.add_parser(
         "strict-template",
         help="apply only declared native template operations to a hash-bound strict template",
@@ -169,6 +187,11 @@ def main(argv: list[str] | None = None) -> int:
         default="auto",
     )
     strict_template.add_argument("--json-out")
+    strict_template.add_argument(
+        "--final-delivery",
+        action="store_true",
+        help="require complete speaker notes and all final-delivery gates",
+    )
 
     component_atlas = sub.add_parser(
         "component-atlas",
@@ -205,7 +228,33 @@ def main(argv: list[str] | None = None) -> int:
     plan_manuscript_components.add_argument("--delivery-candidate", action="store_true")
     plan_manuscript_components.add_argument("--json-out")
 
+    plan_model_template_components = sub.add_parser(
+        "plan-model-template-components",
+        help="compile an explicit model-authored Template component composition",
+    )
+    plan_model_template_components.add_argument("--ir", required=True)
+    plan_model_template_components.add_argument("--component-atlas", required=True)
+    plan_model_template_components.add_argument("--model-plan", required=True)
+    plan_model_template_components.add_argument("--no-intent-audit", action="store_true")
+    plan_model_template_components.add_argument("--json-out")
+
     args = parser.parse_args(argv)
+
+    if args.command == "plan-model-template-components":
+        from .model_template_composer import build_model_template_composition
+
+        try:
+            composition = build_model_template_composition(
+                json.loads(Path(args.ir).read_text(encoding="utf-8")),
+                json.loads(Path(args.component_atlas).read_text(encoding="utf-8")),
+                json.loads(Path(args.model_plan).read_text(encoding="utf-8")),
+                enforce_intent_audit=not args.no_intent_audit,
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _emit(composition, args.json_out)
+        return 0
 
     if args.command == "component-inventory":
         from .component_inventory import build_template_component_inventory
@@ -310,6 +359,14 @@ def main(argv: list[str] | None = None) -> int:
         _emit(result, args.json_out)
         return 0 if result.get("status") == "visual_approved" else 1
 
+    if args.command == "review-template":
+        from .visual_review import apply_template_visual_review
+
+        review = json.loads(Path(args.review).read_text(encoding="utf-8"))
+        result = apply_template_visual_review(args.strict_report, review)
+        _emit(result, args.json_out)
+        return 0 if result.get("status") == "final_delivery_ready" else 1
+
     if args.command == "strict-template":
         from .strict_template import execute_strict_template
 
@@ -336,6 +393,7 @@ def main(argv: list[str] | None = None) -> int:
             content_bindings=json.loads(
                 Path(args.content_bindings).read_text(encoding="utf-8")
             ),
+            final_delivery=args.final_delivery,
         )
         _emit(result, args.json_out)
         return 0 if result.get("ok") else 1
@@ -372,7 +430,8 @@ def main(argv: list[str] | None = None) -> int:
                               output_dir=args.output_dir,
                               degrade_on_error=not args.no_degrade,
                               allow_content_truncation=args.allow_content_truncation,
-                              refine_spec_path=args.refine_spec_path)
+                              refine_spec_path=args.refine_spec_path,
+                              final_delivery=args.final_delivery)
         print(json.dumps({k: report[k] for k in
                           ("ok", "ir_origin", "slide_count", "pptx", "stage")
                           if k in report}, ensure_ascii=False, indent=2))

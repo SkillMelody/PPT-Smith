@@ -19,6 +19,7 @@ from engine.component_atlas import build_component_atlas
 from engine.component_composer import build_component_plan
 from engine.strict_template import (
     _asset_preservation,
+    _ensure_destination_slides,
     _inspection_delta,
     execute_strict_template as _execute_strict_template,
 )
@@ -157,6 +158,22 @@ def _asset_zip(
                 f"{relationship_xml}</Relationships>",
             )
     return path
+
+
+def test_strict_template_appends_native_template_canvases_for_model_plan(
+    tmp_path: Path,
+) -> None:
+    template = tmp_path / "template.pptx"
+    _reference_template(template)
+
+    result = _ensure_destination_slides(template, {"operations": [{
+        "kind": "model_authored_native_component",
+        "destination_slide_index": 4,
+    }]})
+
+    assert result["status"] == "expanded"
+    assert result["appended"] == 2
+    assert len(Presentation(template).slides) == 4
 
 
 def test_asset_preservation_ignores_unreachable_source_media(tmp_path: Path) -> None:
