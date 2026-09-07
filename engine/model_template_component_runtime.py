@@ -173,6 +173,7 @@ def author_model_template_component(
     required_binding_names: list[str] | None = None,
     asset_bindings: list[dict] | None = None,
     author_context: dict | None = None,
+    component_atlas: dict | None = None,
 ) -> dict:
     """Run ``build(slide, context)`` and enforce native/style/binding gates."""
     target_path = Path(pptx_path)
@@ -213,6 +214,19 @@ def author_model_template_component(
     )
     if slide_contract is None:
         raise ValueError("MODEL_TEMPLATE_COMPONENT_IR_SLIDE_NOT_FOUND")
+    style_reference_ids = slide_contract.get("component_intent", {}).get(
+        "style_reference_component_ids", []
+    )
+    atlas_components = {
+        component.get("component_id"): component
+        for component in (component_atlas or {}).get("components", [])
+        if isinstance(component, dict)
+    }
+    style_reference_components = [
+        atlas_components[component_id]
+        for component_id in style_reference_ids
+        if component_id in atlas_components
+    ]
     approved_assets = _approved_asset_bindings(
         asset_bindings,
         slide_contract=slide_contract,
@@ -234,6 +248,7 @@ def author_model_template_component(
         "component_id": component_id,
         "placement": slot,
         "template_tokens": tokens,
+        "style_reference_components": style_reference_components,
         "asset_bindings": list(approved_assets.values()),
         "author_context": author_context,
         "binding_prefix": f"bind:<kind>:{slide_id}",
@@ -361,4 +376,5 @@ def author_model_template_component(
             "template_colors": sorted(template_colors),
         },
         "approved_source_images": sorted(approved_assets),
+        "style_reference_component_ids": style_reference_ids,
     }

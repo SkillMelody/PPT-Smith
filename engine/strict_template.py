@@ -292,6 +292,7 @@ def _apply_operations(
                     required_binding_names=operation.get("required_binding_names"),
                     asset_bindings=operation.get("asset_bindings"),
                     author_context=operation.get("author_context"),
+                    component_atlas=component_atlas,
                 )
                 binding = {
                     "binding_names": copied["binding_names"],

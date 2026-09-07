@@ -147,6 +147,7 @@ def test_model_template_composer_builds_new_native_component_when_atlas_has_no_m
         "candidate_component_ids": [],
         "selected_component_ids": [],
         "new_component_id": "model.causal-system",
+        "style_reference_component_ids": ["template.cards"],
     })
     plan = {
         "schema_version": "1.0.0",
@@ -182,6 +183,7 @@ def test_model_template_composer_builds_new_native_component_when_atlas_has_no_m
 def test_model_template_composer_allows_authored_support_around_reused_components() -> None:
     ir = _ir()
     ir["slides"][0]["component_intent"]["new_component_id"] = "model.title-strip"
+    ir["slides"][0]["component_intent"]["style_reference_component_ids"] = ["template.cards"]
     plan = _model_plan()
     plan["slides"][0]["components"].append({
         "component_id": "model.title-strip",

@@ -209,6 +209,14 @@ def main(argv: list[str] | None = None) -> int:
     component_inventory.add_argument("--component-atlas", required=True)
     component_inventory.add_argument("--json-out")
 
+    component_atlas_report = sub.add_parser(
+        "component-atlas-report",
+        help="write human-readable suitability tables for a reviewed component atlas",
+    )
+    component_atlas_report.add_argument("--component-atlas", required=True)
+    component_atlas_report.add_argument("--json-out")
+    component_atlas_report.add_argument("--markdown-out")
+
     compose_components = sub.add_parser(
         "compose-components",
         help="build strict component_clone operations from semantic page slots",
@@ -266,6 +274,25 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 1
         _emit(inventory, args.json_out)
+        return 0
+
+    if args.command == "component-atlas-report":
+        from .component_atlas_report import (
+            build_component_suitability_table,
+            render_component_suitability_markdown,
+        )
+
+        try:
+            atlas = json.loads(Path(args.component_atlas).read_text(encoding="utf-8"))
+            report = build_component_suitability_table(atlas)
+            if args.markdown_out:
+                Path(args.markdown_out).write_text(
+                    render_component_suitability_markdown(report), encoding="utf-8",
+                )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        _emit(report, args.json_out)
         return 0
 
     if args.command == "plan-manuscript-components":

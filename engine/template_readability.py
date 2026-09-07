@@ -25,7 +25,10 @@ def enforce_bound_text_floor(pptx_path: str | Path, *, minimum_body_pt: float = 
             if not name.startswith("bind:") or not getattr(shape, "has_text_frame", False):
                 continue
             exempt = name.startswith("bind:source:") or name.endswith(":caption") or ":page_no:" in name
-            target = 9.0 if exempt else minimum_body_pt
+            if name.startswith("bind:slide:") and name.endswith(":title"):
+                target = 22.0
+            else:
+                target = 9.0 if exempt else minimum_body_pt
             for paragraph in shape.text_frame.paragraphs:
                 for run in paragraph.runs:
                     if run.font.size is not None and run.font.size.pt + 1e-6 < target:

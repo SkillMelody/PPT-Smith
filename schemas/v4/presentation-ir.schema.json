@@ -591,7 +591,14 @@
             }
           }
         },
-        "new_component_id": { "type": "string", "minLength": 1, "maxLength": 160 }
+        "new_component_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "style_reference_component_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "description": "Reviewed template components whose visual grammar the model-authored component must inherit."
+        }
       }
     },
     "slide": {

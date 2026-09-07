@@ -72,6 +72,7 @@ def test_component_intent_rejects_model_authored_fallback_when_template_componen
             mode="model_authored",
             selected_component_ids=[],
             new_component_id="authored.kpi-card",
+            style_reference_component_ids=["template.cards"],
         ))],
     }, _atlas())
 

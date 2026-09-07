@@ -40,7 +40,9 @@ Atlas 不只是形状清单。每个 reviewed 组件必须记录：
 3. 一个组件不足时组合多个 reviewed 组件；
 4. 对所有未选择的可行组件记录原因；
 5. 没有可行组件时，使用模板 token 编写新的原生组件；
-6. 新组件通过 QA 后可进入待审核 Atlas 扩展，但不能自动冒充 reviewed 组件。
+6. 新组件必须声明 `style_reference_component_ids`，明确继承哪些 reviewed 组件的图标、
+   填充、线条、层级和空间语法；
+7. 新组件通过 QA 后可进入待审核 Atlas 扩展，但不能自动冒充 reviewed 组件。
 
 最终报告必须给出 `eligible_component_coverage`：所有存在可行模板组件的页面中，实际复用
 模板组件的比例。目标是 100%；低于 100% 必须阻断或逐页解释。
@@ -85,6 +87,7 @@ Atlas 不只是形状清单。每个 reviewed 组件必须记录：
 
 - `component-atlas`：构建 reviewed Atlas；
 - `component-inventory`：检查模板组件覆盖；
+- `component-atlas-report`：输出适用场景、拓扑、数据类型、容量和限制的人类可读表格；
 - `plan-model-template-components`：编译模型显式给出的逐页多组件方案；
 - `compose-components`：生成 strict plan；
 - `strict-template --final-delivery`：执行组件克隆、原生新组件脚本、备注写入和最终机器门禁；

@@ -52,10 +52,26 @@ def evaluate_component_intents(
         feasible_ids = [item["component_id"] for item in feasible]
         declared_candidates = intent.get("candidate_component_ids", [])
         selected = intent.get("selected_component_ids", [])
+        style_references = intent.get("style_reference_component_ids", [])
         if not isinstance(declared_candidates, list):
             declared_candidates = []
         if not isinstance(selected, list):
             selected = []
+        if not isinstance(style_references, list):
+            style_references = []
+        if intent.get("mode") == "model_authored" or intent.get("new_component_id"):
+            known_ids = {
+                component.get("component_id") for component in atlas.get("components", [])
+                if isinstance(component, dict)
+            }
+            if not style_references:
+                issues.append({"code": "MODEL_AUTHORED_STYLE_REFERENCE_REQUIRED", "slide_id": slide_id})
+            elif not set(style_references) <= known_ids:
+                issues.append({
+                    "code": "MODEL_AUTHORED_STYLE_REFERENCE_UNKNOWN",
+                    "slide_id": slide_id,
+                    "unknown_component_ids": sorted(set(style_references) - known_ids),
+                })
         if set(declared_candidates) != set(feasible_ids):
             issues.append({
                 "code": "COMPONENT_CANDIDATE_AUDIT_INCOMPLETE",
@@ -93,6 +109,7 @@ def evaluate_component_intents(
             "selected_component_ids": selected,
             "mode": intent.get("mode"),
             "new_component_id": intent.get("new_component_id"),
+            "style_reference_component_ids": style_references,
         })
     return {
         "status": "pass" if not issues else "fail",
