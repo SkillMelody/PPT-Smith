@@ -165,5 +165,12 @@ def inspect_template_visual_quality(
                 "slide_id": page["slide_id"],
                 "bound_semantic_object_count": source["bound_semantic_object_count"],
             })
+    from .template_visual_fingerprint import evaluate_rendered_layout_rhythm
+
+    rendered_layout_rhythm = evaluate_rendered_layout_rhythm(
+        render_report, page_composition=page_composition,
+    )
+    report["rendered_layout_rhythm"] = rendered_layout_rhythm
+    report["issues"].extend(rendered_layout_rhythm["issues"])
     report["status"] = "pass" if not report["issues"] else "fail"
     return report

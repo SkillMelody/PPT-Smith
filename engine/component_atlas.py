@@ -15,6 +15,7 @@ from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from .topology import TOPOLOGIES
+from .template_component_adaptation import build_adaptation_contract, evaluate_component_target_fit
 
 
 _GRANULARITIES = {"atomic", "micro", "composite", "section", "page_recipe"}
@@ -52,6 +53,19 @@ def _kind(shape) -> str:
     if getattr(shape, "has_text_frame", False):
         return "text"
     return "shape"
+
+
+def _background_shape_names(component: dict) -> set[str]:
+    adaptation = component.get("adaptation_contract", {})
+    background = adaptation.get("background", {}) if isinstance(adaptation, dict) else {}
+    names = background.get("shape_names", []) if isinstance(background, dict) else []
+    return {name for name in names if isinstance(name, str) and name}
+
+
+def _strip_backgrounds_on_reuse(component: dict) -> bool:
+    adaptation = component.get("adaptation_contract", {})
+    background = adaptation.get("background", {}) if isinstance(adaptation, dict) else {}
+    return isinstance(background, dict) and background.get("policy") == "strip_on_reuse"
 
 
 def _frame(shape, slide_width: int, slide_height: int) -> dict:
@@ -393,6 +407,9 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
             resolved_component["data_contract"] = deepcopy(data_contract)
         if page_guidance:
             resolved_component["page_guidance"] = deepcopy(page_guidance)
+        resolved_component["adaptation_contract"] = build_adaptation_contract(
+            declaration, resolved_groups,
+        )
         if native_fidelity is not None:
             resolved_component["native_fidelity"] = native_fidelity
         if semantic_contract:
@@ -462,6 +479,8 @@ def validate_model_authoring_atlas(atlas: dict) -> dict:
             "composition_roles": component.get("composition_roles"),
             "text_capacity": component.get("text_capacity"),
             "native_fidelity": component.get("native_fidelity"),
+            "page_guidance": component.get("page_guidance"),
+            "adaptation_contract": component.get("adaptation_contract"),
         }
         for field, value in required.items():
             if value in (None, [], {}):
@@ -497,6 +516,7 @@ def select_component(atlas: dict, requirement: dict) -> dict:
     text_requirements = requirement.get("text_requirements", {})
     data_shape = requirement.get("data_shape", {"kind": "none"})
     requested_component_id = requirement.get("component_id")
+    target_placement = requirement.get("target_placement")
     if not isinstance(semantic_use, str) or not semantic_use:
         raise ValueError("component requirement needs semantic_use")
     if not isinstance(element_count, int) or isinstance(element_count, bool) or element_count < 1:
@@ -530,6 +550,7 @@ def select_component(atlas: dict, requirement: dict) -> dict:
         raise ValueError("component requirement component_id must be a non-empty string")
 
     matches: list[tuple[int, str, dict, int, int]] = []
+    fit_rejections: list[dict] = []
     for component in atlas.get("components", []):
         if component.get("reuse_status", "ready") == "blocked":
             continue
@@ -578,9 +599,21 @@ def select_component(atlas: dict, requirement: dict) -> dict:
                 continue
             if data_shape.get("column_count", 0) > component_data.get("max_columns", 0):
                 continue
+        if isinstance(target_placement, dict) and isinstance(component.get("adaptation_contract"), dict):
+            fit = evaluate_component_target_fit(component, target_placement)
+            if fit.get("status") != "pass":
+                fit_rejections.append({"component_id": component.get("component_id"), **fit})
+                continue
         matches.append((maximum - element_count, component["component_id"], component, minimum, maximum))
 
     if not matches:
+        if fit_rejections:
+            first = fit_rejections[0]
+            return {
+                "status": "no_match",
+                "reason": first.get("code", "TEMPLATE_COMPONENT_TARGET_FIT_FAILED"),
+                "fit_rejections": fit_rejections,
+            }
         return {
             "status": "no_match",
             "reason": (
@@ -623,6 +656,7 @@ def find_feasible_components(atlas: dict, requirement: dict) -> list[dict]:
     composition_role = requirement.get("composition_role")
     text_requirements = requirement.get("text_requirements", {})
     data_shape = requirement.get("data_shape", {"kind": "none"})
+    target_placement = requirement.get("target_placement")
     if not isinstance(semantic_use, str) or not semantic_use:
         raise ValueError("component requirement needs semantic_use")
     if (
@@ -704,6 +738,12 @@ def find_feasible_components(atlas: dict, requirement: dict) -> list[dict]:
                 continue
             if data_shape.get("column_count", 0) > component_data.get("max_columns", 0):
                 continue
+        if (
+            isinstance(target_placement, dict)
+            and isinstance(component.get("adaptation_contract"), dict)
+            and evaluate_component_target_fit(component, target_placement).get("status") != "pass"
+        ):
+            continue
         feasible.append({
             "component_id": component["component_id"],
             "family": component.get("family"),
@@ -712,6 +752,8 @@ def find_feasible_components(atlas: dict, requirement: dict) -> list[dict]:
             "granularity": component.get("granularity", "micro"),
             "native_fidelity": component.get("native_fidelity", "reviewed"),
             "reuse_status": component.get("reuse_status", "ready"),
+            "page_guidance": deepcopy(component.get("page_guidance", {})),
+            "adaptation_contract": deepcopy(component.get("adaptation_contract", {})),
         })
     return sorted(
         feasible,
@@ -740,6 +782,9 @@ def resolve_chart_component_binding(atlas: dict, requirement: dict) -> dict:
         )
     label_fields: dict[str, list[str]] = {}
     decoration_names: list[str] = []
+    stripped_background_names = (
+        _background_shape_names(component) if _strip_backgrounds_on_reuse(component) else set()
+    )
     for group in component.get("groups", []):
         if group is chart_groups[0]:
             continue
@@ -754,7 +799,7 @@ def resolve_chart_component_binding(atlas: dict, requirement: dict) -> dict:
                 )
             label_fields.setdefault(field, []).extend(names)
         else:
-            decoration_names.extend(names)
+            decoration_names.extend(name for name in names if name not in stripped_background_names)
     if not label_fields:
         raise ValueError(f"component {selection['component_id']!r} requires semantic label fields")
     binding = {
@@ -765,6 +810,8 @@ def resolve_chart_component_binding(atlas: dict, requirement: dict) -> dict:
         "label_fields": label_fields,
         "decoration_names": decoration_names,
     }
+    if stripped_background_names:
+        binding["stripped_background_names"] = sorted(stripped_background_names)
     responsive_backgrounds = component.get("responsive_text_backgrounds", [])
     responsive_fields = component.get("responsive_text_fields", [])
     if responsive_backgrounds:
@@ -787,6 +834,9 @@ def resolve_native_group_binding(atlas: dict, requirement: dict) -> dict:
         raise ValueError("selected component is not a native_group renderer")
     label_fields: dict[str, list[str]] = {}
     decoration_names: list[str] = []
+    stripped_background_names = (
+        _background_shape_names(component) if _strip_backgrounds_on_reuse(component) else set()
+    )
     for group in component.get("groups", []):
         members = group.get("members", [])
         names = [member.get("shape_name") for member in members]
@@ -802,16 +852,19 @@ def resolve_native_group_binding(atlas: dict, requirement: dict) -> dict:
             field = group.get("bind_field", "text")
             label_fields.setdefault(field, []).extend(names)
         else:
-            decoration_names.extend(names)
+            decoration_names.extend(name for name in names if name not in stripped_background_names)
     if not label_fields:
         raise ValueError(f"component {selection['component_id']!r} requires semantic label fields")
-    return {
+    binding = {
         "component_id": selection["component_id"],
         "component_type": selection["family"],
         "source_slide_index": component.get("slide_index"),
         "label_fields": label_fields,
         "decoration_names": decoration_names,
     }
+    if stripped_background_names:
+        binding["stripped_background_names"] = sorted(stripped_background_names)
+    return binding
 
 
 def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
@@ -838,6 +891,9 @@ def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
         raise ValueError(f"selected component {selection['component_id']!r} is missing from atlas")
 
     component_groups = component.get("groups", [])
+    stripped_background_names = (
+        _background_shape_names(component) if _strip_backgrounds_on_reuse(component) else set()
+    )
     extended = any(
         any(key in group for key in ("scope", "item_indices", "bind_field"))
         for group in component_groups
@@ -904,7 +960,7 @@ def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
                     raise ValueError(
                         f"component {selection['component_id']!r} shared group {role!r} cannot use item_indices"
                     )
-                shared_names.extend(names)
+                shared_names.extend(name for name in names if name not in stripped_background_names)
                 continue
             if any(item_index >= prototype_count for item_index in indices):
                 raise ValueError(
@@ -916,7 +972,8 @@ def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
                     item_groups[item_index]["label_fields"].setdefault(field, []).append(name)
             else:
                 for name, item_index in zip(names, indices):
-                    item_groups[item_index]["segment_names"].append(name)
+                    if name not in stripped_background_names:
+                        item_groups[item_index]["segment_names"].append(name)
 
         if any(not item["label_fields"] for item in item_groups):
             raise ValueError(
@@ -933,6 +990,8 @@ def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
         }
         if component.get("renderer") is not None:
             binding["layout_mode"] = component["renderer"]
+        if stripped_background_names:
+            binding["stripped_background_names"] = sorted(stripped_background_names)
         return binding
 
     groups: dict[str, list[str]] = {}
@@ -965,10 +1024,16 @@ def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
 
     companion_roles = [
         role for role, names in groups.items()
-        if role not in {"segment", "label"} and len(names) == len(segment_names)
+        if role not in {"segment", "label"}
+        and len(names) == len(segment_names)
+        and any(name not in stripped_background_names for name in names)
     ]
     segment_groups = [
-        [segment_name, *(groups[role][index] for role in companion_roles)]
+        [
+            segment_name,
+            *(groups[role][index] for role in companion_roles
+              if groups[role][index] not in stripped_background_names),
+        ]
         for index, segment_name in enumerate(segment_names)
     ]
     binding = {
@@ -980,6 +1045,8 @@ def resolve_component_binding(atlas: dict, requirement: dict) -> dict:
     }
     if component.get("renderer") is not None:
         binding["layout_mode"] = component["renderer"]
+    if stripped_background_names:
+        binding["stripped_background_names"] = sorted(stripped_background_names)
     return binding
 
 
@@ -1020,6 +1087,9 @@ def resolve_chart_dashboard_binding(atlas: dict, requirement: dict) -> dict:
     ordered_charts = [name for _, name in sorted(zip(indices, chart_names))]
     text_names: list[str] = []
     decoration_names: list[str] = []
+    stripped_background_names = (
+        _background_shape_names(component) if _strip_backgrounds_on_reuse(component) else set()
+    )
     for group in component.get("groups", []):
         if group is chart_group:
             continue
@@ -1031,8 +1101,8 @@ def resolve_chart_dashboard_binding(atlas: dict, requirement: dict) -> dict:
                 )
             text_names.extend(names)
         else:
-            decoration_names.extend(names)
-    return {
+            decoration_names.extend(name for name in names if name not in stripped_background_names)
+    binding = {
         "component_id": selection["component_id"],
         "component_type": "chart_dashboard",
         "source_slide_index": component.get("slide_index"),
@@ -1040,3 +1110,6 @@ def resolve_chart_dashboard_binding(atlas: dict, requirement: dict) -> dict:
         "text_names": text_names,
         "decoration_names": decoration_names,
     }
+    if stripped_background_names:
+        binding["stripped_background_names"] = sorted(stripped_background_names)
+    return binding

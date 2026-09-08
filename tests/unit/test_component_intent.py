@@ -24,6 +24,33 @@ def _atlas() -> dict:
             },
             "native_fidelity": "exact",
             "parameters": {"element_count": {"minimum": 1, "maximum": 1}},
+            "page_guidance": {
+                "can_stand_alone": False,
+                "supported_page_roles": ["body"],
+                "minimum_information_units": 3,
+                "recommended_page_recipes": ["kpi-with-interpretation"],
+                "required_companion_roles": ["interpretation"],
+                "recommended_companion_families": ["insight_card"],
+                "annotation_requirements": ["value labels"],
+                "prohibited_scenarios": ["KPI alone on a page"],
+            },
+            "adaptation_contract": {
+                "content_bbox": {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0},
+                "decoration_bbox": None,
+                "background": {"policy": "none", "shape_names": []},
+                "responsive": {
+                    "modes": ["resize_chart_plot"],
+                    "source_aspect_ratio": 1.4,
+                    "supported_aspect_ratio": {"minimum": 0.7, "maximum": 2.8},
+                },
+                "density": {
+                    "minimum_information_units": 3,
+                    "minimum_label_chars": 1,
+                    "minimum_numeric_annotations": 1,
+                },
+                "preferred_aspect_ratios": [1.4],
+                "series_role": "independent",
+            },
         }],
     }
 
@@ -124,6 +151,15 @@ def test_model_authoring_atlas_requires_rich_component_metadata() -> None:
     assert report["status"] == "fail"
     assert any(
         issue["field"] == "text_capacity"
+        for issue in report["issues"]
+        if issue["code"] == "COMPONENT_METADATA_INCOMPLETE"
+    )
+
+    incomplete = _atlas()
+    incomplete["components"][0].pop("adaptation_contract")
+    report = validate_model_authoring_atlas(incomplete)
+    assert any(
+        issue["field"] == "adaptation_contract"
         for issue in report["issues"]
         if issue["code"] == "COMPONENT_METADATA_INCOMPLETE"
     )

@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections import Counter
 from math import ceil
 
+from .template_series_planner import evaluate_template_series
+
 
 SEMANTIC_LAYERS = frozenset({
     "assertion", "primary_evidence", "interpretation", "implication",
@@ -53,6 +55,7 @@ def _validate_page(
     slide: dict,
     *,
     capabilities: dict,
+    atlas_by_id: dict[str, dict],
 ) -> tuple[dict, list[dict]]:
     slide_id = str(slide.get("id") or page.get("slide_id") or "unknown")
     issues: list[dict] = []
@@ -91,6 +94,7 @@ def _validate_page(
         if isinstance(component, dict) and isinstance(component.get("component_id"), str)
     }
     substantive_modules: list[dict] = []
+    module_reports: list[dict] = []
     information_units = 0
     if not isinstance(modules, list):
         _issue(issues, "TEMPLATE_PAGE_CONTENT_MODULES_INVALID", slide_id)
@@ -135,6 +139,31 @@ def _validate_page(
         if role not in NON_SUBSTANTIVE_MODULE_ROLES:
             substantive_modules.append(module)
             information_units += count
+        for component_id in component_ids:
+            component = atlas_by_id.get(component_id)
+            if not isinstance(component, dict):
+                continue
+            guidance = component.get("page_guidance", {})
+            adaptation = component.get("adaptation_contract", {})
+            density = adaptation.get("density", {}) if isinstance(adaptation, dict) else {}
+            minimum_units = density.get(
+                "minimum_information_units",
+                guidance.get("minimum_information_units", 1),
+            )
+            if isinstance(minimum_units, int) and count < minimum_units:
+                _issue(
+                    issues, "TEMPLATE_COMPONENT_CONTENT_DENSITY_LOW", slide_id,
+                    component_id=component_id, module_id=module.get("module_id"),
+                    information_unit_count=count,
+                    minimum_information_units=minimum_units,
+                )
+            module_reports.append({
+                "module_id": module.get("module_id"),
+                "component_id": component_id,
+                "role": role,
+                "information_unit_count": count,
+                "minimum_information_units": minimum_units,
+            })
 
     if page_role == "body":
         required_layers = {"assertion", "primary_evidence"}
@@ -155,6 +184,18 @@ def _validate_page(
             _issue(issues, "TEMPLATE_PAGE_PRIMARY_EVIDENCE_REQUIRED", slide_id)
         if not ({"interpretation", "implication", "context", "kpi", "annotation"} & substantive_roles):
             _issue(issues, "TEMPLATE_PAGE_SUPPORTING_MODULE_REQUIRED", slide_id)
+        for component_id in planned_components:
+            component = atlas_by_id.get(component_id)
+            if not isinstance(component, dict):
+                continue
+            guidance = component.get("page_guidance", {})
+            required_companions = set(guidance.get("required_companion_roles", []))
+            missing_companions = sorted(required_companions - substantive_roles)
+            if missing_companions:
+                _issue(
+                    issues, "TEMPLATE_COMPONENT_COMPANION_REQUIRED", slide_id,
+                    component_id=component_id, missing_companion_roles=missing_companions,
+                )
         if information_units < 4:
             _issue(
                 issues, "TEMPLATE_PAGE_INFORMATION_SATURATION_LOW", slide_id,
@@ -199,6 +240,8 @@ def _validate_page(
         "semantic_layers": sorted(layer_set),
         "substantive_module_count": len(substantive_modules),
         "information_unit_count": information_units,
+        "module_density": module_reports,
+        "series_context": contract.get("series_context"),
     }, issues
 
 
@@ -268,21 +311,31 @@ def evaluate_template_page_compositions(ir: dict, atlas: dict, model_plan: dict)
         if isinstance(slide, dict) and isinstance(slide.get("id"), str)
     }
     capabilities = template_boundary_capabilities(atlas)
+    atlas_by_id = {
+        component.get("component_id"): component
+        for component in atlas.get("components", [])
+        if isinstance(component, dict) and isinstance(component.get("component_id"), str)
+    }
     reports: list[dict] = []
     issues: list[dict] = []
     for page in model_plan.get("slides", []):
         if not isinstance(page, dict):
             continue
         slide = ir_by_id.get(page.get("slide_id"), {})
-        report, page_issues = _validate_page(page, slide, capabilities=capabilities)
+        report, page_issues = _validate_page(
+            page, slide, capabilities=capabilities, atlas_by_id=atlas_by_id,
+        )
         reports.append(report)
         issues.extend(page_issues)
     rhythm = _evaluate_rhythm(reports)
+    series = evaluate_template_series(reports)
     issues.extend(rhythm["issues"])
+    issues.extend(series["issues"])
     return {
         "status": "pass" if not issues else "fail",
         "template_boundary_capabilities": capabilities,
         "pages": reports,
         "rhythm": rhythm,
+        "series": series,
         "issues": issues,
     }

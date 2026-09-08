@@ -75,153 +75,6 @@ PLACEMENTS = {
 }
 
 
-_RECURSIVE_IMPACT_COMPONENTS = {
-    "mckinsey.quadrant-summary.impact-sequence",
-    "mckinsey.kpi-chart-row.four-metrics",
-    "mckinsey.ring-evidence.business-outcomes",
-    "mckinsey.impact-bar.business-outcome",
-    "mckinsey.insight-list.management-evidence",
-}
-
-
-def _recursive_impact_dashboard_components(atlas: dict, dashboard: dict) -> list[dict] | None:
-    """Decompose the legacy research dashboard into reviewed recursive sections."""
-    available = {
-        component.get("component_id")
-        for component in atlas.get("components", [])
-        if isinstance(component, dict)
-    }
-    if not _RECURSIVE_IMPACT_COMPONENTS <= available:
-        return None
-    charts = dashboard.get("charts")
-    text_bindings = dashboard.get("text_bindings")
-    if not isinstance(charts, list) or not isinstance(text_bindings, list):
-        return None
-    chart_by_id = {
-        chart.get("id"): chart
-        for chart in charts
-        if isinstance(chart, dict) and isinstance(chart.get("id"), str)
-    }
-    text_by_shape = {
-        binding.get("shape_name"): binding
-        for binding in text_bindings
-        if isinstance(binding, dict) and isinstance(binding.get("shape_name"), str)
-    }
-    required_charts = {
-        "innovation", "employee_satisfaction", "customer_satisfaction",
-        "competitive_differentiation", "enterprise_ebit", "cost", "profitability",
-    }
-    required_texts = {
-        "文本框 3", "文本框 14", "文本框 18", "文本框 23", "文本框 29", "文本框 31",
-        "文本框 35", "文本框 36", "文本框 37", "文本框 38", "文本框 39", "文本框 40",
-        "文本框 41", "文本框 42", "文本框 43", "文本框 44", "文本框 45", "文本框 46",
-        "文本框 53", "文本框 56", "文本框 62", "文本框 95", "文本框 100",
-        "文本框 101", "文本框 107", "文本框 108",
-    }
-    if not required_charts <= set(chart_by_id) or not required_texts <= set(text_by_shape):
-        return None
-
-    def chart(chart_id: str) -> dict:
-        return deepcopy(chart_by_id[chart_id])
-
-    def text(shape_name: str, field: str) -> dict:
-        binding = deepcopy(text_by_shape[shape_name])
-        binding.pop("shape_name", None)
-        binding["field"] = field
-        return binding
-
-    def kpi_child(chart_id: str, title_shape: str, metric_shape: str) -> dict:
-        return {
-            "chart": chart(chart_id),
-            "text_bindings": [text(title_shape, "title"), text(metric_shape, "metric")],
-        }
-
-    relation_binding = deepcopy(text_by_shape["文本框 31"])
-    relation_binding.pop("shape_name", None)
-    return [{
-        "component_id": "mckinsey.quadrant-summary.impact-sequence",
-        "semantic_use": "four-part impact summary",
-        "family": "fixed_native_group",
-        "element_count": 4,
-        "text_bindings": [text(name, "item") for name in (
-            "文本框 41", "文本框 42", "文本框 43", "文本框 44",
-        )],
-        "placement": {"x": 0.03, "y": 0.14, "w": 0.25, "h": 0.34},
-    }, {
-        "component_id": "mckinsey.kpi-chart-row.four-metrics",
-        "semantic_use": "four KPI comparison row",
-        "family": "kpi_chart_row",
-        "element_count": 4,
-        "children": {
-            "metric_1": kpi_child("innovation", "文本框 53", "文本框 56"),
-            "metric_2": kpi_child("employee_satisfaction", "文本框 62", "文本框 95"),
-            "metric_3": kpi_child("customer_satisfaction", "文本框 100", "文本框 101"),
-            "metric_4": kpi_child("competitive_differentiation", "文本框 107", "文本框 108"),
-        },
-        "placement": {"x": 0.3, "y": 0.14, "w": 0.67, "h": 0.34},
-    }, {
-        "component_id": "mckinsey.ring-evidence.business-outcomes",
-        "semantic_use": "business outcome ring evidence",
-        "family": "ring_evidence_section",
-        "element_count": 2,
-        "children": {
-            "shell": {
-                "element_count": 1,
-                "text_bindings": [text("文本框 3", "title")],
-            },
-            "comparison": {
-                "element_count": 2,
-                "children": {
-                    "before": {
-                        "chart": chart("cost"),
-                        "text_bindings": [
-                            text("文本框 14", "value"), text("文本框 23", "label"),
-                        ],
-                    },
-                    "relation": {
-                        "elements": [{
-                            "value": 1,
-                            "labels": {"text": relation_binding},
-                        }],
-                    },
-                    "after": {
-                        "chart": chart("profitability"),
-                        "text_bindings": [
-                            text("文本框 18", "value"), text("文本框 29", "label"),
-                        ],
-                    },
-                },
-            },
-        },
-        "placement": {"x": 0.03, "y": 0.52, "w": 0.34, "h": 0.36},
-    }, {
-        "component_id": "mckinsey.impact-bar.business-outcome",
-        "semantic_use": "impact gap evidence",
-        "family": "impact_bar",
-        "element_count": 1,
-        "chart": chart("enterprise_ebit"),
-        "text_bindings": [
-            text("文本框 35", "title"),
-            text("文本框 36", "positive_label"),
-            text("文本框 37", "positive_detail"),
-            text("文本框 38", "gap_label"),
-            text("文本框 39", "gap_detail"),
-        ],
-        "placement": {"x": 0.39, "y": 0.52, "w": 0.28, "h": 0.36},
-    }, {
-        "component_id": "mckinsey.insight-list.management-evidence",
-        "semantic_use": "management evidence list",
-        "family": "fixed_native_group",
-        "element_count": 2,
-        "text_bindings": [
-            text("文本框 40", "title"),
-            text("文本框 45", "detail"),
-            text("文本框 46", "detail"),
-        ],
-        "placement": {"x": 0.69, "y": 0.52, "w": 0.28, "h": 0.36},
-    }]
-
-
 def _unsupported(
     *,
     output_page_index: int,
@@ -577,15 +430,6 @@ def build_manuscript_component_composition(
                     reason=f"content binding {purpose!r} requires structured dashboard data",
                 ))
                 continue
-            recursive_components = _recursive_impact_dashboard_components(atlas, dashboard)
-            if recursive_components is not None:
-                pages.append({
-                    "output_page_index": output_page_index,
-                    "purpose": purpose,
-                    "destination_slide_index": template_slide_count + output_page_index,
-                    "components": recursive_components,
-                })
-                continue
             requirement = {
                 "semantic_use": semantic_use,
                 "family": family,
@@ -608,6 +452,7 @@ def build_manuscript_component_composition(
                 "purpose": purpose,
                 "destination_slide_index": template_slide_count + output_page_index,
                 "components": [{
+                    "component_id": selection["component_id"],
                     "semantic_use": semantic_use,
                     "family": family,
                     "element_count": len(charts),

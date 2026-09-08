@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from .component_atlas import select_component
+from .template_component_adaptation import evaluate_component_target_fit
 
 
 def _placement(value: object, *, page_index: int, component_index: int) -> dict:
@@ -21,6 +22,16 @@ def _placement(value: object, *, page_index: int, component_index: int) -> dict:
         raise ValueError("component placement must have non-negative origin and positive size")
     if resolved["x"] + resolved["w"] > 1 or resolved["y"] + resolved["h"] > 1:
         raise ValueError("component placement must remain inside the slide")
+    fit_mode = value.get("fit_mode")
+    if fit_mode is not None:
+        if fit_mode not in {"contain", "stretch"}:
+            raise ValueError("component placement fit_mode must be contain or stretch")
+        resolved["fit_mode"] = fit_mode
+    require_fill = value.get("require_fill")
+    if require_fill is not None:
+        if not isinstance(require_fill, bool):
+            raise ValueError("component placement require_fill must be boolean")
+        resolved["require_fill"] = require_fill
     return resolved
 
 
@@ -38,6 +49,41 @@ def _within(parent: dict, child: dict) -> dict:
         "w": round(child["w"] * parent["w"], 10),
         "h": round(child["h"] * parent["h"], 10),
     }
+
+
+def _payload_label_texts(spec: dict) -> list[str]:
+    texts: list[str] = []
+    for element in spec.get("elements", []) if isinstance(spec.get("elements"), list) else []:
+        if not isinstance(element, dict):
+            continue
+        for key, value in element.items():
+            if key in {"binding_name", "value", "id"}:
+                continue
+            if isinstance(value, str) and value.strip():
+                texts.append(value.strip())
+            elif isinstance(value, dict):
+                for nested in value.values():
+                    if isinstance(nested, str) and nested.strip() and not nested.startswith("bind:"):
+                        texts.append(nested.strip())
+                    elif isinstance(nested, dict):
+                        text = nested.get("text")
+                        if isinstance(text, str) and text.strip():
+                            texts.append(text.strip())
+    return texts
+
+
+def _numeric_annotation_count(spec: dict) -> int:
+    annotations = spec.get("numeric_annotations", [])
+    count = len(annotations) if isinstance(annotations, list) else 0
+    elements = spec.get("elements", [])
+    if isinstance(elements, list):
+        count += sum(
+            isinstance(element, dict)
+            and isinstance(element.get("value"), (int, float))
+            and not isinstance(element.get("value"), bool)
+            for element in elements
+        )
+    return count
 
 
 def build_component_plan(atlas: dict, composition: dict) -> dict:
@@ -163,13 +209,36 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                 requested_component_id = exact_component_id or spec.get("component_id")
                 if requested_component_id is not None:
                     requirement["component_id"] = requested_component_id
-                selection = select_component(atlas, requirement)
+                selection = select_component(atlas, {**requirement, "target_placement": box})
                 if selection["status"] != "selected":
                     raise ValueError(f"component {instance_id}: {selection['reason']}")
                 selected = next(
                     item for item in atlas.get("components", [])
                     if item.get("component_id") == selection["component_id"]
                 )
+                adaptation = selected.get("adaptation_contract")
+                if isinstance(adaptation, dict):
+                    fit = evaluate_component_target_fit(selected, box)
+                    if fit.get("status") != "pass":
+                        raise ValueError(
+                            f"component {instance_id}: {fit.get('code')} "
+                            f"target={fit.get('target_aspect_ratio')} "
+                            f"supported={fit.get('supported_aspect_ratio')}"
+                        )
+                    density = adaptation.get("density", {})
+                    minimum_label_chars = density.get("minimum_label_chars", 1)
+                    labels = _payload_label_texts(spec)
+                    if minimum_label_chars > 1 and (
+                        not labels or sum(map(len, labels)) < minimum_label_chars * element_count
+                    ):
+                        raise ValueError(
+                            f"component {instance_id}: TEMPLATE_COMPONENT_LABEL_DENSITY_LOW"
+                        )
+                    minimum_numeric = density.get("minimum_numeric_annotations", 0)
+                    if minimum_numeric and _numeric_annotation_count(spec) < minimum_numeric:
+                        raise ValueError(
+                            f"component {instance_id}: TEMPLATE_COMPONENT_NUMERIC_ANNOTATION_LOW"
+                        )
                 selections.append({
                     "destination_slide_index": destination_slide_index,
                     "component_index": component_index,
@@ -178,6 +247,7 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                     "family": selection["family"],
                     "granularity": selected.get("granularity", "micro"),
                     "reason": selection["reason"],
+                    **({"adaptation": fit} if isinstance(adaptation, dict) else {}),
                 })
 
                 children = selected.get("children", [])
@@ -228,6 +298,7 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                         "component_requirement": requirement,
                         "text_bindings": deepcopy(text_bindings),
                         "placement": box,
+                        **({"adaptation": deepcopy(adaptation)} if isinstance(adaptation, dict) else {}),
                     })
                     return
 
@@ -253,6 +324,7 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                             "text_bindings": deepcopy(text_bindings),
                             "clear_text_names": deepcopy(clear_text_names),
                             "placement": box,
+                            **({"adaptation": deepcopy(adaptation)} if isinstance(adaptation, dict) else {}),
                         })
                         return
                     chart = spec.get("chart")
@@ -267,6 +339,7 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                         "chart": deepcopy(chart),
                         "text_bindings": deepcopy(text_bindings),
                         "placement": box,
+                        **({"adaptation": deepcopy(adaptation)} if isinstance(adaptation, dict) else {}),
                     })
                     return
                 if not isinstance(elements, list) or not elements:
@@ -278,6 +351,7 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
                     "component_requirement": requirement,
                     "elements": deepcopy(elements),
                     "placement": box,
+                    **({"adaptation": deepcopy(adaptation)} if isinstance(adaptation, dict) else {}),
                 })
 
             expand(component, placement, component_instance_id)

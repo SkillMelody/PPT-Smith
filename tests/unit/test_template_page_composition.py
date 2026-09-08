@@ -82,6 +82,19 @@ def test_page_composition_rejects_a_component_used_as_the_whole_page() -> None:
     assert "TEMPLATE_QUANTITATIVE_PAGE_ANNOTATION_REQUIRED" in codes
 
 
+def test_page_composition_enforces_component_specific_minimum_density_and_companions() -> None:
+    ir = {"slides": [{"id": "s1", "slide_role": "content"}]}
+    page = _body_page("s1", recipe="chart-with-insights", variant="balanced")
+    page["page_composition"]["content_modules"][0]["information_unit_count"] = 1
+    page["page_composition"]["content_modules"][1]["role"] = "context"
+
+    report = evaluate_template_page_compositions(ir, _atlas(), {"slides": [page]})
+
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "TEMPLATE_COMPONENT_CONTENT_DENSITY_LOW" in codes
+    assert "TEMPLATE_COMPONENT_COMPANION_REQUIRED" in codes
+
+
 def test_boundary_pages_are_original_when_the_template_has_no_full_page_recipe() -> None:
     atlas = _atlas()
     ir = {"slides": [

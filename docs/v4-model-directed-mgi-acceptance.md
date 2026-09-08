@@ -1,5 +1,11 @@
 # V4 Model-Directed Template Authoring — MGI Acceptance
 
+> **Historical acceptance superseded.** The generalised rendered-layout
+> fingerprint added after the 2026-09-08 human review now rejects this 41-page
+> artifact: 27 of 39 body pages share one rendered visual skeleton, with a
+> three-page consecutive run. The file remains a regression artifact but is no
+> longer considered final delivery under the current Template contract.
+
 ## Scope
 
 This phase replaces the model-agnostic positioning with the V3-inherited,

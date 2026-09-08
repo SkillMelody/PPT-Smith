@@ -456,7 +456,7 @@ def test_real_mckinsey_page_16_counts_equivalent_kpi_and_ring_instances_without_
     assert slide["page_recipe_only_content_count"] == 1
 
 
-def test_real_manuscript_replaces_the_dashboard_recipe_with_recursive_components() -> None:
+def test_real_manuscript_uses_reviewed_dashboard_without_brand_specific_decomposition() -> None:
     template = PROJECT / "sources" / "麦肯锡风格.pptx"
     analysis = PROJECT / "analysis"
     review = json.loads((analysis / "component-review.v1.json").read_text(encoding="utf-8"))
@@ -467,19 +467,12 @@ def test_real_manuscript_replaces_the_dashboard_recipe_with_recursive_components
     composition = build_manuscript_component_composition(atlas, bindings, storyboard)
     impact = next(page for page in composition["pages"] if page["purpose"] == "innovation_impact")
 
-    assert [component["component_id"] for component in impact["components"]] == [
-        "mckinsey.quadrant-summary.impact-sequence",
-        "mckinsey.kpi-chart-row.four-metrics",
-        "mckinsey.ring-evidence.business-outcomes",
-        "mckinsey.impact-bar.business-outcome",
-        "mckinsey.insight-list.management-evidence",
-    ]
-    assert all(component["family"] != "chart_dashboard" for component in impact["components"])
+    assert len(impact["components"]) == 1
+    assert impact["components"][0]["family"] == "chart_dashboard"
+    assert impact["components"][0]["component_id"] == "mckinsey.dashboard.research-impact"
     plan = build_component_plan(atlas, {"schema_version": "1.0.0", "pages": [impact]})
-    assert len(plan["operations"]) == 11
-    assert {operation["kind"] for operation in plan["operations"]} == {
-        "native_group_component_clone", "chart_component_clone", "component_clone",
-    }
+    assert len(plan["operations"]) == 1
+    assert plan["operations"][0]["kind"] == "chart_dashboard_clone"
 
 
 def test_real_mckinsey_atlas_exposes_distinct_cover_chapter_and_closing_contracts() -> None:

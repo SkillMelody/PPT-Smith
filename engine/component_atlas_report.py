@@ -11,6 +11,10 @@ def build_component_suitability_table(atlas: dict) -> dict:
         count = component.get("parameters", {}).get("element_count", {})
         data = component.get("data_contract", {})
         guidance = component.get("page_guidance", {})
+        adaptation = component.get("adaptation_contract", {})
+        responsive = adaptation.get("responsive", {})
+        background = adaptation.get("background", {})
+        density = adaptation.get("density", {})
         rows.append({
             "component_id": component.get("component_id"),
             "family": component.get("family"),
@@ -41,6 +45,16 @@ def build_component_suitability_table(atlas: dict) -> dict:
             ),
             "annotation_requirements": guidance.get("annotation_requirements", []),
             "prohibited_scenarios": guidance.get("prohibited_scenarios", []),
+            "content_bbox": adaptation.get("content_bbox"),
+            "decoration_bbox": adaptation.get("decoration_bbox"),
+            "background_policy": background.get("policy"),
+            "background_shape_names": background.get("shape_names", []),
+            "responsive_modes": responsive.get("modes", []),
+            "supported_aspect_ratio": responsive.get("supported_aspect_ratio"),
+            "minimum_label_chars": density.get("minimum_label_chars"),
+            "minimum_numeric_annotations": density.get("minimum_numeric_annotations"),
+            "preferred_aspect_ratios": adaptation.get("preferred_aspect_ratios", []),
+            "series_role": adaptation.get("series_role"),
         })
     return {"schema_version": "1.0.0", "component_count": len(rows), "rows": rows}
 
@@ -48,8 +62,8 @@ def build_component_suitability_table(atlas: dict) -> dict:
 def render_component_suitability_markdown(report: dict) -> str:
     lines = [
         "# Template Component Suitability Table", "",
-        "| Component | Family | Suitable scenarios | Page role | Stand-alone | Page recipes | Companions | Capacity | Data/annotation | Prohibited | Source |",
-        "|---|---|---|---|---|---|---|---|---|---|---:|",
+        "| Component | Family | Suitable scenarios | Page role | Stand-alone | Page recipes | Companions | Capacity | Data/annotation | Background | Responsive | Prohibited | Source |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---:|",
     ]
     for row in report.get("rows", []):
         capacity = row.get("element_capacity", {})
@@ -72,6 +86,8 @@ def render_component_suitability_markdown(report: dict) -> str:
             ", ".join(row.get("recommended_page_recipes", [])), companions,
             f"elements {element_range}; min info {row.get('minimum_information_units', '')}",
             data_and_annotation,
+            row.get("background_policy", ""),
+            ", ".join(row.get("responsive_modes", [])),
             "; ".join(row.get("prohibited_scenarios", [])),
             str(row.get("source_slide", "")),
         ]

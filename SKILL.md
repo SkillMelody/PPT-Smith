@@ -148,6 +148,14 @@ each component can stand alone, its minimum information units, recommended
 page recipes and companions, annotation requirements, and prohibited uses.
 Geometry alone is not a semantic component review.
 
+For every uploaded template, derive a template-local adaptation contract:
+content and decoration bounds, background semantics, supported aspect ratios,
+responsive modes, minimum visible information, numeric annotation floors, and
+series role. Do not encode component ids, page numbers, colours, fonts, or
+sample-report rules from a previously tested template. Oversized source-page
+backgrounds are not reusable component content unless the reviewed contract
+proves a semantic role.
+
 ### 5. Let the model compose the deck
 
 For every slide, compare its topology, data shape, required slots, text bounds,
@@ -201,6 +209,11 @@ Inspect every slide, not only a contact-sheet thumbnail. Reject for:
   interpretation, or implication;
 - repeated declared variants that do not correspond to genuinely different
   compositions;
+- repeated real-rendered visual skeletons even when their recipe names or
+  left/right orientation differ;
+- components mechanically scaled into unsupported target aspect ratios;
+- comparison series without a shared anchor and scale, or long series that
+  should be consolidated or moved to an appendix;
 - missing or inadequate speaker notes.
 
 ## Final-delivery gates
@@ -234,5 +247,6 @@ imported into Bespoke or Standard runtimes.
 - [V4 route architecture](docs/v4-three-route-architecture.md)
 - [Bespoke route](docs/v4-bespoke-architecture-plan.md)
 - [Template route](docs/v4-template-route.md)
+- [Template generalization contract](docs/v4-template-generalization.md)
 - [Template authoring guide](docs/template-authoring-guide.md)
 - [Presentation IR examples](schemas/v4/examples/)
