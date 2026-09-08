@@ -6,11 +6,11 @@ from collections import Counter
 from math import ceil
 from pathlib import Path
 
-from PIL import Image, ImageStat
+from PIL import Image, ImageFilter, ImageStat
 
 
-GRID_COLUMNS = 12
-GRID_ROWS = 7
+GRID_COLUMNS = 16
+GRID_ROWS = 9
 
 
 def _distance(first: list[float], second: list[float]) -> float:
@@ -30,9 +30,21 @@ def fingerprint_distance(first: list[float], second: list[float]) -> float:
     return min(_distance(first, second), _distance(first, _mirror(second)))
 
 
+def canonical_fingerprint(signature: list[float]) -> list[float]:
+    """Give mirrored layouts one stable orientation before centroid updates."""
+    mirrored = _mirror(signature)
+    return list(min(tuple(signature), tuple(mirrored)))
+
+
 def image_layout_fingerprint(path: str | Path) -> list[float]:
     image = Image.open(path).convert("RGB")
     image.thumbnail((480, 270))
+    # Template decks intentionally repeat title bars, rules, footers and page
+    # numbers.  They are brand rhythm, not the page's information skeleton.
+    # Fingerprint the authored body so a line chart with bottom cards does not
+    # collapse into the same cluster as a radar chart with a side narrative.
+    width, height = image.size
+    image = image.crop((0, round(height * 0.16), width, round(height * 0.91)))
     width, height = image.size
     corner = max(2, min(width, height) // 30)
     corners = [
@@ -45,7 +57,9 @@ def image_layout_fingerprint(path: str | Path) -> list[float]:
         sum(ImageStat.Stat(item).mean[channel] for item in corners) / len(corners)
         for channel in range(3)
     )
-    signature: list[float] = []
+    edges = image.convert("L").filter(ImageFilter.FIND_EDGES)
+    occupancy_signature: list[float] = []
+    edge_signature: list[float] = []
     for row in range(GRID_ROWS):
         top = round(row * height / GRID_ROWS)
         bottom = round((row + 1) * height / GRID_ROWS)
@@ -59,15 +73,17 @@ def image_layout_fingerprint(path: str | Path) -> list[float]:
             ) / max(len(pixels), 1)
             # Quantisation makes the signature insensitive to antialiasing and
             # renderer-specific one-pixel differences.
-            signature.append(round(occupied * 4) / 4)
-    return signature
+            occupancy_signature.append(round(occupied * 10) / 10)
+            edge_mean = ImageStat.Stat(edges.crop((left, top, right, bottom))).mean[0] / 255
+            edge_signature.append(round(edge_mean * 10) / 10)
+    return [*occupancy_signature, *edge_signature]
 
 
 def evaluate_rendered_layout_rhythm(
     render_report: dict,
     *,
     page_composition: dict | None = None,
-    similarity_threshold: float = 0.10,
+    similarity_threshold: float = 0.055,
 ) -> dict:
     """Cluster real-rendered slides by geometry instead of declared names."""
     composition_pages = [
@@ -90,7 +106,7 @@ def evaluate_rendered_layout_rhythm(
             "slide_index": slide.get("slide_index", index + 1),
             "slide_id": composition.get("slide_id", f"S{index + 1:02d}"),
             "series_context": composition.get("series_context"),
-            "signature": image_layout_fingerprint(path),
+            "signature": canonical_fingerprint(image_layout_fingerprint(path)),
         })
 
     clusters: list[dict] = []
@@ -150,8 +166,9 @@ def evaluate_rendered_layout_rhythm(
             explicit_comparison = (
                 len(series_groups) == 1 and None not in series_groups
                 and all(
-                    page.get("series_context", {}).get("purpose") == "comparison"
-                    and page.get("series_context", {}).get("shared_scale") is True
+                    isinstance(page.get("series_context"), dict)
+                    and page["series_context"].get("purpose") == "comparison"
+                    and page["series_context"].get("shared_scale") is True
                     for page in cluster["pages"]
                 )
             )

@@ -116,6 +116,11 @@ def build_adaptation_contract(
             if background_area_ratio > 1.35
             or background_bbox["w"] > 0.88
             or background_bbox["h"] > 0.78
+            or (
+                background_area_ratio > 1.15
+                and background_bbox["w"] > 0.70
+                and background_bbox["h"] > 0.65
+            )
             else "reflow_to_content"
         )
 

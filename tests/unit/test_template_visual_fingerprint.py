@@ -88,3 +88,27 @@ def test_comparison_series_may_share_a_rendered_grid_when_scale_is_declared(tmp_
     )
 
     assert report["status"] == "pass"
+
+
+def test_mixed_series_and_independent_pages_do_not_crash_cluster_audit(tmp_path: Path) -> None:
+    slides = []
+    pages = []
+    for index in range(8):
+        path = tmp_path / f"mixed-{index + 1}.png"
+        _render(path, hero="left")
+        slides.append({"slide_index": index + 1, "image": str(path)})
+        page = {"slide_id": f"M{index + 1}", "page_role": "body"}
+        if index >= 3:
+            page["series_context"] = {
+                "group_id": "country", "purpose": "comparison", "shared_scale": True,
+            }
+        pages.append(page)
+
+    report = evaluate_rendered_layout_rhythm(
+        {"slides": slides}, page_composition={"pages": pages},
+    )
+
+    assert report["status"] == "fail"
+    assert "TEMPLATE_RENDERED_LAYOUT_OVERUSED" in {
+        issue["code"] for issue in report["issues"]
+    }
