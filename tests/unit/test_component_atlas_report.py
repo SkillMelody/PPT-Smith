@@ -20,6 +20,16 @@ def test_component_atlas_report_exposes_scenarios_data_and_capacity() -> None:
             "semantic_contract": {"required_fields": ["chart", "title"]},
             "text_capacity": {"title": 80},
             "native_fidelity": "exact",
+            "page_guidance": {
+                "can_stand_alone": False,
+                "supported_page_roles": ["body"],
+                "minimum_information_units": 3,
+                "recommended_page_recipes": ["chart-with-insights"],
+                "required_companion_roles": ["interpretation"],
+                "recommended_companion_families": ["insight_card"],
+                "annotation_requirements": ["value labels", "comparison baseline"],
+                "prohibited_scenarios": ["chart alone on a page"],
+            },
         }],
     }
 
@@ -28,5 +38,9 @@ def test_component_atlas_report_exposes_scenarios_data_and_capacity() -> None:
 
     assert report["rows"][0]["data_kinds"] == ["chart"]
     assert report["rows"][0]["element_capacity"] == {"minimum": 1, "maximum": 2}
+    assert report["rows"][0]["can_stand_alone"] is False
+    assert report["rows"][0]["required_companion_roles"] == ["interpretation"]
     assert "metric comparison" in markdown
     assert "bar" in markdown
+    assert "chart-with-insights" in markdown
+    assert "chart alone on a page" in markdown

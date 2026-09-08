@@ -169,8 +169,19 @@ def _extended_review() -> dict:
 def test_component_atlas_resolves_reviewed_native_shapes_and_parameters(tmp_path: Path) -> None:
     template = tmp_path / "template.pptx"
     _component_template(template)
+    review = _review()
+    review["components"][0]["page_guidance"] = {
+        "can_stand_alone": False,
+        "supported_page_roles": ["body"],
+        "minimum_information_units": 4,
+        "recommended_page_recipes": ["funnel-with-context"],
+        "required_companion_roles": ["interpretation"],
+        "recommended_companion_families": ["insight_card"],
+        "annotation_requirements": ["stage values"],
+        "prohibited_scenarios": ["funnel alone on a page"],
+    }
 
-    atlas = build_component_atlas(template, _review())
+    atlas = build_component_atlas(template, review)
     component = atlas["components"][0]
 
     assert atlas["status"] == "reviewed"
@@ -181,6 +192,8 @@ def test_component_atlas_resolves_reviewed_native_shapes_and_parameters(tmp_path
     assert [group["role"] for group in component["groups"]] == ["segment", "label"]
     assert all(member["shape_id"] > 0 for group in component["groups"] for member in group["members"])
     assert all(member["frame"]["w"] > 0 for group in component["groups"] for member in group["members"])
+    assert component["page_guidance"]["can_stand_alone"] is False
+    assert component["page_guidance"]["required_companion_roles"] == ["interpretation"]
     assert "Example" not in str(atlas)
 
 

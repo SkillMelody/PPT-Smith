@@ -282,8 +282,12 @@ def build_component_plan(atlas: dict, composition: dict) -> dict:
 
             expand(component, placement, component_instance_id)
 
-    return {
+    result = {
         "schema_version": "1.0.0",
         "operations": operations,
         "selections": selections,
     }
+    if isinstance(composition.get("page_composition"), dict):
+        result["authoring_mode"] = "model_directed_template"
+        result["page_composition"] = deepcopy(composition["page_composition"])
+    return result

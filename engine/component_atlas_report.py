@@ -10,6 +10,7 @@ def build_component_suitability_table(atlas: dict) -> dict:
     for component in atlas.get("components", []):
         count = component.get("parameters", {}).get("element_count", {})
         data = component.get("data_contract", {})
+        guidance = component.get("page_guidance", {})
         rows.append({
             "component_id": component.get("component_id"),
             "family": component.get("family"),
@@ -30,6 +31,16 @@ def build_component_suitability_table(atlas: dict) -> dict:
             "text_capacity": component.get("text_capacity", {}),
             "native_fidelity": component.get("native_fidelity"),
             "renderer": component.get("renderer", "native_component"),
+            "can_stand_alone": guidance.get("can_stand_alone"),
+            "supported_page_roles": guidance.get("supported_page_roles", []),
+            "minimum_information_units": guidance.get("minimum_information_units"),
+            "recommended_page_recipes": guidance.get("recommended_page_recipes", []),
+            "required_companion_roles": guidance.get("required_companion_roles", []),
+            "recommended_companion_families": guidance.get(
+                "recommended_companion_families", []
+            ),
+            "annotation_requirements": guidance.get("annotation_requirements", []),
+            "prohibited_scenarios": guidance.get("prohibited_scenarios", []),
         })
     return {"schema_version": "1.0.0", "component_count": len(rows), "rows": rows}
 
@@ -37,8 +48,8 @@ def build_component_suitability_table(atlas: dict) -> dict:
 def render_component_suitability_markdown(report: dict) -> str:
     lines = [
         "# Template Component Suitability Table", "",
-        "| Component | Family | Suitable scenarios | Topology | Data | Elements | Required slots | Source |",
-        "|---|---|---|---|---|---:|---|---:|",
+        "| Component | Family | Suitable scenarios | Page role | Stand-alone | Page recipes | Companions | Capacity | Data/annotation | Prohibited | Source |",
+        "|---|---|---|---|---|---|---|---|---|---|---:|",
     ]
     for row in report.get("rows", []):
         capacity = row.get("element_capacity", {})
@@ -47,11 +58,22 @@ def render_component_suitability_markdown(report: dict) -> str:
         charts = row.get("chart_types", [])
         if charts:
             data += " (" + ", ".join(charts) + ")"
+        annotation = ", ".join(row.get("annotation_requirements", []))
+        data_and_annotation = data + (f"; {annotation}" if annotation else "")
+        companions = ", ".join(
+            [*row.get("required_companion_roles", []),
+             *row.get("recommended_companion_families", [])]
+        )
         values = [
             row.get("component_id", ""), row.get("family", ""),
             "; ".join(row.get("suitable_scenarios", [])),
-            ", ".join(row.get("topologies", [])), data, element_range,
-            ", ".join(row.get("required_slots", [])), str(row.get("source_slide", "")),
+            ", ".join(row.get("supported_page_roles", [])),
+            "yes" if row.get("can_stand_alone") is True else "no",
+            ", ".join(row.get("recommended_page_recipes", [])), companions,
+            f"elements {element_range}; min info {row.get('minimum_information_units', '')}",
+            data_and_annotation,
+            "; ".join(row.get("prohibited_scenarios", [])),
+            str(row.get("source_slide", "")),
         ]
         lines.append("| " + " | ".join(str(value).replace("|", "\\|") for value in values) + " |")
     return "\n".join(lines) + "\n"

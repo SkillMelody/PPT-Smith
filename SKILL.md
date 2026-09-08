@@ -65,9 +65,24 @@ visual language. The model must analyze both source and template, then:
    visual-grammar reference;
 7. record why every feasible component was selected or rejected.
 
+A reviewed component is a module, not automatically a complete slide. Every
+Template body page also needs a `page_composition` contract with a page recipe
+and real variant, assertion/evidence/interpretation/implication layers, at
+least two substantive content modules, an information-unit count, and a
+takeaway. Quantitative pages additionally require visible key numbers and
+chart annotations. Reject title-plus-single-component shells even when the
+component itself is perfectly cloned.
+
 An illustration from the source may be used only when it is an isolated
 illustration or non-reconstructable figure. Never use a screenshot containing
 source-page prose, navigation, headers, or footers as a slide substitute.
+
+Detect cover and closing support only from reviewed full-page recipes. A widget
+whose name merely contains `cover` or `closing` is not a boundary-page recipe.
+When the uploaded template has no qualifying cover or closing page, author an
+original one from the template's typography, palette, spacing, line, and icon
+grammar and declare `style_derived_original`; do not force an unrelated template
+component into that role.
 
 Read [docs/v4-template-route.md](docs/v4-template-route.md).
 
@@ -128,8 +143,10 @@ python3 -m engine component-atlas \
 
 The review must identify reusable charts, tables, timelines, processes, KPI
 cards, comparisons, matrices, image frames, relationship diagrams, section
-recipes, style primitives, and equivalent instances. Geometry alone is not a
-semantic component review.
+recipes, style primitives, and equivalent instances. It must also state whether
+each component can stand alone, its minimum information units, recommended
+page recipes and companions, annotation requirements, and prohibited uses.
+Geometry alone is not a semantic component review.
 
 ### 5. Let the model compose the deck
 
@@ -180,6 +197,10 @@ Inspect every slide, not only a contact-sheet thumbnail. Reject for:
 - sparse text/outline pages without purposeful composition;
 - feasible template components left unused without explanation;
 - inconsistent template style, hierarchy, spacing, density, or rhythm;
+- a reviewed component used as the whole page without supporting evidence,
+  interpretation, or implication;
+- repeated declared variants that do not correspond to genuinely different
+  compositions;
 - missing or inadequate speaker notes.
 
 ## Final-delivery gates
@@ -207,6 +228,8 @@ not call it final.
 Do not mix route authority: Standard rules cannot override Bespoke design;
 Bespoke cannot claim strict template preservation; Template cannot use
 unreviewed or semantically mismatched components merely to increase reuse.
+Template-only page-composition and component-suitability gates must not be
+imported into Bespoke or Standard runtimes.
 
 - [V4 route architecture](docs/v4-three-route-architecture.md)
 - [Bespoke route](docs/v4-bespoke-architecture-plan.md)

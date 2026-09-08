@@ -7,6 +7,7 @@ from copy import deepcopy
 from .component_atlas import select_component
 from .component_intent import evaluate_component_intents
 from .deck_diversity import evaluate_family_diversity
+from .template_page_composition import evaluate_template_page_compositions
 
 
 def build_model_template_composition(
@@ -15,6 +16,7 @@ def build_model_template_composition(
     model_plan: dict,
     *,
     enforce_intent_audit: bool = True,
+    enforce_page_composition: bool | None = None,
 ) -> dict:
     """Honor explicit model composition while proving reviewed-component reuse."""
     if not isinstance(model_plan, dict) or model_plan.get("schema_version") != "1.0.0":
@@ -22,6 +24,8 @@ def build_model_template_composition(
     planned_slides = model_plan.get("slides")
     if not isinstance(planned_slides, list) or not planned_slides:
         raise ValueError("model template plan requires slides")
+    if enforce_page_composition is None:
+        enforce_page_composition = enforce_intent_audit
     template_slide_count = atlas.get("source", {}).get("slide_count")
     if not isinstance(template_slide_count, int) or template_slide_count < 1:
         raise ValueError("reviewed atlas requires source slide_count")
@@ -31,6 +35,10 @@ def build_model_template_composition(
     if enforce_intent_audit and intent_audit["status"] != "pass":
         codes = sorted({issue["code"] for issue in intent_audit["issues"]})
         raise ValueError(f"COMPONENT_INTENT_FAILED: {','.join(codes)}")
+    page_composition = evaluate_template_page_compositions(ir, atlas, model_plan)
+    if enforce_page_composition and page_composition["status"] != "pass":
+        codes = sorted({issue["code"] for issue in page_composition["issues"]})
+        raise ValueError(f"TEMPLATE_PAGE_COMPOSITION_FAILED: {','.join(codes)}")
 
     ir_by_id = {
         slide.get("id"): slide
@@ -169,6 +177,7 @@ def build_model_template_composition(
             "purpose": slide_id,
             "destination_slide_index": template_slide_count + output_page_index,
             "components": resolved_components,
+            "page_composition": deepcopy(page.get("page_composition")),
         })
     content_ids = {
         slide_id for slide_id, slide in ir_by_id.items()
@@ -210,6 +219,7 @@ def build_model_template_composition(
         "pages": sorted(pages, key=lambda page: page["output_page_index"]),
         "unsupported_pages": [],
         "component_intent": intent_audit,
+        "page_composition": page_composition,
         "family_diversity": family_diversity,
         "coverage": {
             "status": "complete",

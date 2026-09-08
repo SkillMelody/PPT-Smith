@@ -20,6 +20,7 @@ from .topology import TOPOLOGIES
 _GRANULARITIES = {"atomic", "micro", "composite", "section", "page_recipe"}
 _NATIVE_FIDELITY = {"exact", "transformed", "style_authored"}
 _COMPOSITION_ROLES = {"primary", "supporting", "context", "navigation", "decoration"}
+_PAGE_ROLES = {"cover", "section", "body", "closing"}
 
 
 def _sha256(path: Path) -> str:
@@ -319,6 +320,56 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
         data_contract = declaration.get("data_contract", {})
         if not isinstance(data_contract, dict):
             raise ValueError(f"component {component_id!r} data contract must be an object")
+        page_guidance = declaration.get("page_guidance", {})
+        if not isinstance(page_guidance, dict):
+            raise ValueError(f"component {component_id!r} page guidance must be an object")
+        if page_guidance:
+            allowed_guidance_fields = {
+                "can_stand_alone", "supported_page_roles", "minimum_information_units",
+                "recommended_page_recipes", "required_companion_roles",
+                "recommended_companion_families", "annotation_requirements",
+                "prohibited_scenarios",
+            }
+            unknown_guidance_fields = set(page_guidance) - allowed_guidance_fields
+            if unknown_guidance_fields:
+                raise ValueError(
+                    f"component {component_id!r} page guidance has unknown fields "
+                    f"{sorted(unknown_guidance_fields)!r}"
+                )
+            if not isinstance(page_guidance.get("can_stand_alone"), bool):
+                raise ValueError(
+                    f"component {component_id!r} page guidance requires can_stand_alone"
+                )
+            supported_roles = page_guidance.get("supported_page_roles", [])
+            if (
+                not isinstance(supported_roles, list)
+                or any(role not in _PAGE_ROLES for role in supported_roles)
+            ):
+                raise ValueError(
+                    f"component {component_id!r} page guidance has invalid page roles"
+                )
+            minimum_units = page_guidance.get("minimum_information_units")
+            if (
+                isinstance(minimum_units, bool)
+                or not isinstance(minimum_units, int)
+                or minimum_units < 1
+            ):
+                raise ValueError(
+                    f"component {component_id!r} page guidance requires positive minimum information units"
+                )
+            for field in (
+                "recommended_page_recipes", "required_companion_roles",
+                "recommended_companion_families", "annotation_requirements",
+                "prohibited_scenarios",
+            ):
+                values = page_guidance.get(field, [])
+                if (
+                    not isinstance(values, list)
+                    or any(not isinstance(value, str) or not value for value in values)
+                ):
+                    raise ValueError(
+                        f"component {component_id!r} page guidance field {field!r} is invalid"
+                    )
         native_fidelity = declaration.get("native_fidelity")
         if native_fidelity is not None and native_fidelity not in _NATIVE_FIDELITY:
             raise ValueError(f"component {component_id!r} has invalid native fidelity")
@@ -340,6 +391,8 @@ def build_component_atlas(template_pptx: str | Path, review: dict) -> dict:
             resolved_component["text_capacity"] = deepcopy(text_capacity)
         if data_contract:
             resolved_component["data_contract"] = deepcopy(data_contract)
+        if page_guidance:
+            resolved_component["page_guidance"] = deepcopy(page_guidance)
         if native_fidelity is not None:
             resolved_component["native_fidelity"] = native_fidelity
         if semantic_contract:

@@ -89,6 +89,27 @@ def _model_plan() -> dict:
         "slides": [{
             "slide_id": "s1",
             "output_page_index": 1,
+            "page_composition": {
+                "page_role": "body",
+                "recipe": "comparison",
+                "variant": "split-evidence-and-implication",
+                "semantic_layers": ["assertion", "primary_evidence", "implication"],
+                "content_modules": [
+                    {
+                        "module_id": "evidence",
+                        "role": "primary_evidence",
+                        "component_ids": ["template.cards"],
+                        "information_unit_count": 2,
+                    },
+                    {
+                        "module_id": "implication",
+                        "role": "implication",
+                        "component_ids": ["template.metrics"],
+                        "information_unit_count": 2,
+                    },
+                ],
+                "takeaway": "The comparison resolves into a clear decision implication.",
+            },
             "components": [
                 component("template.cards", 0.04),
                 component("template.metrics", 0.52),
@@ -114,7 +135,9 @@ def test_model_template_composer_rejects_plan_that_differs_from_declared_selecti
     plan["slides"][0]["components"].pop()
 
     with pytest.raises(ValueError, match="MODEL_TEMPLATE_SELECTION_MISMATCH"):
-        build_model_template_composition(_ir(), _atlas(), plan)
+        build_model_template_composition(
+            _ir(), _atlas(), plan, enforce_page_composition=False,
+        )
 
 
 def test_model_template_composer_cli_writes_composition(tmp_path: Path) -> None:
@@ -153,6 +176,27 @@ def test_model_template_composer_builds_new_native_component_when_atlas_has_no_m
         "schema_version": "1.0.0",
         "slides": [{
             "slide_id": "s1",
+            "page_composition": {
+                "page_role": "body",
+                "recipe": "causal-mechanism",
+                "variant": "native-system-with-implication",
+                "semantic_layers": ["assertion", "primary_evidence", "implication"],
+                "content_modules": [
+                    {
+                        "module_id": "system",
+                        "role": "primary_evidence",
+                        "component_ids": ["model.causal-system"],
+                        "information_unit_count": 3,
+                    },
+                    {
+                        "module_id": "implication",
+                        "role": "implication",
+                        "component_ids": ["model.causal-system"],
+                        "information_unit_count": 1,
+                    },
+                ],
+                "takeaway": "The system view connects the evidence to the operating implication.",
+            },
             "components": [{
                 "component_id": "model.causal-system",
                 "author_script": "/tmp/causal-system.py",

@@ -76,7 +76,7 @@ def test_bespoke_and_template_authoring_modules_do_not_cross_import() -> None:
     template_only = {
         "strict_template", "template_native", "component_atlas", "component_composer",
         "component_inventory", "manuscript_component_planner", "manuscript_strict_preview",
-        "presentation_subset",
+        "presentation_subset", "template_page_composition", "template_visual_quality",
     }
     bespoke_only = {"bespoke", "bespoke_runtime", "bespoke_quality", "visual_review"}
 
@@ -84,3 +84,17 @@ def test_bespoke_and_template_authoring_modules_do_not_cross_import() -> None:
         assert not (_engine_imports(module) & template_only), module
     for module in template_only:
         assert not (_engine_imports(module) & bespoke_only), module
+
+
+def test_template_page_composition_gates_are_not_imported_by_standard_or_bespoke() -> None:
+    template_page_gates = {
+        "template_page_composition", "template_visual_quality",
+        "component_atlas_report", "component_intent",
+    }
+    other_route_modules = {
+        "compile", "layout", "policy", "extractive_ir",
+        "bespoke", "bespoke_runtime", "bespoke_quality", "visual_review",
+    }
+
+    for module in other_route_modules:
+        assert not (_engine_imports(module) & template_page_gates), module

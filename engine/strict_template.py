@@ -1145,6 +1145,17 @@ def execute_strict_template(
             "speaker_notes": notes_contract,
             "content_integrity": content_integrity,
         }
+    page_composition = strict_plan.get("page_composition")
+    if strict_plan.get("authoring_mode") == "model_directed_template":
+        if not isinstance(page_composition, dict) or page_composition.get("status") != "pass":
+            return {
+                "ok": False,
+                "code": "TEMPLATE_PAGE_COMPOSITION_FAILED",
+                "template_page_composition": page_composition,
+                "component_intent": component_intent,
+                "speaker_notes": notes_contract,
+                "content_integrity": content_integrity,
+            }
     from .model_authored_quality import evaluate_model_authored_quality
 
     authored_quality = evaluate_model_authored_quality(
@@ -1263,6 +1274,7 @@ def execute_strict_template(
         output_path,
         ir=ir,
         render_report=render,
+        page_composition=page_composition,
     )
     ok = (
         binding.get("status") == "pass"
@@ -1289,6 +1301,7 @@ def execute_strict_template(
         "template_visual_quality": template_visual_quality,
         "content_integrity": content_integrity,
         "component_intent": component_intent,
+        "template_page_composition": page_composition,
         "component_atlas_contract": atlas_contract,
         "model_authored_quality": authored_quality,
         "speaker_notes": {

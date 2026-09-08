@@ -5,9 +5,25 @@ from __future__ import annotations
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 
 GENERIC_FAMILIES = frozenset({"card_grid", "icon_card_grid"})
+
+
+def _iter_shapes(shapes):
+    for shape in shapes:
+        yield shape
+        if getattr(shape, "shape_type", None) == MSO_SHAPE_TYPE.GROUP:
+            yield from _iter_shapes(shape.shapes)
+
+
+def _is_semantic_content_name(name: str) -> bool:
+    if name.startswith(("bind:chart:", "bind:table:", "bind:image:")):
+        return True
+    if not name.startswith("bind:block:"):
+        return False
+    return ":page_no:" not in name and not name.endswith(":page_no:value")
 
 
 def _minimum_visible_text(page: dict) -> tuple[int, str]:
@@ -77,6 +93,7 @@ def inspect_template_visual_quality(
     *,
     ir: dict,
     render_report: dict,
+    page_composition: dict | None = None,
 ) -> dict:
     """Build density evidence from the actual PPTX and real-render report."""
     presentation = Presentation(str(pptx_path))
@@ -86,12 +103,18 @@ def inspect_template_visual_quality(
         for item in render_report.get("slides", [])
         if isinstance(item, dict)
     }
+    composition_by_id = {
+        item.get("slide_id"): item
+        for item in (page_composition or {}).get("pages", [])
+        if isinstance(item, dict) and isinstance(item.get("slide_id"), str)
+    }
     pages: list[dict] = []
     for index, slide in enumerate(presentation.slides, 1):
         contract = ir_slides[index - 1] if index <= len(ir_slides) else {}
+        shapes = list(_iter_shapes(slide.shapes))
         text = " ".join(
             str(getattr(shape, "text", "") or "").strip()
-            for shape in slide.shapes
+            for shape in shapes
             if getattr(shape, "has_text_frame", False)
         )
         intent = contract.get("component_intent", {})
@@ -104,13 +127,43 @@ def inspect_template_visual_quality(
             else []
         )
         slide_role = contract.get("slide_role", "content")
+        slide_id = contract.get("id", f"S{index:02d}")
+        composition = composition_by_id.get(slide_id, {})
         pages.append({
-            "slide_id": contract.get("id", f"S{index:02d}"),
+            "slide_id": slide_id,
             "archetype": "body" if slide_role == "content" else slide_role,
             "visible_text_chars": len("".join(text.split())),
-            "chart_count": sum(bool(getattr(shape, "has_chart", False)) for shape in slide.shapes),
+            "chart_count": sum(bool(getattr(shape, "has_chart", False)) for shape in shapes),
             "semantic_element_count": int(intent.get("element_count", 1)),
+            "bound_semantic_object_count": sum(
+                _is_semantic_content_name(str(getattr(shape, "name", "") or ""))
+                for shape in shapes
+            ),
+            "declared_substantive_module_count": composition.get(
+                "substantive_module_count"
+            ),
+            "declared_information_unit_count": composition.get(
+                "information_unit_count"
+            ),
             "families": families,
             "blank_score": rendered_by_index.get(index, {}).get("blank_score"),
         })
-    return evaluate_template_visual_quality(pages)
+    report = evaluate_template_visual_quality(pages)
+    for page in report["pages"]:
+        source = next(item for item in pages if item["slide_id"] == page["slide_id"])
+        page.update({
+            "bound_semantic_object_count": source["bound_semantic_object_count"],
+            "declared_substantive_module_count": source["declared_substantive_module_count"],
+            "declared_information_unit_count": source["declared_information_unit_count"],
+        })
+        if (
+            page["density_role"] not in {"cover", "section", "closing"}
+            and source["bound_semantic_object_count"] < 2
+        ):
+            report["issues"].append({
+                "code": "VISUAL_PAGE_SINGLE_SEMANTIC_OBJECT",
+                "slide_id": page["slide_id"],
+                "bound_semantic_object_count": source["bound_semantic_object_count"],
+            })
+    report["status"] = "pass" if not report["issues"] else "fail"
+    return report

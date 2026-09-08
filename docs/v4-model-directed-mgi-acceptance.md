@@ -7,23 +7,35 @@ model-led quality route and adds Template-specific component analysis,
 composition, new native component authoring, speaker notes, and final visual
 review gates.
 
-## MGI 40-page result
+## MGI 41-page result
 
 - final state: `final_delivery_ready`;
-- 40 rendered slides and 40 non-empty speaker-note pages;
-- 19 native editable charts;
-- 20 slides with explicit reviewed-template component composition;
-- 20 slides with task-specific model-authored native components;
+- 41 rendered slides: 39 body pages plus an original cover and closing page;
+- 39 body pages with non-empty, source-bound speaker notes;
+- 39 native editable charts, including visible value labels;
+- 19 slides with explicit reviewed-template component composition;
+- 20 body slides with task-specific model-authored native components;
+- original cover and closing designs because the uploaded template has no
+  reviewed full-page boundary recipe;
+- 26 page recipes and 35 actual recipe variants across 39 body pages;
 - 0 source-page screenshots and 0 picture objects;
 - 0 visible ellipses;
 - 0 newly introduced structural findings;
 - content integrity, component intent, binding, template assets, readability,
   real rendering, density, and hash-bound visual review passed.
 
-The post-review revision removes the non-template robot-to-person graphic,
-replaces sparse/repeated pages with reviewed progression, cycle, icon-card,
-management-dimension, and evidence-list components, and emits a 24-row
-Component Atlas suitability table for human review.
+The post-review revision treats template components as modules rather than
+complete slides. Every body page now declares assertion, primary evidence,
+interpretation/implication, information units, and a takeaway. Sparse component
+shells receive a supporting insight rail or takeaway band; country pages rotate
+chart-left, chart-right, and chart-top compositions; quantitative charts expose
+their values. The four-item AI-fluency and glossary pages use a reviewed 2x2
+card grid after real rendering proved the icon-card component's four-item
+capacity visually unsafe.
+
+The 24-row Component Atlas suitability report now includes stand-alone fitness,
+minimum information units, recommended page recipes and companions, annotation
+requirements, and prohibited scenarios.
 
 Artifacts are in the ignored acceptance run directory:
 
@@ -38,7 +50,7 @@ Primary delivery:
 Full repository regression after the final fixes:
 
 ```text
-697 passed, 16 skipped in 1980.36s
+701 passed, 16 skipped in 1663.13s
 ```
 
 The skipped cases are the repository's existing environment/fixture skips; no
