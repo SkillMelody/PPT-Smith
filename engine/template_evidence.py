@@ -10,6 +10,8 @@ import hashlib
 import json
 from collections import Counter
 from pathlib import Path
+from xml.etree import ElementTree as ET
+import zipfile
 
 import jsonschema
 from pptx import Presentation
@@ -18,6 +20,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schemas" / "v4" / "template-evidence.schema.json"
 EMU_PER_IN = 914400
+DRAWING_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
 
 def _sha256(path: Path) -> str:
@@ -104,6 +107,37 @@ def _number_frequencies(counter: Counter, limit: int = 16) -> list[dict]:
             for value, count in counter.most_common(limit)]
 
 
+def _theme_colors(path: Path) -> list[dict]:
+    """Read semantic colour roles from the first Office theme in the PPTX.
+
+    Shape-level RGB extraction misses scheme colours, which caused authored
+    Template pages to use a rare local maroon instead of the template's actual
+    ``accent1`` red.  Keep the roles explicit so a model-authored component can
+    consume the same visual grammar as cloned native components.
+    """
+    with zipfile.ZipFile(path) as archive:
+        theme_names = sorted(
+            name for name in archive.namelist()
+            if name.startswith("ppt/theme/theme") and name.endswith(".xml")
+        )
+        if not theme_names:
+            return []
+        root = ET.fromstring(archive.read(theme_names[0]))
+    scheme = root.find(f".//{{{DRAWING_NS}}}clrScheme")
+    if scheme is None:
+        return []
+    result: list[dict] = []
+    for role in list(scheme):
+        color = next(iter(role), None)
+        if color is None:
+            continue
+        color_kind = color.tag.rsplit("}", 1)[-1]
+        value = color.get("lastClr") if color_kind == "sysClr" else color.get("val")
+        if value and len(value) == 6 and all(character in "0123456789abcdefABCDEF" for character in value):
+            result.append({"role": role.tag.rsplit("}", 1)[-1], "value": f"#{value.upper()}"})
+    return result
+
+
 def validate_template_evidence(report: dict) -> list[str]:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     errors = sorted(
@@ -184,6 +218,7 @@ def analyze_template(pptx_path: str | Path) -> dict:
         },
         "tokens": {
             "colors": _frequencies(color_counts),
+            "theme_colors": _theme_colors(path),
             "fonts": _frequencies(font_counts),
             "font_sizes_pt": _number_frequencies(size_counts),
         },

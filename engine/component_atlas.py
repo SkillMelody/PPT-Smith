@@ -531,6 +531,8 @@ def select_component(atlas: dict, requirement: dict) -> dict:
 
     matches: list[tuple[int, str, dict, int, int]] = []
     for component in atlas.get("components", []):
+        if component.get("reuse_status", "ready") == "blocked":
+            continue
         if requested_component_id is not None and component.get("component_id") != requested_component_id:
             continue
         uses = component.get("semantic_uses", [])
@@ -655,6 +657,8 @@ def find_feasible_components(atlas: dict, requirement: dict) -> list[dict]:
 
     feasible: list[dict] = []
     for component in atlas.get("components", []):
+        if component.get("reuse_status", "ready") == "blocked":
+            continue
         if semantic_use not in component.get("semantic_uses", []):
             continue
         if family is not None and component.get("family") != family:
@@ -707,6 +711,7 @@ def find_feasible_components(atlas: dict, requirement: dict) -> list[dict]:
             "capacity_slack": maximum - element_count,
             "granularity": component.get("granularity", "micro"),
             "native_fidelity": component.get("native_fidelity", "reviewed"),
+            "reuse_status": component.get("reuse_status", "ready"),
         })
     return sorted(
         feasible,
@@ -752,7 +757,7 @@ def resolve_chart_component_binding(atlas: dict, requirement: dict) -> dict:
             decoration_names.extend(names)
     if not label_fields:
         raise ValueError(f"component {selection['component_id']!r} requires semantic label fields")
-    return {
+    binding = {
         "component_id": selection["component_id"],
         "component_type": selection["family"],
         "source_slide_index": component.get("slide_index"),
@@ -760,6 +765,13 @@ def resolve_chart_component_binding(atlas: dict, requirement: dict) -> dict:
         "label_fields": label_fields,
         "decoration_names": decoration_names,
     }
+    responsive_backgrounds = component.get("responsive_text_backgrounds", [])
+    responsive_fields = component.get("responsive_text_fields", [])
+    if responsive_backgrounds:
+        binding["responsive_text_backgrounds"] = deepcopy(responsive_backgrounds)
+    if responsive_fields:
+        binding["responsive_text_fields"] = deepcopy(responsive_fields)
+    return binding
 
 
 def resolve_native_group_binding(atlas: dict, requirement: dict) -> dict:

@@ -25,6 +25,8 @@ from .template_native import (
     bind_chart_shape,
     bind_template_component,
     bind_text_shape,
+    fit_text_background,
+    fit_text_to_container,
     bind_table_data,
     clear_text_shape,
     clone_chart_shape,
@@ -372,6 +374,7 @@ def _apply_operations(
                 if set(by_field) != set(resolved_chart["label_fields"]):
                     raise ValueError("chart component must bind every reviewed semantic label field")
                 declared = [declared_chart_name]
+                bound_by_field: dict[str, list[str]] = {}
                 for field, source_names in resolved_chart["label_fields"].items():
                     bindings = by_field[field]
                     if len(bindings) != len(source_names):
@@ -390,7 +393,49 @@ def _apply_operations(
                             binding_name=binding_name,
                             text=text,
                         )
+                        bound_by_field.setdefault(field, []).append(binding_name)
                         declared.append(binding_name)
+                for responsive in resolved_chart.get("responsive_text_backgrounds", []):
+                    field = responsive.get("field")
+                    bound_names = bound_by_field.get(field, [])
+                    if len(bound_names) != 1:
+                        raise ValueError("responsive text background requires one bound label field")
+                    background_source = responsive.get("background_shape_name")
+                    container_source = responsive.get("container_shape_name")
+                    if background_source not in name_map or container_source not in name_map:
+                        raise ValueError("responsive text background references uncloned source shapes")
+                    decoration_name_map = decoration_result.get("shape_names", {})
+                    fit_text_background(
+                        output_pptx,
+                        slide_index=destination_slide,
+                        text_shape_name=bound_names[0],
+                        background_shape_name=decoration_name_map.get(
+                            name_map[background_source], name_map[background_source]
+                        ),
+                        container_shape_name=decoration_name_map.get(
+                            name_map[container_source], name_map[container_source]
+                        ),
+                        padding_x_pt=float(responsive.get("padding_x_pt", 8.0)),
+                        padding_y_pt=float(responsive.get("padding_y_pt", 3.0)),
+                    )
+                for responsive in resolved_chart.get("responsive_text_fields", []):
+                    field = responsive.get("field")
+                    bound_names = bound_by_field.get(field, [])
+                    if len(bound_names) != 1:
+                        raise ValueError("responsive text field requires one bound label field")
+                    container_source = responsive.get("container_shape_name")
+                    if container_source not in name_map:
+                        raise ValueError("responsive text field references an uncloned source shape")
+                    decoration_name_map = decoration_result.get("shape_names", {})
+                    fit_text_to_container(
+                        output_pptx,
+                        slide_index=destination_slide,
+                        text_shape_name=bound_names[0],
+                        container_shape_name=decoration_name_map.get(
+                            name_map[container_source], name_map[container_source]
+                        ),
+                        maximum_width_ratio=float(responsive.get("maximum_width_ratio", 0.5)),
+                    )
                 binding = {"binding_names": declared, "slide_index": destination_slide}
                 copied = {
                     "component_id": resolved_chart["component_id"],

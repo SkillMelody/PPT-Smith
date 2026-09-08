@@ -55,6 +55,7 @@ def test_analyze_template_emits_private_safe_unreviewed_evidence(tmp_path: Path)
     assert report["source"]["filename"] == "reference.pptx"
     assert report["source"]["sha256"].startswith("sha256:")
     assert report["source"]["slide_count"] == 2
+    assert any(item["role"] == "accent1" for item in report["tokens"]["theme_colors"])
     assert str(tmp_path) not in encoded
     assert "/Users/" not in encoded
     assert "routing_rules" not in encoded

@@ -16,6 +16,7 @@ def evaluate_component_intents(
     audits: list[dict] = []
     eligible_pages = 0
     reused_pages = 0
+    justified_authored_pages = 0
     content_pages = 0
     for index, slide in enumerate(ir.get("slides", []), 1):
         if not isinstance(slide, dict):
@@ -52,6 +53,7 @@ def evaluate_component_intents(
         feasible_ids = [item["component_id"] for item in feasible]
         declared_candidates = intent.get("candidate_component_ids", [])
         selected = intent.get("selected_component_ids", [])
+        rejected = intent.get("rejected_candidates", [])
         style_references = intent.get("style_reference_component_ids", [])
         if not isinstance(declared_candidates, list):
             declared_candidates = []
@@ -82,11 +84,33 @@ def evaluate_component_intents(
         if feasible_ids:
             eligible_pages += 1
             if intent.get("mode") == "model_authored" or not selected:
-                issues.append({
-                    "code": "FEASIBLE_TEMPLATE_COMPONENT_UNUSED",
-                    "slide_id": slide_id,
-                    "feasible_component_ids": feasible_ids,
-                })
+                rejected_by_id = {
+                    item.get("component_id"): item
+                    for item in rejected
+                    if isinstance(item, dict) and isinstance(item.get("component_id"), str)
+                } if isinstance(rejected, list) else {}
+                missing_rejections = sorted(set(feasible_ids) - set(rejected_by_id))
+                invalid_rejections = sorted(
+                    component_id for component_id in feasible_ids
+                    if component_id in rejected_by_id and (
+                        rejected_by_id[component_id].get("reason_code") not in {
+                            "page_fit_incompatible", "component_contract_incomplete",
+                            "visual_density_mismatch", "data_topology_mismatch",
+                        }
+                        or not isinstance(rejected_by_id[component_id].get("reason"), str)
+                        or not rejected_by_id[component_id]["reason"].strip()
+                    )
+                )
+                if missing_rejections or invalid_rejections:
+                    issues.append({
+                        "code": "FEASIBLE_TEMPLATE_COMPONENT_UNUSED",
+                        "slide_id": slide_id,
+                        "feasible_component_ids": feasible_ids,
+                        "missing_rejections": missing_rejections,
+                        "invalid_rejections": invalid_rejections,
+                    })
+                else:
+                    justified_authored_pages += 1
             elif not set(selected) <= set(feasible_ids):
                 issues.append({
                     "code": "SELECTED_COMPONENT_NOT_FEASIBLE",
@@ -110,12 +134,14 @@ def evaluate_component_intents(
             "mode": intent.get("mode"),
             "new_component_id": intent.get("new_component_id"),
             "style_reference_component_ids": style_references,
+            "rejected_candidates": rejected,
         })
     return {
         "status": "pass" if not issues else "fail",
         "content_page_count": content_pages,
         "eligible_page_count": eligible_pages,
         "reused_eligible_page_count": reused_pages,
+        "justified_model_authored_page_count": justified_authored_pages,
         "eligible_component_coverage": (
             round(reused_pages / eligible_pages, 4) if eligible_pages else 1.0
         ),

@@ -567,6 +567,101 @@ def bind_text_shape(
     return {"binding_name": binding_name, "slide_index": slide_index, "text_length": len(text)}
 
 
+def fit_text_background(
+    pptx_path: str | Path,
+    *,
+    slide_index: int,
+    text_shape_name: str,
+    background_shape_name: str,
+    container_shape_name: str,
+    padding_x_pt: float = 8.0,
+    padding_y_pt: float = 3.0,
+) -> dict:
+    """Resize a reviewed label badge to its bound text inside a fixed card.
+
+    Compact KPI cards often contain a small accent badge whose sample width is
+    tied to the source copy.  Reusing that width for a longer model-authored
+    title creates awkward wrapping.  The card remains fixed; only the text box
+    and its explicitly reviewed companion badge grow within the card bounds.
+    """
+    if slide_index < 1:
+        raise ValueError("slide indices are 1-based")
+    from math import ceil
+    from pptx import Presentation
+    from pptx.util import Pt
+
+    path = Path(pptx_path)
+    presentation = Presentation(path)
+    slide = presentation.slides[slide_index - 1]
+    index = {shape.name: shape for shape in _iter_pptx_shapes(slide.shapes)}
+    text_shape = index.get(text_shape_name)
+    background = index.get(background_shape_name)
+    container = index.get(container_shape_name)
+    if text_shape is None or background is None or container is None:
+        raise ValueError("responsive text background references a missing cloned shape")
+    text = " ".join(str(getattr(text_shape, "text", "") or "").split())
+    runs = [run for paragraph in text_shape.text_frame.paragraphs for run in paragraph.runs]
+    font_pt = max((run.font.size.pt for run in runs if run.font.size), default=11.0)
+    pad_x = int(Pt(padding_x_pt))
+    pad_y = int(Pt(padding_y_pt))
+    max_text_width = max(container.width - 2 * pad_x, 1)
+    estimated_text_width = max(int(len(text) * font_pt * 0.55 * 12700), text_shape.width)
+    lines = max(1, ceil(estimated_text_width / max_text_width))
+    text_width = min(max_text_width, estimated_text_width)
+    text_height = max(text_shape.height, int(lines * font_pt * 1.28 * 12700))
+    text_shape.width = text_width
+    text_shape.height = text_height
+    text_shape.left = int(container.left + (container.width - text_width) / 2)
+    background.width = min(container.width, text_width + 2 * pad_x)
+    background.height = text_height + 2 * pad_y
+    background.left = int(container.left + (container.width - background.width) / 2)
+    background.top = max(container.top + pad_y, text_shape.top - pad_y)
+    presentation.save(path)
+    return {
+        "text_shape_name": text_shape_name,
+        "background_shape_name": background_shape_name,
+        "line_count": lines,
+        "width": int(background.width),
+        "height": int(background.height),
+    }
+
+
+def fit_text_to_container(
+    pptx_path: str | Path,
+    *,
+    slide_index: int,
+    text_shape_name: str,
+    container_shape_name: str,
+    maximum_width_ratio: float = 0.5,
+) -> dict:
+    """Give a short KPI value enough width without moving it outside its card."""
+    from pptx import Presentation
+    from pptx.enum.text import PP_ALIGN
+
+    path = Path(pptx_path)
+    presentation = Presentation(path)
+    slide = presentation.slides[slide_index - 1]
+    index = {shape.name: shape for shape in _iter_pptx_shapes(slide.shapes)}
+    text_shape = index.get(text_shape_name)
+    container = index.get(container_shape_name)
+    if text_shape is None or container is None:
+        raise ValueError("responsive text field references a missing cloned shape")
+    if not 0 < maximum_width_ratio <= 1:
+        raise ValueError("maximum_width_ratio must be within 0..1")
+    max_width = int(container.width * maximum_width_ratio)
+    desired = min(
+        max_width,
+        max(text_shape.width, int((len(text_shape.text) * 12 * 0.72 + 12) * 12700)),
+    )
+    text_shape.width = desired
+    text_shape.left = int(container.left + container.width - desired - container.width * 0.06)
+    text_shape.height = max(text_shape.height, int(18 * 12700))
+    for paragraph in text_shape.text_frame.paragraphs:
+        paragraph.alignment = PP_ALIGN.RIGHT
+    presentation.save(path)
+    return {"text_shape_name": text_shape_name, "width": int(text_shape.width)}
+
+
 def clear_text_shape(
     pptx_path: str | Path,
     *,

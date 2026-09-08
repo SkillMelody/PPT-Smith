@@ -82,6 +82,25 @@ def test_component_intent_rejects_model_authored_fallback_when_template_componen
     }
 
 
+def test_component_intent_allows_model_authored_page_when_every_feasible_component_is_rejected() -> None:
+    report = evaluate_component_intents({
+        "slides": [_slide(_intent(
+            mode="model_authored",
+            selected_component_ids=[],
+            new_component_id="authored.kpi-card",
+            style_reference_component_ids=["template.kpi-card"],
+            rejected_candidates=[{
+                "component_id": "template.kpi-card",
+                "reason_code": "page_fit_incompatible",
+                "reason": "The fixed badge cannot fit the required assertion without crowding.",
+            }],
+        ))],
+    }, _atlas())
+
+    assert report["status"] == "pass"
+    assert report["justified_model_authored_page_count"] == 1
+
+
 def test_component_intent_requires_model_authored_component_when_atlas_has_no_match() -> None:
     report = evaluate_component_intents({
         "slides": [_slide(_intent(

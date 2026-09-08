@@ -34,6 +34,7 @@
       "required": ["colors", "fonts", "font_sizes_pt"],
       "properties": {
         "colors": {"type": "array", "items": {"$ref": "#/$defs/frequency"}},
+        "theme_colors": {"type": "array", "items": {"$ref": "#/$defs/themeColor"}},
         "fonts": {"type": "array", "items": {"$ref": "#/$defs/frequency"}},
         "font_sizes_pt": {"type": "array", "items": {"$ref": "#/$defs/numberFrequency"}}
       }
@@ -82,6 +83,14 @@
       "type": "object", "additionalProperties": false,
       "required": ["value", "count"],
       "properties": {"value": {"type": "number", "minimum": 0}, "count": {"type": "integer", "minimum": 1}}
+    },
+    "themeColor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["role", "value"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "pattern": "^#[0-9A-F]{6}$"}
+      }
     },
     "frame": {
       "type": "object", "additionalProperties": false,

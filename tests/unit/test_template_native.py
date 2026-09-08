@@ -10,6 +10,7 @@ from pptx import Presentation
 from pptx.chart.data import ChartData
 from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Inches, Pt
 
 from engine.template_native import (
@@ -17,6 +18,8 @@ from engine.template_native import (
     bind_table_data,
     bind_template_component,
     bind_text_shape,
+    fit_text_background,
+    fit_text_to_container,
     clone_chart_shape,
     clone_native_shapes,
     place_native_shapes,
@@ -807,6 +810,60 @@ def test_bind_text_shape_retains_an_existing_template_text_frame(tmp_path: Path)
     assert result["binding_name"] == "bind:slide:impact:title"
     assert text.name == "bind:slide:impact:title"
     assert text.text == "AI impact"
+
+
+def test_fit_text_background_expands_a_kpi_badge_within_its_card(tmp_path: Path) -> None:
+    deck = tmp_path / "responsive-label.pptx"
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    card = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(1), Inches(3), Inches(2),
+    )
+    card.name = "card"
+    badge = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.9), Inches(1.2), Inches(1), Inches(0.3),
+    )
+    badge.name = "badge"
+    title = slide.shapes.add_textbox(Inches(2), Inches(1.22), Inches(0.8), Inches(0.2))
+    title.name = "bind:block:s1:title"
+    title.text = "Long automation potential title"
+    title.text_frame.paragraphs[0].runs[0].font.size = Pt(11)
+    presentation.save(deck)
+
+    result = fit_text_background(
+        deck, slide_index=1, text_shape_name="bind:block:s1:title",
+        background_shape_name="badge", container_shape_name="card",
+    )
+
+    updated = Presentation(deck).slides[0]
+    by_name = {shape.name: shape for shape in updated.shapes}
+    assert by_name["badge"].width > Inches(1)
+    assert by_name["badge"].width <= by_name["card"].width
+    assert by_name["bind:block:s1:title"].width < by_name["badge"].width
+    assert result["line_count"] >= 1
+
+def test_fit_text_to_container_keeps_multi_character_metric_on_one_line(tmp_path: Path) -> None:
+    deck = tmp_path / "responsive-metric.pptx"
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    card = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(1), Inches(3), Inches(2),
+    )
+    card.name = "card"
+    metric = slide.shapes.add_textbox(Inches(3.2), Inches(1.5), Inches(0.3), Inches(0.2))
+    metric.name = "bind:block:s1:metric"
+    metric.text = "$204B"
+    presentation.save(deck)
+
+    result = fit_text_to_container(
+        deck, slide_index=1, text_shape_name="bind:block:s1:metric",
+        container_shape_name="card", maximum_width_ratio=0.52,
+    )
+
+    updated = Presentation(deck).slides[0]
+    by_name = {shape.name: shape for shape in updated.shapes}
+    assert by_name["bind:block:s1:metric"].width > Inches(0.3)
+    assert result["width"] <= int(by_name["card"].width * 0.52)
 
 
 def test_place_native_shapes_can_stretch_a_text_shell_to_the_declared_box(tmp_path: Path) -> None:

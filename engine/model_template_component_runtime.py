@@ -281,6 +281,10 @@ def author_model_template_component(
         str(item["value"]).upper() for item in tokens.get("colors", [])
         if isinstance(item, dict) and isinstance(item.get("value"), str)
     }
+    template_colors.update(
+        str(item["value"]).upper() for item in tokens.get("theme_colors", [])
+        if isinstance(item, dict) and isinstance(item.get("value"), str)
+    )
     x0, y0 = normalized["x"], normalized["y"]
     x1, y1 = x0 + normalized["w"], y0 + normalized["h"]
     for shape in new_shapes:
