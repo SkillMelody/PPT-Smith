@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import Counter
 from math import ceil
 
+from .template_page_recipes import evaluate_template_page_recipe
 from .template_series_planner import evaluate_template_series
 
 
@@ -56,6 +57,7 @@ def _validate_page(
     *,
     capabilities: dict,
     atlas_by_id: dict[str, dict],
+    require_recipe_archetype: bool,
 ) -> tuple[dict, list[dict]]:
     slide_id = str(slide.get("id") or page.get("slide_id") or "unknown")
     issues: list[dict] = []
@@ -209,6 +211,13 @@ def _validate_page(
         is_quantitative = bool(slide.get("chart") or slide.get("charts")) or (
             isinstance(data_shape, dict) and data_shape.get("kind") in {"chart", "table"}
         )
+        recipe_report = evaluate_template_page_recipe(
+            contract,
+            slide_id=slide_id,
+            require_declaration=require_recipe_archetype,
+            is_quantitative=is_quantitative,
+        )
+        issues.extend(recipe_report["issues"])
         key_numbers = contract.get("key_numbers", [])
         annotations = contract.get("chart_annotations", [])
         if is_quantitative:
@@ -242,6 +251,7 @@ def _validate_page(
         "information_unit_count": information_units,
         "module_density": module_reports,
         "series_context": contract.get("series_context"),
+        "composition_archetype": contract.get("composition_archetype"),
     }, issues
 
 
@@ -318,12 +328,19 @@ def evaluate_template_page_compositions(ir: dict, atlas: dict, model_plan: dict)
     }
     reports: list[dict] = []
     issues: list[dict] = []
+    version = str(model_plan.get("schema_version") or "1.0.0")
+    try:
+        version_tuple = tuple(int(part) for part in version.split(".")[:3])
+    except ValueError:
+        version_tuple = (1, 0, 0)
+    require_recipe_archetype = version_tuple >= (1, 1, 0)
     for page in model_plan.get("slides", []):
         if not isinstance(page, dict):
             continue
         slide = ir_by_id.get(page.get("slide_id"), {})
         report, page_issues = _validate_page(
             page, slide, capabilities=capabilities, atlas_by_id=atlas_by_id,
+            require_recipe_archetype=require_recipe_archetype,
         )
         reports.append(report)
         issues.extend(page_issues)

@@ -118,6 +118,16 @@ def _model_plan() -> dict:
     }
 
 
+def test_model_template_composer_accepts_schema_1_1_with_page_archetype() -> None:
+    plan = _model_plan()
+    plan["schema_version"] = "1.1.0"
+    plan["slides"][0]["page_composition"]["composition_archetype"] = "custom"
+
+    result = build_model_template_composition(_ir(), _atlas(), plan)
+
+    assert result["page_composition"]["status"] == "pass"
+
+
 def test_model_template_composer_preserves_explicit_multi_component_composition() -> None:
     composition = build_model_template_composition(_ir(), _atlas(), _model_plan())
 

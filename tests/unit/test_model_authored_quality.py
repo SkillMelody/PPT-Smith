@@ -77,3 +77,18 @@ def test_reconstructable_data_figure_requires_native_chart() -> None:
 
     assert any(issue["code"] == "NATIVE_DATA_VISUAL_REQUIRED" for issue in report["issues"])
 
+
+def test_model_authored_quality_rejects_unresolved_generator_values() -> None:
+    report = evaluate_model_authored_quality({
+        "slides": [_slide(blocks=[{
+            "id": "findings",
+            "role": "list",
+            "items": [{"text": "undefined", "detail": "A value failed to bind."}],
+        }])],
+    })
+
+    assert report["status"] == "fail"
+    assert any(
+        issue["code"] == "MODEL_AUTHORED_PLACEHOLDER_TEXT"
+        for issue in report["issues"]
+    )

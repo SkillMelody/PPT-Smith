@@ -72,6 +72,24 @@ def evaluate_template_visual_quality(pages: list[dict]) -> dict:
                 "blank_score": round(float(blank_score), 4),
                 "maximum_blank_score": 0.90,
             })
+        bound_objects = page.get("bound_semantic_object_count")
+        declared_units = page.get("declared_information_unit_count")
+        rendered_floor = None
+        if (
+            density_role not in {"cover", "section", "closing"}
+            and isinstance(bound_objects, int)
+            and isinstance(declared_units, int)
+            and declared_units > 0
+        ):
+            rendered_floor = min(4, declared_units)
+            if bound_objects < rendered_floor:
+                issues.append({
+                    "code": "VISUAL_DECLARED_INFORMATION_UNDER_RENDERED",
+                    "slide_id": slide_id,
+                    "declared_information_unit_count": declared_units,
+                    "bound_semantic_object_count": bound_objects,
+                    "minimum_bound_semantic_object_count": rendered_floor,
+                })
         page_reports.append({
             "slide_id": slide_id,
             "density_role": density_role,
@@ -80,6 +98,9 @@ def evaluate_template_visual_quality(pages: list[dict]) -> dict:
             "chart_count": int(page.get("chart_count", 0)),
             "semantic_element_count": int(page.get("semantic_element_count", 0)),
             "blank_score": blank_score,
+            "bound_semantic_object_count": page.get("bound_semantic_object_count"),
+            "declared_information_unit_count": page.get("declared_information_unit_count"),
+            "rendered_information_unit_floor": rendered_floor,
         })
     return {
         "status": "pass" if not issues else "fail",

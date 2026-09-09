@@ -6,6 +6,10 @@ import re
 
 
 _ELLIPSIS_RE = re.compile(r"…|\.\.\.")
+_FORBIDDEN_VISIBLE_RE = re.compile(
+    r"(?i)(?:\b(?:undefined|null|nan|tbd|todo)\b|\[object\s+object\]|"
+    r"lorem\s+ipsum|待补充|待完善|待定|待替换|占位(?:符|文本)?)"
+)
 
 
 def _visible_strings(slide: dict) -> list[tuple[str, str]]:
@@ -73,6 +77,14 @@ def evaluate_model_authored_quality(
         role = slide.get("slide_role", "content")
         visible = _visible_strings(slide)
         visible_chars = sum(len(text) for _, text in visible)
+        for path, text in visible:
+            if _FORBIDDEN_VISIBLE_RE.search(text):
+                issues.append({
+                    "code": "MODEL_AUTHORED_PLACEHOLDER_TEXT",
+                    "slide_id": slide_id,
+                    "path": path,
+                    "text": text[:160],
+                })
         if role not in {"cover", "section", "closing"}:
             message = slide.get("message")
             if require_assertions and (
@@ -148,4 +160,3 @@ def evaluate_model_authored_quality(
         "slides": per_slide,
         "issues": issues,
     }
-

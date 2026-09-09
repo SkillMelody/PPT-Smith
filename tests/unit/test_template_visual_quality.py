@@ -52,3 +52,23 @@ def test_visual_quality_rejects_empty_body_and_excessive_whitespace() -> None:
         "VISUAL_CONTENT_DENSITY_BELOW_FLOOR",
         "VISUAL_PAGE_TOO_BLANK",
     }
+
+
+def test_visual_quality_rejects_declared_information_that_is_not_rendered() -> None:
+    report = evaluate_template_visual_quality([{
+        "slide_id": "S10",
+        "archetype": "body",
+        "visible_text_chars": 240,
+        "chart_count": 0,
+        "semantic_element_count": 6,
+        "families": ["card_grid"],
+        "blank_score": 0.70,
+        "bound_semantic_object_count": 2,
+        "declared_information_unit_count": 8,
+    }])
+
+    assert report["status"] == "fail"
+    assert any(
+        issue["code"] == "VISUAL_DECLARED_INFORMATION_UNDER_RENDERED"
+        for issue in report["issues"]
+    )

@@ -1,8 +1,9 @@
-# Template Authoring Guide (P9) — 让用户 DIY 自己的设计感
+# Style-Pack Authoring Guide (Legacy Standard Workflow)
 
-> v4 的定位是"模型只管内容，视觉全归引擎"。但"视觉"不等于"千篇一律"——通过
-> **用户自己的 style pack**，每个人可以把自己的品牌色、字体、版式带进引擎，产出
-> "长在自己的设计感里"的 deck，同时完全不用碰图表/布局/坐标代码。
+> 本文描述的是 Standard/工程路线的旧 style-pack 工作流，不是当前 V4 Template
+> 模型主导组件编排。正式 Template 路线以
+> [v4-template-route.md](v4-template-route.md) 为准：模型负责内容理解、页面设计和组件
+> 组合，引擎负责模板证据、严格执行与门禁。这里的 style pack 仅用于兼容旧工程入口。
 
 ## 核心思路：设计感 = 可提取的 token
 

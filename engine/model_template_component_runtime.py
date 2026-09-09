@@ -141,6 +141,17 @@ def _approved_asset_bindings(
         block = blocks.get(parts[3])
         if block is None or block.get("asset_ref") != asset_ref:
             raise ValueError("MODEL_TEMPLATE_COMPONENT_IMAGE_IR_MISMATCH")
+        if block.get("asset_origin") == "external":
+            provenance = block.get("asset_provenance")
+            if (
+                not isinstance(provenance, dict)
+                or provenance.get("license_status") not in {
+                    "licensed", "public_domain", "user_authorized",
+                }
+                or not isinstance(provenance.get("source_url"), str)
+                or not provenance["source_url"].strip()
+            ):
+                raise ValueError("MODEL_TEMPLATE_COMPONENT_EXTERNAL_ASSET_RIGHTS_REQUIRED")
         crop = block.get("crop_audit")
         if (
             block.get("asset_kind") == "page_screenshot"

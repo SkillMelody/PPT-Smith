@@ -78,7 +78,8 @@ def test_bespoke_and_template_authoring_modules_do_not_cross_import() -> None:
         "component_inventory", "manuscript_component_planner", "manuscript_strict_preview",
         "presentation_subset", "template_page_composition", "template_visual_quality",
         "template_component_adaptation", "template_series_planner",
-        "template_visual_fingerprint",
+        "template_visual_fingerprint", "template_delivery_quality",
+        "template_page_recipes",
     }
     bespoke_only = {"bespoke", "bespoke_runtime", "bespoke_quality", "visual_review"}
 
@@ -93,7 +94,8 @@ def test_template_page_composition_gates_are_not_imported_by_standard_or_bespoke
         "template_page_composition", "template_visual_quality",
         "component_atlas_report", "component_intent",
         "template_component_adaptation", "template_series_planner",
-        "template_visual_fingerprint",
+        "template_visual_fingerprint", "template_delivery_quality",
+        "template_page_recipes",
     }
     other_route_modules = {
         "compile", "layout", "policy", "extractive_ir",

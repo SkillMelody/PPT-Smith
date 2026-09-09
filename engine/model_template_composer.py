@@ -19,8 +19,11 @@ def build_model_template_composition(
     enforce_page_composition: bool | None = None,
 ) -> dict:
     """Honor explicit model composition while proving reviewed-component reuse."""
-    if not isinstance(model_plan, dict) or model_plan.get("schema_version") != "1.0.0":
-        raise ValueError("model template plan schema_version must be 1.0.0")
+    if (
+        not isinstance(model_plan, dict)
+        or model_plan.get("schema_version") not in {"1.0.0", "1.1.0"}
+    ):
+        raise ValueError("model template plan schema_version must be 1.0.0 or 1.1.0")
     planned_slides = model_plan.get("slides")
     if not isinstance(planned_slides, list) or not planned_slides:
         raise ValueError("model template plan requires slides")

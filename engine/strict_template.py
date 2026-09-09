@@ -1312,9 +1312,11 @@ def execute_strict_template(
     )
     assets = _asset_preservation(template_path, output_path)
     from .template_readability import inspect_template_native_visual_floor
+    from .template_delivery_quality import inspect_template_delivery_quality
     from .template_visual_quality import inspect_template_visual_quality
 
     native_visual_floor = inspect_template_native_visual_floor(output_path)
+    template_delivery_quality = inspect_template_delivery_quality(output_path, ir=ir)
     template_visual_quality = inspect_template_visual_quality(
         output_path,
         ir=ir,
@@ -1327,6 +1329,7 @@ def execute_strict_template(
         and render.get("status") == "passed"
         and assets["status"] == "pass"
         and (not final_delivery or native_visual_floor["status"] == "pass")
+        and (not final_delivery or template_delivery_quality["status"] == "pass")
         and (not final_delivery or template_visual_quality["status"] == "pass")
         and (not final_delivery or notes_inspection["status"] == "pass")
     )
@@ -1343,6 +1346,7 @@ def execute_strict_template(
         "render": render,
         "asset_preservation": assets,
         "native_visual_floor": native_visual_floor,
+        "template_delivery_quality": template_delivery_quality,
         "template_visual_quality": template_visual_quality,
         "content_integrity": content_integrity,
         "component_intent": component_intent,

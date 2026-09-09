@@ -67,7 +67,8 @@ visual language. The model must analyze both source and template, then:
 
 A reviewed component is a module, not automatically a complete slide. Every
 Template body page also needs a `page_composition` contract with a page recipe
-and real variant, assertion/evidence/interpretation/implication layers, at
+and real variant, a template-neutral `composition_archetype`,
+assertion/evidence/interpretation/implication layers, at
 least two substantive content modules, an information-unit count, and a
 takeaway. Quantitative pages additionally require visible key numbers and
 chart annotations. Reject title-plus-single-component shells even when the
@@ -130,6 +131,11 @@ Visible copy should contain one assertion and a small number of complete,
 high-value labels. Detailed reasoning belongs in speaker notes. Planner-created
 ellipsis, OCR fragments, generic labels, and tiny source prose are forbidden.
 
+Final visible copy must also reject unresolved generator values such as
+`undefined`, `null`, `NaN`, `[object Object]`, TODO/TBD, and Chinese placeholder
+equivalents. Duplicate or overlapping slide-number objects are delivery
+failures, not harmless decoration.
+
 The IR schema is [schemas/v4/presentation-ir.schema.json](schemas/v4/presentation-ir.schema.json).
 
 ### 4. Analyze the template when using Template route
@@ -170,6 +176,10 @@ and element capacity with the Atlas. Record:
 The model may specify composition and geometry for Bespoke pages and for new
 Template components. Existing reviewed Template components retain their native
 geometry unless an explicitly supported placement transform is used.
+
+External visual assets used by a Template component require a declared source,
+license or permission basis, and content hash. Do not copy icons or graphics
+from style references merely because they resemble the uploaded template.
 
 ### 6. Execute and verify
 
@@ -215,6 +225,10 @@ Inspect every slide, not only a contact-sheet thumbnail. Reject for:
 - comparison series without a shared anchor and scale, or long series that
   should be consolidated or moved to an appendix;
 - missing or inadequate speaker notes.
+- rendered semantic modules that do not account for the model's declared
+  information units;
+- body text below the Template readability floor;
+- unresolved generator values or duplicate slide-number objects.
 
 ## Final-delivery gates
 
@@ -248,5 +262,6 @@ imported into Bespoke or Standard runtimes.
 - [Bespoke route](docs/v4-bespoke-architecture-plan.md)
 - [Template route](docs/v4-template-route.md)
 - [Template generalization contract](docs/v4-template-generalization.md)
-- [Template authoring guide](docs/template-authoring-guide.md)
+- [Legacy Standard style-pack guide](docs/template-authoring-guide.md)
+- [Template whole-page design plan](docs/v4-template-whole-page-design-plan.md)
 - [Presentation IR examples](schemas/v4/examples/)

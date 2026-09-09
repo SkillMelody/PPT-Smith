@@ -204,6 +204,25 @@ def test_model_template_component_allows_only_audited_standalone_source_image(
 
     assert result["approved_source_images"] == ["bind:image:s1:robot"]
 
+    ir["slides"][0]["blocks"][0]["asset_origin"] = "external"
+    shutil.copyfile(template, candidate)
+    with pytest.raises(
+        ValueError,
+        match="MODEL_TEMPLATE_COMPONENT_EXTERNAL_ASSET_RIGHTS_REQUIRED",
+    ):
+        author_model_template_component(
+            candidate,
+            template_pptx=template,
+            script_path=script,
+            slide_index=2,
+            slide_id="s1",
+            component_id="model.illustration",
+            placement={"x": 0, "y": 0, "w": 0.6, "h": 0.8},
+            ir=ir,
+            asset_bindings=[asset_binding],
+        )
+    ir["slides"][0]["blocks"][0].pop("asset_origin")
+
     ir["slides"][0]["blocks"][0]["asset_kind"] = "page_screenshot"
     shutil.copyfile(template, candidate)
     with pytest.raises(ValueError, match="MODEL_TEMPLATE_COMPONENT_IMAGE_NOT_STANDALONE"):
