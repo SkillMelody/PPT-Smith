@@ -1,6 +1,13 @@
 # ClawHub distribution excludes scanner-triggering test harness files.
 # Full source and tests remain available in the linked GitHub repository.
-tests/fixtures/benchmark/generate_fixtures.py
-tests/unit/test_pptx_inspector.py
-tests/unit/test_rubric_scoring.py
-tests/integration/test_package_delivery.py
+private-pmo-pack/
+test-runs/
+tests/
+docs/superpowers/
+.github/
+.pytest_cache/
+.pytest-tmp/
+runtime/pptxgenjs/node_modules/
+*.pyc
+__pycache__/
+.DS_Store

@@ -12,8 +12,8 @@
 
 ## Global Constraints
 
-- Work only in `/Users/skillmelody/.openclaw/workspace/PPT-Smith/.worktrees/pptsmith-v4-template-route-20260901` on branch `feat/v4-template-route-isolation`.
-- Run `/Users/skillmelody/.openclaw/workspace/scripts/verify-task-workspace.sh pptsmith-v4-template-route-20260901` before every new write phase.
+- Work only in the task's registered `<write-root>` on branch `feat/v4-template-route-isolation`.
+- Run the workspace's registered `verify-task-workspace.sh` gate for the task before every new write phase.
 - Keep Standard and Bespoke behavior unchanged; all new fail-closed policy is explicitly Template-scoped.
 - Use test-first red-green-refactor for every production behavior.
 - Preserve existing public `coverage_report()` behavior for Standard compile callers.
@@ -609,4 +609,3 @@ The JSON report records commit, commands, exit codes, pass/fail/skip counts, gat
 git add test-runs/template-content-integrity-subproject-a-20260902/reports/subproject-a-verification.json
 git commit -m "test(template): verify content integrity foundation"
 ```
-

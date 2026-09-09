@@ -1,5 +1,16 @@
 # Local test/run artifacts
 test-runs/
+.venv*/
+.release-artifacts/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.pytest-tmp/
+.DS_Store
+*.pyc
 
 # v4.0 simplified packs (kept locally for rollback reference; history holds them)
 styles/v4.0-backup/
+
+# Private commercial extension is maintained outside the public release tree.
+private-pmo-pack/

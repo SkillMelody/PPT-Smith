@@ -8,18 +8,35 @@
 
 Convert articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks.
 
-`MeowClaw PPT Smith` is the public display name introduced in v2.0.6. `MeowClaw PPTSmith` and `MeowClaw 夜猫 PPT 工坊` remain compatibility and search aliases only. The ClawHub slug and installed OpenClaw route remain `article-html-to-ppt` for update continuity.
+`MeowClaw PPT Smith` is the public display name. The public slug is `meowclaw-pptsmith`; `article-html-to-ppt` and `meowclaw-decksmith` remain compatibility aliases for update continuity.
 
-**v3.0.0 readiness:** this release adds task routing, Page Design Intent, Visual Planner, Deck Rhythm, editable semantic renderers, and stronger overflow/contrast/arrow-safety gates. It preserves the v2.0.7 native connector and topology contract, passes macOS renderer paths as arguments, contains fixture cleanup, limits font disclosure to active style requirements, and avoids dynamic module execution in its safety tests. Standard is verified on macOS with LibreOffice; Premium remains run-specific and requires real rendering, zero-error QA, rubric scoring, and human visual review. See [the v3.0.0 release notes and v1.2.0 comparison](docs/v3.0.0-release-notes.md).
+**Current version:** `4.1.0-beta.1` · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
 
-## v3.0.0: Code Path and Verified Pipeline
+**v4.1 Beta readiness:** PPT Smith now exposes three isolated routes. Bespoke lets a capable model author a native editable deck from a blank presentation. Template analyzes a user PPTX, reuses reviewed native components where feasible, and creates style-derived native components only when the template cannot express the content. Standard/Engineering remains the deterministic diagnostic and compatibility route. Bespoke and Template final status remains run-specific and requires real rendering plus hash-bound visual review.
 
-v3.0.0 productizes two bounded generation paths:
+## v4.1 Beta: Model-directed three-route authoring
 
-- **Path A — Code Path**: an LLM writes a standalone `python-pptx` build script for bespoke composition, editable flywheels, complex native arrows, asymmetric layouts, and page-level refinement—the strengths demonstrated by the best v1.2.0 runs.
-- **Path B — IR / Pipeline Path**: PPT IR, Style Contract, component routing, real rendering, and QA produce traceable, repeatable standard output. Its IR completeness and evidence-quality gate requires source-bound primary data plus independent evidence; insufficient input stops with named blockers and never gains `verified` merely because it rendered.
+- **Bespoke:** quality-ceiling authoring from a blank presentation.
+- **Template:** reviewed Component Atlas reuse, whole-page composition, native model-authored gaps, provenance, and fail-closed QA.
+- **Standard / Engineering:** deterministic compilation and diagnostics; not a substitute for a model-authored final deck.
 
-They serve different needs, not different truth standards: Path A pursues the visual ceiling of a capable model and still needs real-render plus human review; Path B provides a verified production floor. See the [v3.0.0 release notes, v1.2.0 comparison, and multi-model evidence](docs/v3.0.0-release-notes.md).
+Beta does not promise that every model or template succeeds on the first render. It promises that incomplete evidence, placeholder content, invalid template use, structural defects, and missing visual approval do not silently become a final delivery.
+
+### Install and verify
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/bootstrap_pptxgenjs_runtime.py
+python scripts/check_identity.py
+python scripts/quick_validate_skill.py
+python -m engine --help
+```
+
+See the [v4.1.0 Beta 1 release notes](docs/v4.1.0-beta.1-release-notes.md) and [release readiness report](docs/v4.1.0-beta.1-release-readiness.md).
+
+## Historical v3.0 baseline
 
 ## v3.0 Hero Showcase
 
@@ -288,9 +305,9 @@ Before Feishu/Lark export, confirm that the user intended cloud delivery. Do not
 
 ## Version
 
-3.0.0
+4.1.0-beta.1
 
-The version claim distinguishes three scopes: Standard production readiness on the verified environment; Premium final acceptance on the recorded LibreOffice route; and native Microsoft PowerPoint compatibility, which has not been verified.
+The Beta claim is limited to the recorded Python, PptxGenJS, and LibreOffice acceptance environment. Native Microsoft PowerPoint pixel parity has not been verified.
 
 ## Publishing Note
 

@@ -1,0 +1,83 @@
+{
+  "allowlist": [
+    {
+      "path": "SKILL.md",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a slash-separated list of semantic page layers, not encoded data."
+    },
+    {
+      "path": "engine/metrics/songti-sc.json",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a system font collection reference used as font-metric provenance."
+    },
+    {
+      "path": "scripts/generate_font_metrics.py",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a macOS system font path, not encoded data."
+    },
+    {
+      "path": "scripts/template_from_pptx.py",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a slash-separated list of style-token categories in documentation."
+    },
+    {
+      "path": "tests/fixtures/multi-audience-production/B02-investor-sec10k/ppt-ir.json",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a public SEC filing URL in a public test fixture."
+    },
+    {
+      "path": "tests/fixtures/multi-audience-production/README.md",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a public SEC filing URL documented by the fixture."
+    },
+    {
+      "path": "tests/fixtures/multi-audience-production/source-context-briefs.json",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a public SEC filing URL in a public test fixture."
+    },
+    {
+      "path": "tests/unit/test_strict_template.py",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is an OOXML relationship namespace in a deterministic test fixture."
+    },
+    {
+      "path": "tests/unit/test_template_native.py",
+      "codes": ["BUNDLE_HIGH_ENTROPY_STRING"],
+      "reason": "The finding is a one-pixel PNG fixture encoded inline for a native-image test."
+    },
+    {
+      "path": "scripts/audit_bundle.py",
+      "codes": [
+        "BUNDLE_ABSOLUTE_PATH_LEAK",
+        "BUNDLE_SECRET_LEAK",
+        "BUNDLE_SECRET_SHAPED_FILE"
+      ],
+      "reason": "The public bundle auditor necessarily contains the detector patterns it executes."
+    },
+    {
+      "path": "scripts/normalize_bundle_paths.py",
+      "codes": ["BUNDLE_ABSOLUTE_PATH_LEAK"],
+      "reason": "The normalizer contains example path patterns that it is responsible for removing."
+    },
+    {
+      "path": "scripts/package_delivery.py",
+      "codes": ["BUNDLE_ABSOLUTE_PATH_LEAK"],
+      "reason": "The delivery packager contains the private-path detector regex used by its safety gate."
+    },
+    {
+      "path": "scripts/score_deck.py",
+      "codes": ["BUNDLE_ABSOLUTE_PATH_LEAK"],
+      "reason": "The scorer contains the absolute-path detector used to sanitize review evidence."
+    },
+    {
+      "path": "tests/integration/test_package_delivery.py",
+      "codes": ["BUNDLE_SECRET_LEAK"],
+      "reason": "The test contains a deliberately fake credential and asserts that packaging rejects it."
+    },
+    {
+      "path": "tests/unit/test_rubric_scoring.py",
+      "codes": ["BUNDLE_ABSOLUTE_PATH_LEAK"],
+      "reason": "The test contains a fake local path and asserts that scoring output removes it."
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 ## Public Name: <br>
-MeowClaw 夜猫 PPT 工坊 / MeowClaw PPTSmith <br>
+MeowClaw PPT Smith <br>
 
 ## Technical Slug: <br>
 meowclaw-pptsmith <br>
@@ -10,13 +10,13 @@ article-html-to-ppt, meowclaw-decksmith <br>
 ## Description: <br>
 MeowClaw PPTSmith converts articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks with direct PPTX, native dynamic PPTX, and Feishu Slides export routing. <br>
 
-Version 3.0.0 is **Standard production-ready on the verified macOS + LibreOffice 26.2.4.2 acceptance environment** for commercial/non-commercial use. It hardens macOS renderer path handling, test-fixture cleanup containment, font-probe privacy, and safety-test module loading. `python_pptx` is the canonical Standard production Builder; PptxGenJS remains component-scoped portability evidence. Premium may be called final only when the target run completes real rendering, readback, zero-error QA, rubric scoring, and disclosed fallbacks. <br>
+Version 4.1.0-beta.1 introduces model-directed Bespoke and Template routes plus a diagnostic Standard/Engineering route. Bespoke and Template output may be called final only after source-bound authoring, structural QA, real rendering, and hash-bound visual approval complete for that run. Public slug: `meowclaw-pptsmith`. <br>
 
 ## Owner
 SkillMelody <br>
 
 ### License/Terms of Use: <br>
-MIT-0 <br>
+Apache-2.0 <br>
 
 ## Use Case: <br>
 Product owners, product reporters, Agent engineers, automation developers, self-media authors, knowledge bloggers, editors, educators, and content teams who need to turn source material into structured presentation decks without losing source boundaries, audience fit, editability, or verification discipline. <br>
@@ -52,7 +52,8 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - [Export Pipelines Reference](references/export-pipelines.md) <br>
 - [v1.5 / v2.0 Closeout Checklist](docs/v1.5-v2.0-closeout-checklist.md) <br>
 - [v2.0 Acceptance Report](docs/v2.0-acceptance-report.md) <br>
-- [v3.0.0 Release Notes and v1.2.0 Comparison](docs/v3.0.0-release-notes.md) <br>
+- [v4.1.0 Beta 1 Release Notes](docs/v4.1.0-beta.1-release-notes.md) <br>
+- [v4.1.0 Beta 1 Release Readiness](docs/v4.1.0-beta.1-release-readiness.md) <br>
 - [v2.1 RC1 Acceptance Report (historical baseline)](docs/v2.1-rc1-acceptance-report.md) <br>
 - [v2.1 Release Notes (historical)](docs/v2.1-release-notes.md) <br>
 - [Storyboard Template](templates/storyboard-template.md) <br>
@@ -76,9 +77,9 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - Verification honesty: Checks whether the final handoff clearly distinguishes generated, rendered, read-back, and final states. <br>
 
 ## Skill Version(s): <br>
-3.0.0 <br>
+4.1.0-beta.1 <br>
 
-Readiness scope: Standard production on the verified macOS + LibreOffice acceptance environment. Premium readiness remains run- and environment-specific and requires real render/readback, zero-error QA, rubric, and fallback evidence. <br>
+Readiness scope: public Beta on the verified macOS + LibreOffice acceptance environment. Bespoke and Template final readiness remains run-specific; native Microsoft PowerPoint pixel parity is not claimed. <br>
 
 ## Ethical Considerations: <br>
 This skill should not be used to repackage copyrighted third-party articles or images as owned public content without permission. It is designed to make transformation boundaries explicit and to prevent synthetic or reconstructed visuals from being presented as factual historical screenshots. <br>

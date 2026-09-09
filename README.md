@@ -9,29 +9,50 @@
 把文章、Markdown、HTML、公众号草稿、PRD、研究材料与设计说明，转成**低返工、可编辑、可验证**的专业演示文稿。
 
 - **公开品牌：** MeowClaw PPT Smith
-- **兼容安装名：** `article-html-to-ppt`
+- **兼容安装名：** `article-html-to-ppt`、`meowclaw-decksmith`
 - **兼容搜索词：** MeowClaw PPTSmith、MeowClaw 夜猫 PPT 工坊
-- **当前版本：** `3.0.0`（双路径生成、八条专业路线、视觉叙事与可信交付）
+- **当前版本：** `4.1.0-beta.1`（模型主导三路线、模板组件复用、原生高定与可信交付）
+- **公共标识：** `meowclaw-pptsmith`
+- **许可证：** `Apache-2.0`
 - **开源定位：** 核心引擎、基础五风格、通用组件、可编辑对象、QA 与可信交付
 
 > PPTSmith 的 GitHub / ClawHub 开源版用于分发、获客与建立可信度。专业生产包、企业品牌适配、专属页面原型、定制组件和代生成/部署服务采用独立商业交付，不包含在本仓库与 ClawHub 包中。
 
-## v3.0 一眼看懂
+## v4.1 Beta 一眼看懂
 
-PPTSmith v3.0 不只是“把文字塞进模板”，而是一条从内容判断到可信交付的完整生产链：
+PPT Smith v4.1 Beta 是模型主导的演示创作系统。强模型负责理解来源、提炼叙事、设计页面和复核真实渲染；引擎负责来源锚定、原生对象执行、模板组件合同和失败关闭式 QA。
 
-1. **先理解内容，再画页面**：内容分析、证据盘点、故事线、判断式标题与表达模式先行。
-2. **五套基础视觉系统**：咨询报告、产品汇报、技术蓝图、咨询 × 技术混合、编辑知识型。
-3. **Style Contract v2**：颜色、字体、网格、间距、卡片、表格、图表、图解等设计参数可锁定、可校验，减少不同模型随意漂移。
-4. **双 Builder 与自动选路**：支持 `python_pptx` 与 PptxGenJS，根据环境能力选择合适构建路径。
-5. **复杂图解不再硬画**：通过 PPT IR、Diagram IR、组件注册表和 Delivery Plan，为表格、图表、流程、架构与关系图选择原生、SVG 或混合交付路线。
-6. **核心信息保持可编辑**：标题、正文、卡片、表格、简单图表与关键标签优先保留为 PowerPoint 原生对象。
-7. **Fast / Standard / Premium 三档生产配置**：按用途决定所需工件和验证强度，避免草稿流程过重，也避免正式交付缺证据。
-8. **端到端 QA 与可信状态**：能力探测、构建清单、结构检查、真实渲染、回读、视觉评分、交付清单逐层验证；明确区分 `Created`、`Rendered`、`Read back`、`Verified` 与 `Final`。
-9. **失败时诚实收口**：没有真实渲染器、证据绑定或评分不达标时，不伪造截图、不手写 `final`，而是明确降级或阻断。
-10. **多种交付出口**：本地 PPTX、原生渐进式动态 PPTX、HTML 预览，以及经用户明确授权后的飞书幻灯片路线。
+1. **Bespoke 高定路线**：模型从空白画布创作原生可编辑页面，追求视觉与内容上限。
+2. **Template 路线**：分析用户 PPTX、建立 Component Atlas，优先复用并组合可行组件；缺失时按模板视觉语法补绘原生组件。
+3. **Standard / Engineering 路线**：保留确定性编译、诊断和兼容能力，不冒充高质量最终稿。
+4. **完整来源合同**：正文、数字、图表、插图和备注均可绑定来源锚点。
+5. **整页设计合同**：拒绝“标题＋孤立组件”、低信息饱和度、重复骨架和占位值。
+6. **原生可编辑交付**：标题、正文、图表、关系图、卡片和关键标签优先保留为 PowerPoint 原生对象。
+7. **真实渲染与视觉批准**：只有绑定同一候选文件的结构检查、真实渲染和视觉复核全部通过，才能进入最终状态。
+8. **失败时诚实收口**：缺少高质量 IR、模板合同、渲染器或视觉批准时明确阻断，不输出假成品。
 
-### 3.0.0：重新引入高保真代码路径，并保留可验证生产路径
+> Beta 边界：Bespoke 与 Template 的质量依赖强模型，并要求逐任务真实渲染与人工/模型视觉复核；本版本不承诺任意模板、任意模型一次生成即可最终交付，也不承诺 Microsoft PowerPoint 与 LibreOffice 像素级一致。
+
+### 安装与自检
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python scripts/bootstrap_pptxgenjs_runtime.py
+python scripts/check_identity.py
+python scripts/quick_validate_skill.py
+python -m engine --help
+```
+
+开发与回归测试使用：
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+### 历史：3.0.0 双路径基线
 
 v3.0.0 将两条有明确边界的生成路径产品化：
 
@@ -202,7 +223,7 @@ PPTSmith 不把“文件生成成功”等同于“最终完成”：
 - **Verified**：合同、结构、QA 与证据通过验证。
 - **Final**：满足对应生产档位的全部可信门槛。
 
-v2.0 已完成 Standard 生产验收；另有一条记录明确的 PptxGenJS 4.0.1 + LibreOffice 26.2.4.2 Premium 验收路线，实现 9/9 页渲染回读、零错误 QA 与绑定证据的 15/18 视觉评分。该结论**不等于**已验证所有 Microsoft PowerPoint / Keynote 版本的像素级一致性。详情见 [v2.0 验收报告](docs/v2.0-acceptance-report.md)。
+v4.1.0 Beta 1 已在 Python 3.9.6、PptxGenJS 4.0.1 与 LibreOffice 26.2.4.2 环境完成仓库全量回归。Bespoke 与 Template 的最终状态仍是逐任务声明，不等于已验证所有 Microsoft PowerPoint、Keynote、模型和用户模板。详见 [Beta发布准备报告](docs/v4.1.0-beta.1-release-readiness.md)。
 
 ## 隐私与云端导出
 
@@ -214,6 +235,8 @@ v2.0 已完成 Standard 生产验收；另有一条记录明确的 PptxGenJS 4.0
 - [V4 三路线架构与执行隔离](docs/v4-three-route-architecture.md)
 - [V4 Bespoke 高定路线](docs/v4-bespoke-architecture-plan.md)
 - [V4 Template / Path C 路线](docs/v4-template-route.md)
+- [v4.1.0 Beta 1 发布说明](docs/v4.1.0-beta.1-release-notes.md)
+- [v4.1.0 Beta 1 发布准备报告](docs/v4.1.0-beta.1-release-readiness.md)
 - [英文 README](./README.en.md)
 - [v3.0.0 发布说明与 v1.2.0 对比](docs/v3.0.0-release-notes.md)
 - [v2.1 RC1 验收报告（历史基线）](docs/v2.1-rc1-acceptance-report.md)
@@ -236,4 +259,4 @@ v2.0 已完成 Standard 生产验收；另有一条记录明确的 PptxGenJS 4.0
 - 专属页面原型与定制组件
 - 代生成、部署、培训、维护与私有化服务
 
-这样既不削弱开源版的真实可用性，也避免把高价值商业资产混入 Apache-2.0 公共分发包。
+这样既不削弱开源版的真实可用性，也避免把高价值商业资产混入 Apache-2.0 公共分发包。公共发布树不包含任何私有生产包源文件。

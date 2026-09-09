@@ -10,9 +10,9 @@ on those agreeing, so they are now derived from two files:
   * `packaging/identity.json` - slug, display name, aliases, owner, licence, and
                                 which document asserts which field.
 
-Run `python3 scripts/check_identity.py` (exit 0 = consistent). The bundled test
-`tests/unit/test_skill_metadata.py` calls the same functions, so a drifting
-document fails the suite rather than shipping.
+Run `python3 scripts/check_identity.py` (exit 0 = consistent). The bundled
+release-identity tests call the same functions, so a drifting document fails
+the suite rather than shipping.
 """
 
 from __future__ import annotations

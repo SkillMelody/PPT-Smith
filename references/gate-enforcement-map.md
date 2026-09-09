@@ -87,8 +87,8 @@ honestly labelled as such rather than implied to be automatic.
 | No excluded path in a distributed archive | Enforced | `scripts/audit_bundle.py --mode archive`; `packaging/bundle-exclude.txt` |
 | No recorded local absolute path | Enforced | `BUNDLE_ABSOLUTE_PATH_LEAK`; fix with `scripts/normalize_bundle_paths.py` |
 | No secret or secret-shaped file | Enforced | `BUNDLE_SECRET_LEAK`, `BUNDLE_SECRET_SHAPED_FILE`, `BUNDLE_HIGH_ENTROPY_STRING` |
-| Every audit exception states a reason | Enforced | `tests/unit/test_skill_metadata.py::test_every_audit_allowlist_entry_states_a_reason` |
-| One identity across all documents | Enforced | `scripts/check_identity.py`; `tests/unit/test_skill_metadata.py` |
+| Every audit exception states a reason | Enforced | `tests/unit/test_release_identity.py::test_audit_allowlist_entries_are_reasoned` |
+| One identity across all documents | Enforced | `scripts/check_identity.py`; `tests/unit/test_release_identity.py` |
 | Templates are copyable and schema-valid | Enforced | `tests/schemas/test_templates_validate.py` |
 | The distributed archive passes its own suite | Enforced | `packaging/build_archive.sh` validates the unpacked copy, not the working tree |
 

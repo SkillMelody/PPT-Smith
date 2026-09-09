@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -51,7 +52,16 @@ TEXT_SUFFIXES = {".json", ".md", ".txt", ".log", ".py", ".js", ".mjs", ".html", 
 
 # Vendored third-party code is inventoried but never content-scanned: its
 # fixtures and minified bundles trip every heuristic and none of it is ours.
-CONTENT_SCAN_SKIP_DIRS = {"node_modules", ".git"}
+CONTENT_SCAN_SKIP_DIRS = {
+    "node_modules",
+    ".git",
+    ".release-artifacts",
+    ".venv-release",
+    ".pytest_cache",
+    ".pytest-tmp",
+    "__pycache__",
+}
+CONTENT_SCAN_SKIP_FILES = {"references/BUNDLE-AUDIT.json", "references/BUNDLE-AUDIT.md"}
 
 ABSOLUTE_PATH_LEAK = re.compile(r"(?:/(?:Users|home)/[A-Za-z0-9._-]+/|[A-Za-z]:\\Users\\[A-Za-z0-9._-]+\\)")
 
@@ -72,6 +82,9 @@ SEVERITY_ORDER = {"error": 2, "warning": 1, "info": 0}
 
 
 def iso_now() -> str:
+    fixed = os.environ.get("PPTSMITH_AUDIT_TIMESTAMP", "").strip()
+    if fixed:
+        return fixed
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
@@ -155,7 +168,12 @@ def iter_paths(root: Path) -> list[Path]:
     return [path for path in sorted(root.rglob("*"))]
 
 
-def scan_excluded_paths(root: Path, rules: list[tuple[str, str]]) -> list[dict[str, Any]]:
+def scan_excluded_paths(
+    root: Path,
+    rules: list[tuple[str, str]],
+    *,
+    skip_dirs: set[str] | None = None,
+) -> list[dict[str, Any]]:
     """Report one finding per violated rule, not one per matched file.
 
     A single vendored directory can match hundreds of paths; collapsing them
@@ -163,8 +181,11 @@ def scan_excluded_paths(root: Path, rules: list[tuple[str, str]]) -> list[dict[s
     """
     hits: dict[str, list[str]] = {}
     severities: dict[str, str] = {}
+    skip_dirs = skip_dirs or set()
     for path in iter_paths(root):
         relative = path.relative_to(root).as_posix()
+        if skip_dirs.intersection(Path(relative).parts):
+            continue
         for rule, severity in rules:
             if matches_rule(relative, path.is_dir(), rule):
                 hits.setdefault(rule, []).append(relative)
@@ -213,6 +234,8 @@ def scan_text_content(root: Path) -> tuple[list[dict[str, Any]], int]:
             continue
         relative = path.relative_to(root).as_posix()
         if CONTENT_SCAN_SKIP_DIRS.intersection(Path(relative).parts):
+            continue
+        if relative in CONTENT_SCAN_SKIP_FILES:
             continue
         scanned += 1
         try:
@@ -304,7 +327,11 @@ def build_report(root: Path, exclude_file: Path, allowlist_file: Path, *, mode: 
     rules = resolve_rule_severities(load_exclude_rules(exclude_file), mode)
     allowed = load_allowlist(allowlist_file)
 
-    findings = scan_excluded_paths(root, rules)
+    findings = scan_excluded_paths(
+        root,
+        rules,
+        skip_dirs=CONTENT_SCAN_SKIP_DIRS if mode == "worktree" else set(),
+    )
     findings += scan_secret_shaped_files(root)
     content_findings, text_scanned = scan_text_content(root)
     findings += content_findings
@@ -318,6 +345,7 @@ def build_report(root: Path, exclude_file: Path, allowlist_file: Path, *, mode: 
         "generated_at": iso_now(),
         "generated_by": "scripts/audit_bundle.py",
         "bundle_root": root.name,
+        "private_bundle_present": (root / "private-pmo-pack").exists(),
         "mode": mode,
         "status": status,
         "checks": [
@@ -397,9 +425,12 @@ def render_markdown(report: dict[str, Any]) -> str:
 
     lines.append("## Distribution boundary")
     lines.append("")
-    lines.append("This archive contains private commercial PMO source assets under")
-    lines.append("`private-pmo-pack/`. It is intended for the owner's private installation and")
-    lines.append("must not be uploaded to a public Skill registry or source repository.")
+    if report.get("private_bundle_present"):
+        lines.append("This tree contains private commercial material under `private-pmo-pack/` and")
+        lines.append("is not eligible for public distribution. Remove it from the release tree.")
+    else:
+        lines.append("This is the public PPT Smith distribution. Private commercial packs, local")
+        lines.append("run artifacts, credentials, and dependency caches are outside this boundary.")
     lines.append("")
     return "\n".join(lines)
 
