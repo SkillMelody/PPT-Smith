@@ -90,6 +90,29 @@ v3.0.0 将两条有明确边界的生成路径产品化：
 
 以下样例与仓库首页保持一致，并复制到 Skill 自有资产目录，确保从当前页面浏览时可直接查看。
 
+### v4.1.0-beta.1 Template 路线：MGI 31 页完整演示
+
+这份样例将一份约 67 页的研究报告与用户提供的咨询风模板组合为 31 页演示稿。系统先分析模板中的可复用组件，再由模型完成整页内容编排；没有合适组件时，按模板的字体、色彩、线条、圆角和留白语法补绘原生页面。图片为同轮 LibreOffice 真实渲染联系表，不是概念稿。
+
+- **路线：** `Template / strict component reuse`
+- **输出：** 31 页；29 个正文页具备演讲备注
+- **实际生成节点：** [`f14ed34`](https://github.com/SkillMelody/PPT-Smith/commit/f14ed34)（`feat(template): enforce whole-page delivery contracts`）
+- **发布候选节点：** [`84e0c1e`](https://github.com/SkillMelody/PPT-Smith/commit/84e0c1e)（`v4.1.0-beta.1` 公共候选）
+- **边界：** 示例用于展示 Template 路线，不代表与报告出版方或模板品牌存在合作、授权或背书关系。
+
+![PPT Smith v4 Template route — MGI 31-page rendered contact sheet](./assets/samples/mgi-template-v4-31-page-contact-sheet.png)
+
+### v4.1.0-beta.1 Bespoke 路线：完全独立作者 23 页演示
+
+这份样例使用另一份研究报告，从空白 Presentation 重新设计叙事、配色、原生图表、机制图、管理框架和行动路径。测试时设置 `template=null`，没有导入 Template 作者代码、Component Atlas、模板组件或 Standard 底稿。图片为 23 页真实渲染联系表。
+
+- **路线：** `Bespoke / independent authoring`
+- **输出：** 23 页；12 个原生可编辑图表、11 个非图表页面、23 页演讲备注
+- **生成与验收节点：** [`84e0c1e`](https://github.com/SkillMelody/PPT-Smith/commit/84e0c1e)（从最终 Beta ZIP 完成端到端生成与视觉批准）
+- **边界：** 两张 v4 全景图使用的源报告不同，只展示路线形态，不作为同源质量优劣对比。
+
+![PPT Smith v4 Bespoke route — independent 23-page rendered contact sheet](./assets/samples/state-ai-2025-independent-bespoke-23-page-contact-sheet.png)
+
 ### State of AI 2025：14 页完整演示样例
 
 ![State of AI 2025 14-page PPT sample](./assets/samples/stateofai-2025-final-contact-sheet.png)
