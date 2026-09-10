@@ -26,8 +26,10 @@ jobs:
           cache-dependency-path: runtime/pptxgenjs/package-lock.json
       - name: Install Python dependencies
         run: python -m pip install -r requirements-dev.txt
-      - name: Install LibreOffice
-        run: brew install --cask libreoffice
+      - name: Install rendering dependencies
+        run: |
+          brew install --cask libreoffice
+          brew install poppler
       - name: Bootstrap pinned PptxGenJS runtime
         run: python scripts/bootstrap_pptxgenjs_runtime.py
       - name: Verify release identity
