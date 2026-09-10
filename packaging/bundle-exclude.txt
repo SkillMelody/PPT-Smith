@@ -1,0 +1,22 @@
+# Private commercial material must never enter a public archive.
+private-pmo-pack/
+
+# Local and regenerable development state.
+cache:__pycache__/
+cache:.pytest_cache/
+cache:.pytest-tmp/
+cache:.release-artifacts/
+cache:runtime/pptxgenjs/node_modules/
+cache:test-runs/
+cache:.DS_Store
+cache:*.pyc
+
+# Credentials and local environment files are always forbidden.
+.env
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+.last-token
+.netrc

@@ -51,7 +51,10 @@ def _subset_validate(document: dict, schema_file: str) -> list[dict]:
 
 def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = None,
                  style_path: str | None = None, output_dir: str,
-                 degrade_on_error: bool = True) -> dict:
+                 degrade_on_error: bool = True,
+                 allow_content_truncation: bool = True,
+                 refine_spec_path: str | None = None,
+                 final_delivery: bool = False) -> dict:
     """sources: [(source_id, type, path)]. Returns the compile report."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -63,6 +66,18 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
         meta[source_id] = {"type": source_type, "path": path}
 
     report: dict = {"stages": [], "degradations": [], "ir_origin": None}
+    if final_delivery and not ir_path:
+        report.update(
+            ok=False,
+            stage="model_authoring",
+            errors=[{
+                "code": "MODEL_AUTHORING_REQUIRED",
+                "message": "Final delivery requires a model-authored, source-backed IR.",
+            }],
+        )
+        (out / "compile-result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return report
 
     # ---- IR acquisition with degradation ladder --------------------------
     ir = None
@@ -76,7 +91,7 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
         ] + [{"stage": "provenance", **e} for e in provenance_errors]
         if not ir_findings:
             ir, report["ir_origin"] = candidate, "provided"
-        elif not degrade_on_error:
+        elif not degrade_on_error or final_delivery:
             report.update(ok=False, stage="ir_validation", errors=ir_findings)
             (out / "compile-result.json").write_text(
                 json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -91,7 +106,66 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
                 {"kind": "extractive_ir_fallback", "detail_code": "ir_rejected"})
             report["ir_rejection_errors"] = ir_findings
         report["extraction_warnings"] = extraction["warnings"]
+        if any(warning.startswith("deck truncated from ") for warning in extraction["warnings"]):
+            report.update(
+                ok=False,
+                stage="source_capacity",
+                errors=[{
+                    "code": "STRUCTURED_IR_REQUIRED",
+                    "message": "The source exceeds extractive fallback page capacity; provide a structured, source-anchored IR.",
+                }],
+            )
+            (out / "ir.json").write_text(
+                json.dumps(ir, ensure_ascii=False, indent=2), encoding="utf-8")
+            (out / "compile-result.json").write_text(
+                json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            return report
     report["stages"].append("ir")
+
+    from .speaker_notes import validate_speaker_notes  # noqa: PLC0415
+    notes_contract = validate_speaker_notes(
+        ir, require_body_notes=final_delivery,
+    )
+    report["speaker_notes"] = {"contract": notes_contract}
+    if final_delivery and notes_contract["status"] != "pass":
+        report.update(
+            ok=False,
+            stage="speaker_notes",
+            errors=notes_contract["issues"],
+        )
+        (out / "compile-result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return report
+    from .model_authored_quality import evaluate_model_authored_quality  # noqa: PLC0415
+    authored_quality = evaluate_model_authored_quality(
+        ir, require_assertions=final_delivery,
+    )
+    report["model_authored_quality"] = authored_quality
+    if final_delivery and authored_quality["status"] != "pass":
+        report.update(
+            ok=False,
+            stage="model_authored_quality",
+            errors=authored_quality["issues"],
+        )
+        (out / "compile-result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return report
+
+    # P12-refine: apply a compile-time refine spec (user chose refinement at
+    # generation time). Applied BEFORE chart inference so refine intent wins.
+    if refine_spec_path:
+        from .refine_spec import apply_refine_spec, load_refine_spec  # noqa: PLC0415
+        spec = load_refine_spec(refine_spec_path)
+        refine_report = apply_refine_spec(ir, spec)
+        report["refine_spec"] = refine_report
+        report["stages"].append("refine_spec")
+
+    # P10: chart auto-inference — when the model didn't write chart/diagram_ir,
+    # infer one from metric blocks + relations. Never overrides what the model
+    # deliberately provided.
+    from .chart_inference import infer_charts  # noqa: PLC0415
+    infer_charts(ir, docs)
+    report["stages"].append("chart_inference")
 
     coverage = coverage_report(ir, docs)
     report["coverage"] = coverage
@@ -103,9 +177,35 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
                          / f"{select_style_pack(ir)}.json")
     style = load_style_pack(style_path)
     decisions = decide_deck(ir)
+    # P11: apply L1/L2 autonomy proposals (engine-validated, QA-gated,
+    # fall back to the rule archetype when rejected).
+    from .proposal_apply import apply_proposals  # noqa: PLC0415
+    autonomy_report = apply_proposals(ir, decisions)
+    report["autonomy"] = autonomy_report
+    report["stages"].append("autonomy")
     laid = layout_deck(ir, decisions, style, docs)
     report["degradations"].extend(laid["degradations"])
     report["stages"].append("layout")
+
+    truncations = [
+        item for item in report["degradations"]
+        if item.get("kind") == "content_truncation"
+    ]
+    if truncations and (not allow_content_truncation or final_delivery):
+        report.update(
+            ok=False,
+            stage="content_capacity",
+            errors=[{
+                "code": "CONTENT_TRUNCATION_FORBIDDEN",
+                "count": len(truncations),
+                "slide_ids": sorted({item.get("slide_id") for item in truncations if item.get("slide_id")}),
+            }],
+        )
+        (out / "ir.json").write_text(
+            json.dumps(ir, ensure_ascii=False, indent=2), encoding="utf-8")
+        (out / "compile-result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return report
 
     ir_sha = _canonical_sha(ir)
     run_id = f"run-{ir_sha[:12]}"
@@ -139,6 +239,7 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
     trace["outcomes"] = {
         "qa_error_count": qa["error_count"],
         "repair_rounds": 0,
+        "autonomy": autonomy_report,
         "degradations": [
             {k: v for k, v in d.items() if k in ("kind", "slide_id", "detail_code")}
             for d in report["degradations"]],
@@ -172,6 +273,22 @@ def compile_deck(*, sources: list[tuple[str, str, str]], ir_path: str | None = N
         report.setdefault("degradations", []).append(
             {"kind": "builder_fallback", "detail_code": "pptxgenjs_unavailable"})
     report["stages"].append("build")
+    from .speaker_notes import inspect_speaker_notes  # noqa: PLC0415
+    notes_inspection = inspect_speaker_notes(
+        pptx_path,
+        required_slide_indices=(
+            list(range(2, len(plan["slides"]) + 1)) if final_delivery else []
+        ),
+    )
+    report["speaker_notes"]["inspection"] = notes_inspection
+    if final_delivery and notes_inspection["status"] != "pass":
+        report.update(ok=False, stage="speaker_notes_readback", errors=[{
+            "code": "SPEAKER_NOTES_READBACK_FAILED",
+            "missing_slide_indices": notes_inspection["missing_slide_indices"],
+        }])
+        (out / "compile-result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return report
     report.update(ok=True, pptx=str(pptx_path),
                   slide_count=len(plan["slides"]),
                   render_plan=str(out / "render-plan.json"),

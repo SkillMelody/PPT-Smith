@@ -24,12 +24,14 @@ def _arrow_xml(shape) -> str:
     return etree.tostring(shape.element).decode("utf-8")
 
 
-def test_skill_keeps_206_brand_name_and_advances_only_version() -> None:
-    skill = (Path(__file__).resolve().parents[2] / "SKILL.md").read_text(encoding="utf-8")
+def test_skill_keeps_public_brand_name_and_uses_release_version() -> None:
+    root = Path(__file__).resolve().parents[2]
+    skill = (root / "SKILL.md").read_text(encoding="utf-8")
+    version = (root / "VERSION").read_text(encoding="utf-8").strip()
     assert 'display_name: "MeowClaw PPT Smith"' in skill
     assert 'english_alias: "MeowClaw PPT Smith"' in skill
     assert "# MeowClaw PPT Smith" in skill
-    assert 'version: "3.0.0"' in skill
+    assert f'version: "{version}"' in skill
 
 
 def test_routed_connector_emits_native_straight_elbow_and_curve_with_binding() -> None:
@@ -70,6 +72,24 @@ def test_inspector_rejects_connector_that_passes_through_unrelated_node(tmp_path
     result = inspect_slides(path, inspect_package(path), include_raw_xml=True)
     codes = {issue.issue_code for slide_result in result.slides for issue in slide_result.issues}
     assert "PPTX_CONNECTOR_THROUGH_NODE" in codes
+
+
+def test_inspector_allows_shared_decoration_connector_inside_same_component(tmp_path: Path) -> None:
+    path = tmp_path / "component-decoration.pptx"
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    node = _node(slide, 3.0, 2.0, 2.0, 1.0)
+    node.name = "decoration:component:pyramid:preview-3:segment:0"
+    connector = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        Inches(1.0), Inches(2.5), Inches(7.0), Inches(2.5),
+    )
+    connector.name = "decoration:component:pyramid:preview-3:shared:0"
+    deck.save(path)
+
+    result = inspect_slides(path, inspect_package(path), include_raw_xml=True)
+    codes = {issue.issue_code for slide_result in result.slides for issue in slide_result.issues}
+    assert "PPTX_CONNECTOR_THROUGH_NODE" not in codes
 
 
 def test_inspector_rejects_connector_crossing(tmp_path: Path) -> None:

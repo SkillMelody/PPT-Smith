@@ -219,11 +219,6 @@ def test_profile_builder_matrix_runs_real_success_pipeline(tmp_path: Path, profi
     qa = load_json(work / "qa" / "qa-report.json")
     delivery = load_json(output / "delivery-manifest.json")
     decks = list(output.glob("*.pptx"))
-    expected_qa_status = (
-        "warning"
-        if profile == "standard" and builder == "pptxgenjs"
-        else "pass"
-    )
     assert state["status"] == "completed"
     assert copied_requirements["production_profile"] == profile
     assert production["selected_profile"] == profile
@@ -234,7 +229,7 @@ def test_profile_builder_matrix_runs_real_success_pipeline(tmp_path: Path, profi
     assert plan["builder"]["selected"] == builder
     assert build["builder"]["requested"] == builder
     assert build["builder"]["selected"] == builder
-    assert qa["status"] == expected_qa_status
+    assert qa["status"] == "pass"
     assert qa["metrics"]["qa_error_count"] == 0
     assert qa["trusted_delivery_status"] == "verified"
     assert build["status"] == "verified"

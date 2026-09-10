@@ -1,1 +1,0 @@
-"""Semantic PMO component system."""

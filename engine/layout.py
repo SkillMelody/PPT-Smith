@@ -346,6 +346,7 @@ class SlideLayout:
             self.elements.append({
                 "element_id": self.eid("step-conn"), "type": "connector",
                 "from_element": a, "to_element": b, "route": "straight",
+                "from_side": "right", "to_side": "left",
                 "stroke": {"color": accent, "width_emu": int(1.6 * EMU_PER_PT)},
                 "arrowhead": "end",
             })
@@ -539,8 +540,65 @@ def _layout_content(ctx: SlideLayout, slide: dict, archetype: str,
         if others:
             top = ctx.content_top + cards_h + ctx.style.gap_emu()
             ctx.stack(others, top=top, height=ctx.content_top + ctx.content_h - top)
+    elif archetype == "proposed_grid":
+        _layout_proposed_grid(ctx, slide, doc)
+    elif archetype.startswith("refine_") and slide.get("refine"):
+        from .refine_renderers import layout_refine  # deferred: avoid import cycle
+        layout_refine(ctx, slide, slide["refine"],
+                      _frame(ctx.left, ctx.content_top, ctx.width, ctx.content_h),
+                      doc)
     else:  # list_stack and evidence_stack share the guaranteed stack path
         ctx.stack(blocks)
+
+
+def _layout_proposed_grid(ctx: SlideLayout, slide: dict,
+                          doc: SourceDoc | None = None) -> None:
+    """L2 autonomy grid: render the slide's blocks into the row/column grid
+    the model proposed (block ids -> rows). The engine owns geometry: each
+    row is a horizontal band split evenly among its blocks; a block that is
+    a table gets a table, everything else a card. Blocks not mentioned in
+    the proposal (should not happen — validation forbids it) stack below.
+    """
+    proposal = (slide.get("proposal") or {})
+    rows = proposal.get("rows") or []
+    blocks = slide.get("blocks", [])
+    by_id = {b.get("id"): b for b in blocks if b.get("id")}
+
+    if not rows or not by_id:
+        ctx.degrade("builder_downgrade", "proposed_grid_empty")
+        ctx.stack(blocks)
+        return
+
+    style = ctx.style
+    gap = style.gap_emu()
+    n_rows = len(rows)
+    row_h = (ctx.content_h - gap * (n_rows - 1)) // n_rows
+    y = ctx.content_top
+    used_ids: set[str] = set()
+    for row in rows:
+        ids = row.get("block_ids") or []
+        used_ids.update(ids)
+        n = len(ids)
+        cell_w = (ctx.width - gap * (n - 1)) // n if n else ctx.width
+        x = ctx.left
+        for bid in ids:
+            block = by_id.get(bid)
+            if block is None:
+                continue
+            if block.get("role") == "table":
+                ctx.table(block, _frame(x, y, cell_w, row_h), doc)
+            elif block.get("role") == "image":
+                ctx.image_placeholder(block, _frame(x, y, cell_w, row_h))
+            else:
+                ctx.card(block, _frame(x, y, cell_w, row_h))
+            x += cell_w + gap
+        y += row_h + gap
+
+    # blocks the proposal omitted (validation should forbid, but stay safe)
+    leftover = [b for b in blocks if b.get("id") not in used_ids]
+    if leftover:
+        ctx.stack(leftover, top=y,
+                  height=ctx.content_top + ctx.content_h - y)
 
 
 def _cover_slide(ir: dict, style: ResolvedStyle) -> dict:
@@ -574,7 +632,11 @@ def _cover_slide(ir: dict, style: ResolvedStyle) -> dict:
     subtitle = deck.get("purpose")
     if not subtitle:
         first_source = ir.get("sources", [{}])[0]
-        subtitle = first_source.get("title") or first_source.get("path")
+        source_path = first_source.get("path")
+        subtitle = first_source.get("title") or (
+            str(source_path).replace("\\", "/").rsplit("/", 1)[-1]
+            if source_path else None
+        )
     if subtitle:
         elements.append({
             "element_id": "cover-subtitle", "type": "textbox",
@@ -602,6 +664,7 @@ def layout_deck(ir: dict, decisions: list, style: ResolvedStyle,
                 docs: dict[str, SourceDoc] | None = None) -> dict:
     """Returns {"canvas", "fonts_used", "slides", "degradations"}."""
     docs = docs or {}
+    from .speaker_notes import format_speaker_notes
     degradations: list[dict] = []
     plan_slides = [_cover_slide(ir, style)]
     decision_map = {d.slide_id: d for d in decisions}
@@ -618,11 +681,14 @@ def layout_deck(ir: dict, decisions: list, style: ResolvedStyle,
         doc = docs.get(first_ref) if first_ref else next(iter(docs.values()), None)
         _layout_content(ctx, slide, archetype, doc)
         ctx.add_footer(f"来源：{source_note}" if source_note else " ", page_index)
-        plan_slides.append({
+        plan_slide = {
             "slide_id": slide["id"],
             "background": {"color": style.color("background")},
             "elements": ctx.elements,
-        })
+        }
+        if isinstance(slide.get("speaker_notes"), dict):
+            plan_slide["notes"] = format_speaker_notes(slide["speaker_notes"])
+        plan_slides.append(plan_slide)
     fonts = sorted({run["font"]
                     for s in plan_slides for e in s["elements"]
                     for p in e.get("paragraphs", []) for run in p["runs"]}

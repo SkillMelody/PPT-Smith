@@ -60,8 +60,56 @@ def test_compile_provided_ir_selects_archetypes(tmp_path):
     assert report["ok"] and report["ir_origin"] == "provided"
     trace = json.loads((tmp_path / "out" / "decision-trace.json").read_text("utf-8"))
     chosen = {d["slide_id"]: d["chosen"] for d in trace["decisions"]}
-    assert chosen == {"s1": "kpi_wall", "s2": "full_table"}
+    assert chosen == {"s1": "chart_column", "s2": "chart_column"}
     assert all(d["chosen_by"] == "rule" for d in trace["decisions"])
+
+
+def test_final_delivery_requires_model_authored_ir(tmp_path):
+    article = _write_article(tmp_path)
+
+    report = compile_deck(
+        sources=[("src", "markdown", str(article))],
+        output_dir=str(tmp_path / "out"),
+        final_delivery=True,
+    )
+
+    assert report["ok"] is False
+    assert report["stage"] == "model_authoring"
+    assert report["errors"][0]["code"] == "MODEL_AUTHORING_REQUIRED"
+
+
+def test_final_delivery_writes_and_reads_back_speaker_notes(tmp_path):
+    article = _write_article(tmp_path)
+    authored = json.loads(json.dumps(LLM_IR))
+    authored["schema_version"] = "4.1.0"
+    for index, slide in enumerate(authored["slides"], 1):
+        loc = "para_2" if index == 1 else "table_1"
+        slide["message"] = (
+            "Overseas growth drives the result."
+            if index == 1 else
+            "Regional detail shows where growth is concentrated."
+        )
+        slide["speaker_notes"] = {
+            "narrative": (
+                "Explain the evidence, the decision implication, and how the audience should "
+                "interpret this page without reading dense source prose from the slide itself."
+            ),
+            "evidence_ids": [f"src:{loc}"],
+            "source_refs": [{"source_id": "src", "loc": loc}],
+        }
+    ir_path = tmp_path / "authored.json"
+    ir_path.write_text(json.dumps(authored, ensure_ascii=False), encoding="utf-8")
+
+    report = compile_deck(
+        sources=[("src", "markdown", str(article))],
+        ir_path=str(ir_path),
+        output_dir=str(tmp_path / "out"),
+        final_delivery=True,
+    )
+
+    assert report["ok"] is True, report
+    assert report["speaker_notes"]["contract"]["status"] == "pass"
+    assert report["speaker_notes"]["inspection"]["status"] == "pass"
 
 
 def test_invalid_ir_degrades_but_still_ships(tmp_path):
@@ -90,6 +138,54 @@ def test_invalid_ir_fails_closed_without_degrade(tmp_path):
                           ir_path=str(ir_path), output_dir=str(tmp_path / "out"),
                           degrade_on_error=False)
     assert report["ok"] is False and report["stage"] == "ir_validation"
+    assert not (tmp_path / "out" / "deck.pptx").exists()
+
+
+def test_compile_rejects_layout_content_truncation(tmp_path):
+    article = _write_article(tmp_path)
+    crowded = json.loads(json.dumps(LLM_IR))
+    crowded["slides"] = [{
+        "id": "s1", "title": "信息密度超过页面容量",
+        "blocks": [{
+            "role": "fact", "text": "Revenue reached $100m in 2025.",
+            "source_ref": {"source_id": "src", "loc": "para_1"},
+        } for _ in range(13)],
+    }]
+    ir_path = tmp_path / "crowded.json"
+    ir_path.write_text(json.dumps(crowded, ensure_ascii=False), encoding="utf-8")
+
+    report = compile_deck(sources=[("src", "markdown", str(article))],
+                          ir_path=str(ir_path), output_dir=str(tmp_path / "out"),
+                          allow_content_truncation=False)
+
+    assert report["ok"] is False
+    assert report["stage"] == "content_capacity"
+    assert any(item["code"] == "CONTENT_TRUNCATION_FORBIDDEN" for item in report["errors"])
+    assert not (tmp_path / "out" / "deck.pptx").exists()
+
+
+def test_compile_rejects_source_that_exceeds_extractive_slide_capacity(tmp_path):
+    article = tmp_path / "long.md"
+    article.write_text(
+        "# Long report\n\n" + "\n\n".join(
+            f"Evidence item {index}: Revenue reached $100m in 2025."
+            for index in range(245)
+        ),
+        encoding="utf-8",
+    )
+
+    report = compile_deck(
+        sources=[("src", "markdown", str(article))],
+        output_dir=str(tmp_path / "out"),
+        allow_content_truncation=False,
+    )
+
+    assert report["ok"] is False
+    assert report["stage"] == "source_capacity"
+    assert report["errors"] == [{
+        "code": "STRUCTURED_IR_REQUIRED",
+        "message": "The source exceeds extractive fallback page capacity; provide a structured, source-anchored IR.",
+    }]
     assert not (tmp_path / "out" / "deck.pptx").exists()
 
 

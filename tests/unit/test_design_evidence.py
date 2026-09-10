@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
-from visual_narrative.design_evidence import build_design_evidence
+from visual_narrative.design_evidence import build_design_evidence, consume_design_evidence
 
 
 def test_product_prd_evidence_preserves_sources_and_requires_both_prototypes() -> None:
@@ -74,3 +74,29 @@ def test_cli_writes_machine_readable_design_evidence(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stderr
     evidence = json.loads(output.read_text(encoding="utf-8"))
     assert evidence["coverage_matrix"]["product_ui_overview"]["required"] is True
+
+
+def test_consumed_product_prototype_reclassifies_inherited_data_page_as_diagram() -> None:
+    evidence = build_design_evidence(
+        {"source_id": "prd", "ui_spaces": [{"name": "Canvas", "locator": "5"}]}
+    )
+    ppt_ir = {
+        "slides": [
+            {"id": "S01", "slide_role": "cover", "objects": []},
+            {
+                "id": "S02",
+                "slide_role": "data",
+                "primary_expression": "data_visual",
+                "objects": [{"id": "old-chart", "component_type": "bar_chart"}],
+                "delivery_contract": {"editable_core": [], "forbidden_raster": []},
+            },
+        ],
+        "sources": [],
+    }
+
+    _, consumed = consume_design_evidence(evidence, ppt_ir)
+    slide = consumed["slides"][1]
+
+    assert slide["slide_role"] == "diagram"
+    assert slide["primary_expression"] == "relationship_visual"
+    assert slide["primary_anchor"] == "prd-product-ui-overview"

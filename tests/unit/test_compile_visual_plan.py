@@ -62,3 +62,40 @@ def test_compiler_preserves_source_backed_supporting_objects_when_adding_primary
 
     assert {item["id"] for item in objects} == {"adoption-chart", "management-implication", "S03-phase_roadmap"}
     assert next(item for item in objects if item["id"] == "management-implication")["priority"] == "supporting"
+
+
+def test_unsupported_relationship_placeholder_preserves_supporting_evidence() -> None:
+    ppt_ir = {
+        "slides": [
+            {
+                "id": "S02",
+                "message": "因果关系尚无底层数据。",
+                "source_refs": _source_ref(),
+                "objects": [
+                    {"id": "old-primary", "priority": "primary", "semantic_role": "judgment"},
+                    {
+                        "id": "source-evidence",
+                        "priority": "supporting",
+                        "semantic_role": "evidence",
+                        "source_refs": _source_ref(),
+                    },
+                ],
+            }
+        ]
+    }
+    visual_plan = {
+        "slides": [
+            {
+                "slide_id": "S02",
+                "semantic_component": "unsupported",
+                "primary_expression": "relationship_visual",
+                "message": "因果关系尚无底层数据。",
+            }
+        ]
+    }
+
+    compiled = compile_visual_plan(ppt_ir, visual_plan)
+    objects = compiled["slides"][0]["objects"]
+
+    assert objects[0]["component_status"] == "unsupported_placeholder"
+    assert [item["id"] for item in objects[1:]] == ["source-evidence"]

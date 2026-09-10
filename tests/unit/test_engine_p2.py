@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 from engine.coverage import coverage_report
 from engine.extractive_ir import build_extractive_ir
 from engine.provenance import verify_ir
-from engine.structural_parser import parse_html, parse_markdown
+from engine.structural_parser import parse_html, parse_markdown, parse_plain_text
 
 ROOT = Path(__file__).resolve().parents[2]
 IR_SCHEMA = json.loads((ROOT / "schemas/v4/presentation-ir.schema.json").read_text("utf-8"))
@@ -69,6 +69,17 @@ def test_markdown_parser_anchors_and_types():
     assert "36%" in doc.get("para_2").numbers()
 
 
+def test_plain_text_parser_recovers_explicit_pdf_section_markers():
+    doc = parse_plain_text(
+        "Report title\n\nCHAPTER 1\n\nWork changes\n\nCOUNTRY DASHBOARDS\n\nArgentina evidence.",
+        "pdf-text",
+    )
+
+    assert doc.headings(1)[0].text == "CHAPTER 1"
+    assert doc.headings(2)[0].text == "COUNTRY DASHBOARDS"
+    assert [element.etype for element in doc.elements] == ["para", "h1", "para", "h2", "para"]
+
+
 def test_html_parser_anchors_and_script_skipped():
     doc = parse_html(HTML, "web")
     assert doc.title() == "年度总结"
@@ -88,6 +99,65 @@ def test_extractive_ir_is_schema_valid_and_anchored():
     assert "收入与增长" in titles and "风险" in titles
     # Extractive IR must pass its own provenance check by construction.
     assert verify_ir(ir, {"src": _doc()}) == []
+
+
+def test_extractive_ir_keeps_fallback_pages_within_layout_capacity():
+    doc = parse_markdown(
+        "# Dense report\n\n" + "\n\n".join(
+            f"Evidence item {index}: Revenue reached $100m in 2025."
+            for index in range(13)
+        ),
+        "src",
+    )
+    ir = build_extractive_ir(doc, source_meta={"type": "markdown"})["ir"]
+
+    assert max(len(slide["blocks"]) for slide in ir["slides"]) <= 4
+
+
+def test_presentation_ir_schema_accepts_named_multi_chart_pages():
+    ir = build_extractive_ir(_doc(), source_meta={"type": "markdown"})["ir"]
+    ir["slides"][0]["charts"] = [{
+        "id": "innovation",
+        "type": "column",
+        "data": {
+            "categories": ["Reported", "Other"],
+            "series": [{"name": "Share", "values": [64, 36]}],
+        },
+        "source_ref": {"source_id": "src", "loc": "para_2"},
+    }, {
+        "id": "profitability",
+        "type": "doughnut",
+        "data": {
+            "categories": ["Reported", "Other"],
+            "series": [{"name": "Share", "values": [36, 64]}],
+        },
+        "source_ref": {"source_id": "src", "loc": "para_2"},
+    }]
+
+    errors = list(Draft202012Validator(IR_SCHEMA).iter_errors(ir))
+
+    assert not errors, [error.message for error in errors[:3]]
+
+
+def test_list_items_accept_and_verify_multiple_source_refs():
+    doc = _doc()
+    ir = build_extractive_ir(doc, source_meta={"type": "markdown"})["ir"]
+    ir["slides"][0]["blocks"].append({
+        "role": "list",
+        "items": [{
+            "text": "Two source-backed findings",
+            "source_refs": [
+                {"source_id": "src", "loc": "para_1"},
+                {"source_id": "src", "loc": "para_2"},
+            ],
+        }],
+    })
+
+    assert not list(Draft202012Validator(IR_SCHEMA).iter_errors(ir))
+    assert verify_ir(ir, {"src": doc}) == []
+
+    ir["slides"][0]["blocks"][-1]["items"][0]["source_refs"][1]["loc"] = "para_99"
+    assert any(error["code"] == "LOC_NOT_FOUND" for error in verify_ir(ir, {"src": doc}))
 
 
 def test_provenance_rejects_fabrication():

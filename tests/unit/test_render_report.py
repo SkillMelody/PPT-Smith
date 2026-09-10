@@ -18,6 +18,7 @@ if str(ROOT) not in sys.path:
 from ppt_qa.render_report import build_render_report
 from ppt_qa.renderers.analysis import blank_score
 from ppt_qa.renderers.base import RenderResult, select_renderer
+from ppt_qa.verifier import run_render_report
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -115,6 +116,41 @@ def test_missing_image_check_fires_on_synthetic_report(tmp_path: Path) -> None:
     report = build_render_report(tmp_path / "deck.pptx", result, started_at="2026-07-15T10:00:00+08:00", expected_slides=1)
     assert "RENDER_IMAGE_MISSING" in issue_codes(report)
     assert report["status"] == "partial"
+
+
+def test_run_render_report_clears_stale_output_before_rendering(tmp_path: Path, monkeypatch) -> None:
+    output = tmp_path / "rendered"
+    stale_slides = output / "slides"
+    stale_slides.mkdir(parents=True)
+    (stale_slides / "slide-040.png").write_bytes(b"stale")
+
+    class SyntheticRenderer:
+        def render(self, pptx_path: Path, output_dir: Path, **_: object) -> RenderResult:
+            assert not (output_dir / "slides" / "slide-040.png").exists()
+            output_dir.mkdir(parents=True, exist_ok=True)
+            image = make_busy_png(output_dir / "slide-001.png")
+            pdf = output_dir / "deck.pdf"
+            pdf.write_bytes(b"%PDF-1.7\n% synthetic test input\n")
+            return RenderResult(
+                status="passed",
+                engine="synthetic-test",
+                engine_version="1.0",
+                pdf_path=pdf,
+                slide_images=[image],
+                duration_seconds=0.1,
+                slide_count_rendered=1,
+            )
+
+    monkeypatch.setattr("ppt_qa.verifier.select_renderer", lambda _: SyntheticRenderer())
+
+    report = run_render_report(
+        tmp_path / "deck.pptx",
+        output,
+        engine="synthetic-test",
+        expected_slides=1,
+    )
+
+    assert report["status"] == "passed"
 
 
 def test_render_cli_writes_unavailable_report_for_valid_fixture(tmp_path: Path) -> None:

@@ -17,9 +17,12 @@ from __future__ import annotations
 import re
 from .source_doc import SourceDoc, SourceElement
 
-MAX_SLIDES = 40
-MAX_BLOCKS_PER_SLIDE = 12
-MAX_TEXT = 600
+MAX_SLIDES = 60
+# The deterministic layout engine is intentionally conservative: extractive
+# fallback is a source-preserving diagnostic path, so it must split pages
+# rather than generate a dense page and rely on the renderer to truncate it.
+MAX_BLOCKS_PER_SLIDE = 4
+MAX_TEXT = 320
 MAX_TITLE = 120
 MAX_LIST_ITEMS = 10
 MAX_ITEM_TEXT = 200

@@ -240,11 +240,35 @@ def parse_html(text: str, source_id: str) -> SourceDoc:
     return doc
 
 
+_PLAIN_CHAPTER_RE = re.compile(r"^(?:chapter|part)\s+(?:\d+|[ivxlcdm]+)\b", re.IGNORECASE)
+_PLAIN_SECTION_RE = re.compile(r"^[A-Z][A-Z0-9 &/,:-]{2,80}$")
+
+
+def _plain_heading_level(chunk: str) -> int | None:
+    """Recognize only unambiguous headings from PDF-to-text output.
+
+    PDF extractors commonly lose Markdown markers but preserve standalone
+    chapter labels and all-caps section names. Keeping this intentionally
+    narrow prevents body sentences from becoming invented document structure.
+    """
+    normalized = re.sub(r"\s+", " ", chunk).strip()
+    if _PLAIN_CHAPTER_RE.match(normalized):
+        return 1
+    if _PLAIN_SECTION_RE.fullmatch(normalized) and any(c.isalpha() for c in normalized):
+        return 2
+    return None
+
+
 def parse_plain_text(text: str, source_id: str) -> SourceDoc:
     doc = SourceDoc(source_id=source_id)
-    for chunk in re.split(r"\n\s*\n", text):
+    for chunk in re.split(r"\n\s*\n", text.replace("\f", "\n")):
         chunk = chunk.strip()
-        if chunk:
+        if not chunk:
+            continue
+        level = _plain_heading_level(chunk)
+        if level is not None:
+            doc.add(f"h{level}", chunk, level=level)
+        else:
             doc.add("para", chunk)
     return doc
 

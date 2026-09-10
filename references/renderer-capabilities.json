@@ -34,8 +34,8 @@
         ],
         "smoke_test": "passed"
       },
-      "bar_chart": {
-        "level": "partial",
+    "bar_chart": {
+      "level": "full",
         "handler": "builders.python_pptx_adapter._add_chart",
         "schema_versions": [
           "1.0"

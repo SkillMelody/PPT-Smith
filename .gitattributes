@@ -1,0 +1,8 @@
+private-pmo-pack/ export-ignore
+test-runs/ export-ignore
+tests/ export-ignore
+docs/superpowers/ export-ignore
+.github/ export-ignore
+.pytest_cache/ export-ignore
+.pytest-tmp/ export-ignore
+runtime/pptxgenjs/node_modules/ export-ignore

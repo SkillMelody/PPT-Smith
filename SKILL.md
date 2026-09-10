@@ -1,138 +1,267 @@
 ---
 name: "article-html-to-ppt"
-description: "Compile articles (Markdown/HTML/text) into professional, editable PPTX decks via a deterministic local engine. The model's only job: optionally write a content-only Presentation IR, then run one command. Layout, styling, and QA are engine-owned."
+description: "Author professional, editable PPTX decks from Markdown, HTML, text, PDF, data, or a user template. A capable model owns source understanding, narrative, slide content, visual encoding, component selection/composition, speaker notes, and any new native components; PPT Smith supplies source anchors, reviewed template components, deterministic execution, real rendering, and fail-closed QA. Use for bespoke decks, template-driven decks, and diagnostic standard compilations."
 metadata:
   display_name: "MeowClaw PPT Smith"
-  english_alias: "MeowClaw PPTSmith"
+  english_alias: "MeowClaw PPT Smith"
   public_slug: "meowclaw-pptsmith"
-  version: "4.1.0-alpha"
+  version: "4.1.0-beta.1"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
-# MeowClaw PPT Smith v4 — Model-Agnostic Presentation Compiler
+# MeowClaw PPT Smith v4 — Model-Directed Presentation Authoring
 
-Turn an article into a deck by doing exactly two things:
+PPT Smith is a model-directed authoring system, not a model-independent content
+generator. A capable model must understand the source, decide what the deck
+says, choose how each idea is expressed, and inspect the rendered result. The
+engine verifies and executes those decisions; it does not replace them with a
+generic extractive deck.
 
-1. (Recommended) Write a **Presentation IR** — a content-only JSON describing what each slide says.
-2. Run **one command**. The engine does everything visual: archetype selection, layout, styling, text fitting, QA, and the PPTX build — deterministically.
+## Non-negotiable authoring contract
 
-You never make design decisions. Do not write layout, colors, fonts, coordinates, or archetype names anywhere. The IR schema rejects them.
+For a final delivery, the model owns:
 
-## Capability and permission boundary
+- complete source reading and evidence selection;
+- audience, purpose, narrative arc, section order, and page budget;
+- assertion-led slide titles and concise visible copy;
+- chart data, comparisons, sequences, hierarchies, and other relationships;
+- template-component matching and multi-component composition;
+- new native components when the reviewed template cannot express the idea;
+- speaker notes containing detailed explanation, evidence, caveats, and source
+  anchors;
+- visual review of the real rendered candidate.
 
-- Read only the source files and this skill's own files; write only inside the output directory you choose.
-- The engine runs locally, stdlib + python-pptx only, no network. Never upload content anywhere without explicit user consent.
-- Requires `python3` (3.9+) and `python-pptx`. Optional: LibreOffice for PDF preview.
+PPT Smith owns deterministic source anchors and provenance checks, reviewed
+template-component contracts, native-object execution, rendering, structural
+inspection, and fail-closed delivery states.
 
-## The protocol
+If the active model cannot complete the authoring contract, stop with
+`MODEL_AUTHORING_REQUIRED`. Do not disguise an extractive or placeholder deck
+as a final presentation.
 
-All commands run from this skill's root directory.
+## Choose one route
 
-### Step 1 — Stage the source
+### Bespoke — default for the quality ceiling
 
-Save the article as a file (UTF-8): `source.md`, `source.html`, or `source.txt`.
+Use when the user wants the strongest result and strict template reuse is not
+required. The model authors the narrative, geometry, native charts, diagrams,
+and visual system from a blank presentation. A reference deck may guide style,
+but is not claimed as a preserved template.
 
-### Step 2 — See the anchors
+Read [docs/v4-bespoke-architecture-plan.md](docs/v4-bespoke-architecture-plan.md).
+
+### Template — model-directed component reuse
+
+Use when the user supplies a PPTX template or asks to preserve its native
+visual language. The model must analyze both source and template, then:
+
+1. build or load a reviewed Component Atlas;
+2. decompose each planned slide into semantic slots;
+3. reuse every feasible template component before inventing a replacement;
+4. compose multiple template components when one component is insufficient;
+5. create a new native component in the template's visual language when no
+   reviewed component fits;
+6. bind every new component to one or more reviewed template components as its
+   visual-grammar reference;
+7. record why every feasible component was selected or rejected.
+
+A reviewed component is a module, not automatically a complete slide. Every
+Template body page also needs a `page_composition` contract with a page recipe
+and real variant, a template-neutral `composition_archetype`,
+assertion/evidence/interpretation/implication layers, at
+least two substantive content modules, an information-unit count, and a
+takeaway. Quantitative pages additionally require visible key numbers and
+chart annotations. Reject title-plus-single-component shells even when the
+component itself is perfectly cloned.
+
+An illustration from the source may be used only when it is an isolated
+illustration or non-reconstructable figure. Never use a screenshot containing
+source-page prose, navigation, headers, or footers as a slide substitute.
+
+Detect cover and closing support only from reviewed full-page recipes. A widget
+whose name merely contains `cover` or `closing` is not a boundary-page recipe.
+When the uploaded template has no qualifying cover or closing page, author an
+original one from the template's typography, palette, spacing, line, and icon
+grammar and declare `style_derived_original`; do not force an unrelated template
+component into that role.
+
+Read [docs/v4-template-route.md](docs/v4-template-route.md).
+
+### Standard / Engineering — diagnostic only
+
+Use for deterministic smoke tests, schema checks, layout diagnostics, or an
+explicitly requested engineering draft. Standard output is not a final-quality
+substitute for model-authored Bespoke or Template work.
+
+Read [docs/v4-three-route-architecture.md](docs/v4-three-route-architecture.md).
+
+## Required model workflow
+
+### 1. Establish the production request
+
+Confirm or infer the audience, decision, language, route, page-range contract,
+template-use mode, delivery format, and editability requirements. A source-page
+count is not an output-slide count.
+
+### 2. Read and structure the entire source
+
+Stage source files locally, then obtain deterministic anchors:
 
 ```bash
-python3 -m engine parse --source doc:markdown:source.md --json-out parsed.json
+python3 -m engine parse --source report:text:source.txt --json-out parsed.json
 ```
 
-This prints every element with its **anchor**: `para_12`, `h2_3`, `list_1`, `table_2`, `img_1`, `blockquote_1`. Anchors are the only valid values for `source_ref.loc` in your IR. Types: `markdown`, `html`, `text`.
+For PDF, preserve page identity and extract tables, charts, illustrations, and
+captions as distinct source objects where possible. Reconcile the deterministic
+parse with the actual source pages; do not rely on an early subset.
 
-### Step 3 — Write the IR (skip to Step 4 to ship without it)
+### 3. Author the content contracts
 
-Contract: `schemas/v4/presentation-ir.schema.json`. Full examples: `schemas/v4/examples/presentation-ir-minimal.json` (the floor) and `presentation-ir-enriched.json` (metrics, relations, hints).
+Before choosing geometry, produce:
 
-Minimal shape:
+- Content & Evidence Map;
+- Narrative Contract and page budget;
+- source-backed Presentation IR;
+- per-slide assertion, evidence, topology, visible-content, and speaker-notes
+  contracts;
+- chart/table/diagram payloads for every reconstructable quantitative exhibit;
+- Exhibit Interpretation Contract for every retained illustration.
 
-```json
-{
-  "schema_version": "4.0.0",
-  "deck": {"title": "…", "language": "zh"},
-  "sources": [{"source_id": "doc", "type": "markdown", "path": "source.md"}],
-  "slides": [
-    {"id": "s1", "title": "判断句标题",
-     "message": "这一页的唯一结论（可选但强烈建议）",
-     "blocks": [
-       {"role": "fact", "text": "原文中的事实", "source_ref": {"source_id": "doc", "loc": "para_2"}},
-       {"role": "metric", "label": "总收入", "value": "+36%", "source_ref": {"source_id": "doc", "loc": "para_2"}},
-       {"role": "list", "items": [{"text": "要点", "source_ref": {"source_id": "doc", "loc": "list_1"}}]},
-       {"role": "table", "source_ref": {"source_id": "doc", "loc": "table_1"}},
-       {"role": "insight", "text": "你的综合判断", "source_refs": [{"source_id": "doc", "loc": "para_3"}]}
-     ]}
-  ]
-}
-```
+Visible copy should contain one assertion and a small number of complete,
+high-value labels. Detailed reasoning belongs in speaker notes. Planner-created
+ellipsis, OCR fragments, generic labels, and tiny source prose are forbidden.
 
-Block roles: `fact` / `quote` (verbatim-ish, `source_ref` **required**), `metric` (`label`+`value`, `source_ref` **required**, numbers must exist in the anchored element), `table` (references the source table — never retype cells), `image` (`asset_ref`: an `img_N` anchor), `list` (optional `semantics`: `steps|stages|options|criteria|findings`), and synthesized `insight` / `risk` / `recommendation` / `context` (optional `source_refs`).
+Final visible copy must also reject unresolved generator values such as
+`undefined`, `null`, `NaN`, `[object Object]`, TODO/TBD, and Chinese placeholder
+equivalents. Duplicate or overlapping slide-number objects are delivery
+failures, not harmless decoration.
 
-`list` items can be deepened for process content — each item may add a one-line `detail` (the step's elaboration) and `action_items` (concrete actions under it). When `semantics` is `steps`/`stages`, the engine renders a numbered step-card row (title bar + body + accent action bullets); when absent it renders a bulleted panel. Both are content semantics, never layout.
+The IR schema is [schemas/v4/presentation-ir.schema.json](schemas/v4/presentation-ir.schema.json).
 
-Rules the engine enforces:
-
-- **Select, don't invent.** Every fact/metric/quote/table is verified against the anchored source element. Fabricated numbers and dangling anchors are rejected with machine-readable errors.
-- **Cover the source.** The engine checks section/table coverage. Don't read half the article and stop.
-- **Content only.** No visual fields. The only presentation influence you have is `slides[].hints` (`emphasis_block_ids`, `tone`).
-- Optional enrichment (better decks, never required): `message`, `relations` (`causal|comparison|sequence|hierarchy|dependency|contrast` between block ids), `slide_role`, `deck.narrative_intent` (also selects the visual system: `report`/`proposal` → consulting blue, `product` → product palette, `research` → editorial, `training` → technical), `x_semantics`.
-
-### Optional data visuals (v4.1 — stronger decks, never required)
-
-A slide may carry one optional data payload; the engine renders it natively (chart or diagram). Weak models omit these and the engine infers an archetype from the blocks alone.
-
-- `chart` — `{type: "column"|"bar"|"line"|"pie"|"combo", data: {categories: [...], series: [{name, values}]}, source_ref}`. Numbers must come from the anchored source; series colors and chart styling are engine-owned.
-- `diagram_ir` — `{diagram_type: "causal_chain"|"phase_roadmap"|"layered_architecture"|"drill_down_stair"|"heat_matrix", nodes: [{label, priority}], edges: [{from, to, relation}], source_refs}`. Nodes/edges describe structure only — never positions, colors, or shapes. `heat_matrix` instead takes a `matrix` payload (`{rows, columns, values, value_suffix?, highlighted_cells?}`).
-
-Full example: `schemas/v4/examples/presentation-ir-v41-chart-diagram.json`.
-
-### Step 4 — Compile
+### 4. Analyze the template when using Template route
 
 ```bash
-# with your IR (preferred):
-python3 -m engine compile --source doc:markdown:source.md --ir ir.json \
-  --no-degrade --output-dir out/
-
-# without an IR (engine builds the deck from the source alone):
-python3 -m engine compile --source doc:markdown:source.md --output-dir out/
+python3 -m engine component-atlas \
+  --template-pptx template.pptx \
+  --review component-review.json \
+  --json-out component-atlas.json
 ```
 
-Optional: `--style styles/<pack>.json` — available packs: `editorial-knowledge` (default), `consulting-light`, `technical-blueprint`, `product-report`, `consulting-blueprint-hybrid`. Ask the user which they want when it matters; validate custom packs with `python3 -m engine style-validate --style pack.json`.
+The review must identify reusable charts, tables, timelines, processes, KPI
+cards, comparisons, matrices, image frames, relationship diagrams, section
+recipes, style primitives, and equivalent instances. It must also state whether
+each component can stand alone, its minimum information units, recommended
+page recipes and companions, annotation requirements, and prohibited uses.
+Geometry alone is not a semantic component review.
 
-Outputs in `out/`: `deck.pptx`, `render-plan.json`, `decision-trace.json`, `ir.json`, `compile-result.json`.
+For every uploaded template, derive a template-local adaptation contract:
+content and decoration bounds, background semantics, supported aspect ratios,
+responsive modes, minimum visible information, numeric annotation floors, and
+series role. Do not encode component ids, page numbers, colours, fonts, or
+sample-report rules from a previously tested template. Oversized source-page
+backgrounds are not reusable component content unless the reviewed contract
+proves a semantic role.
 
-### Step 5 — Repair loop (max 3 rounds)
+### 5. Let the model compose the deck
 
-If compile with `--no-degrade` fails, `compile-result.json` contains `errors` with `stage`, `code`, `path` (slide-addressable), and the offending value:
+For every slide, compare its topology, data shape, required slots, text bounds,
+and element capacity with the Atlas. Record:
 
-- `LOC_NOT_FOUND` / `LOC_MALFORMED` — fix the anchor (re-check `parsed.json`).
-- `QUOTE_MISMATCH` — your quote is not verbatim; copy the source text exactly or drop `quote`.
-- `METRIC_VALUE_NOT_IN_SOURCE` — the number is not in the anchored element; fix the value or the anchor.
-- Schema codes (`REQUIRED_FIELD_MISSING`, `ADDITIONAL_PROPERTY`, …) — fix the JSON shape; `ADDITIONAL_PROPERTY` usually means you wrote a visual field. Delete it.
+- feasible template components;
+- selected component(s) and slot bindings;
+- rejected candidates and reasons;
+- any model-authored native component required;
+- speaker notes and evidence IDs.
 
-Fix the IR, recompile. After 3 failed rounds, drop `--no-degrade` and recompile: the engine ships a verified extractive deck built from the source itself and records the fallback. Never hand-edit the output files; never bypass the engine to write PPTX yourself.
+The model may specify composition and geometry for Bespoke pages and for new
+Template components. Existing reviewed Template components retain their native
+geometry unless an explicitly supported placement transform is used.
 
-### Step 6 — Deliver honestly
+External visual assets used by a Template component require a declared source,
+license or permission basis, and content hash. Do not copy icons or graphics
+from style references merely because they resemble the uploaded template.
 
-Read `compile-result.json` and report to the user:
+### 6. Execute and verify
 
-- the deck path and slide count;
-- `ir_origin` (`provided` / `extractive` / `extractive_fallback` — the last means your IR was rejected; say so and why);
-- `degradations` (truncations, font step-downs, image placeholders, KPI overflow) — every one is a bound the engine applied to guarantee delivery;
-- coverage status, and which source sections were left uncovered.
+Useful route commands include:
 
-Do not present a degraded or extractive deck as if it were fully IR-driven. The decision trace (`decision-trace.json`) explains every layout choice if the user asks why a slide looks the way it does.
+```bash
+python3 -m engine plan-bespoke ...
+python3 -m engine author-bespoke ...
+python3 -m engine plan-model-template-components ...
+python3 -m engine component-atlas-report ...
+python3 -m engine compose-components ...
+python3 -m engine strict-template ... --final-delivery
+python3 -m engine review-template ...
+```
 
-## Quality expectations
+`plan-manuscript-components` remains available for legacy diagnostics. It is
+not a substitute for a model-authored slide plan. A `model_authored` Template
+component is executed through `build(slide, context)` and may use only native
+objects plus explicitly hash-bound standalone source illustrations declared in
+the IR.
 
-- Slide titles should be judgments, not topics ("增长由海外驱动" not "收入情况"), carried in `title` + `message`.
-- Group content so each slide makes one point; use `metric` blocks for numbers, `relations` for causality/comparison — they drive better archetypes.
-- 3–8 blocks per slide is the sweet spot; the schema caps at 12.
-- The engine guarantees the floor (no blank pages, no overflow, verified content). The ceiling — sharp selection, insight, narrative — is your contribution.
+Always run structural inspection and a real renderer. A generated PPTX is only
+a candidate until visual review is bound to that candidate.
 
-## Autonomy tiers (protocol extension slot)
+### 7. Review the rendered deck
 
-This version runs every model at tier **L0**: zero visual authority, rules pick every archetype. Tiers **L1** (choose among engine-proposed archetype candidates) and **L2** (constrained composition proposals, QA-gated) are reserved protocol extensions; their activation and the behavioral probe that grants them will be documented here when enabled. Nothing in the current protocol changes when they arrive.
+Inspect every slide, not only a contact-sheet thumbnail. Reject for:
 
-## Legacy v3 route
+- weak or incomplete content expression;
+- source-page screenshots used as authored slides;
+- reconstructable data shown only as raster images;
+- visible truncation or planner-created ellipsis;
+- sparse text/outline pages without purposeful composition;
+- feasible template components left unused without explanation;
+- inconsistent template style, hierarchy, spacing, density, or rhythm;
+- a reviewed component used as the whole page without supporting evidence,
+  interpretation, or implication;
+- repeated declared variants that do not correspond to genuinely different
+  compositions;
+- repeated real-rendered visual skeletons even when their recipe names or
+  left/right orientation differ;
+- components mechanically scaled into unsupported target aspect ratios;
+- comparison series without a shared anchor and scale, or long series that
+  should be consolidated or moved to an appendix;
+- missing or inadequate speaker notes.
+- rendered semantic modules that do not account for the model's declared
+  information units;
+- body text below the Template readability floor;
+- unresolved generator values or duplicate slide-number objects.
 
-The v3 multi-contract pipeline (`scripts/run_pipeline.py`, `ppt-ir` v2 contracts) remains in-tree for compatibility and is superseded by this protocol. Do not mix the two routes in one delivery.
+## Final-delivery gates
+
+A final deck requires all applicable gates:
+
+- source and numeric provenance pass;
+- important-evidence coverage pass;
+- every body slide has a complete assertion;
+- every body slide has speaker notes with evidence and source anchors;
+- every reconstructable chart/table is native and editable;
+- every feasible reviewed template component is reused or has a documented
+  rejection reason;
+- no page screenshot contains source prose/navigation/header/footer;
+- no generic placeholder or planner-generated ellipsis is visible;
+- component binding, structural inspection, real rendering, asset integrity,
+  deck rhythm, content density, and style completeness pass;
+- hash-bound human or capable-model visual review approves the candidate.
+
+If any gate fails, return a candidate/revision state and the exact blocker. Do
+not call it final.
+
+## Route isolation and references
+
+Do not mix route authority: Standard rules cannot override Bespoke design;
+Bespoke cannot claim strict template preservation; Template cannot use
+unreviewed or semantically mismatched components merely to increase reuse.
+Template-only page-composition and component-suitability gates must not be
+imported into Bespoke or Standard runtimes.
+
+- [V4 route architecture](docs/v4-three-route-architecture.md)
+- [Bespoke route](docs/v4-bespoke-architecture-plan.md)
+- [Template route](docs/v4-template-route.md)
+- [Template generalization contract](docs/v4-template-generalization.md)
+- [Legacy Standard style-pack guide](docs/template-authoring-guide.md)
+- [Template whole-page design plan](docs/v4-template-whole-page-design-plan.md)
+- [Presentation IR examples](schemas/v4/examples/)

@@ -1,9 +1,0 @@
-{
-  "schema_version": "1.0",
-  "types": {
-    "Risk": "Future uncertainty that may affect outcome",
-    "Assumption": "Planning belief that needs validation",
-    "Issue": "Current problem requiring management",
-    "Dependency": "External prerequisite or handoff"
-  }
-}
