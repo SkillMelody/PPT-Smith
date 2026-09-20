@@ -82,6 +82,10 @@ def _emit(payload: dict, json_out: str | None) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "design":
+        from .design_scene.cli import main as design_main
+        return design_main(argv[1:])
     parser = argparse.ArgumentParser(prog="engine", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 

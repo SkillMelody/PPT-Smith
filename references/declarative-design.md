@@ -1,0 +1,165 @@
+# 动态设计与原生重建工作流
+
+这是本地开发版的 `engine design` 入口，使用当前环境已锁定的
+python-pptx 1.0.2、Pillow 11.3.0、jsonschema 4.25.1、lxml 6.1.1。
+执行器不接受 Python、JavaScript、表达式、任意路径、远程 URL、SVG、
+字体文件或 PPTX 模板。支持的能力由 `schema` 命令给出，未知属性拒绝执行。
+
+## 职责与任务模式
+
+宿主多模态模型逐次识读当前图像，核对文案、区域、视觉层级、素材与数据。
+这不是独立 OCR 或自动分层引擎，不应宣称已自动恢复未知字体或图表数据。
+宿主可调用当前已授权的图片工具设计整页，不能只生成背景后声称整页设计完成。
+本地 CLI 不持有图片服务凭证，不自动发起云端调用。
+
+| 模式 | 目标 | 图片工具 |
+| --- | --- | --- |
+| `recreate` | 当前原始图；经授权的修正另存目标并记录差异 | 已有合格目标即可继续 |
+| `style_transfer` | 新内容与当前指定风格形成的新目标 | 需要时由宿主实际调用 |
+| `new_design` | 根据需求生成或用户提供的新整页目标 | 没有目标时必须调用 |
+| `draft` | 明确标注的简化草稿 | 可不生成目标，不能最终交付 |
+| `template` | 保留原生模板 | 路由到 V4 Template，不从空白替代 |
+
+用户意图已经明确时直接执行。只有显著影响结果的冲突才澄清。品牌规则仅在
+本次请求要求时采用。多图分别声明用途、页映射、采用特征与优先级；不自动混合。
+同一 PPTX 的画布一致，不同比例只能明确留白适配或拆分交付，禁止静默拉伸。
+
+## 快速开始
+
+所有命令在技能根目录执行；`TASK` 是当前用户已授权的任务目录。
+
+```bash
+python3 -m engine design capabilities
+python3 -m engine design init --task-dir "$TASK" --task-id example \
+  --mode recreate --width 960 --height 540 --pages 1 \
+  --author author-model --audience 产品团队 --target-software LibreOffice
+python3 -m engine design ingest --task-dir "$TASK" --file reference.png \
+  --asset-id ref-one --role reference --pages page-1 --source 用户提供的本次参考
+python3 -m engine design schema
+```
+
+宿主阅读 `task.json`，根据当前输入写入内容、设计和场景。不要用程序假装完成
+视觉识读。逐项保留出处及不确定信息；风格图中的业务文案不进入新内容。
+
+`canvas` 与全部几何使用 pt。将原图像素坐标按 `canvas.width / image.width`
+与 `canvas.height / image.height` 等比例转换。声明 `contain` 时，先算留白偏移，
+再转坐标。字号、线宽也需换算。不要照搬文档案例中的 1672×941 或固定栏数。
+
+### 五类记录
+
+`task.json` 将四类可独立哈希的记录放在一个受约束的任务信封中；第五类是
+构建后的 `manifest.json`、`review.json` 与 `acceptance.json`。
+
+| 记录 | 重要字段 |
+| --- | --- |
+| `content` | 分页文字、真实图表系列、真实表格单元格、来源、核对状态、备注 |
+| `design` | 当前模式、参考用途与优先级、逐页目标、确认人、原图限制、接受差异 |
+| `scene` | 页背景、节点、层级、位置、样式、内容绑定、编辑角色 |
+| `assets` | 标识、原始与标准化字节摘要、尺寸、页范围、来源、裁片与真实工具回执 |
+| 验收 | 输入版本、代码/依赖/字体、PPTX、实际预览、双重视觉结论、对象编辑行为 |
+
+原生文字节点只引用 `content_id`，不另抄业务文案。换行属于锁定内容；
+`spans` 使用字符区间指定混排字体，不将每个字拆成一个形状。
+图表支持 column/bar/line/pie/doughnut，底层数据必须来自核对后的用户数据或
+可读数值。表格存真实单元格，可指定列宽。形状支持矩形、圆角矩形、椭圆、
+直线、箭头、菱形和三角形；路径支持 M/L/Q/C/Z。组内坐标相对父组，z 在组内排序。
+
+不支持的渐变、蒙版、复杂透明效果、自动连接路由、智能文本重排和字体嵌入
+应明确披露。复杂插画可以登记为独立图片；不能用整页图覆盖文字获得编辑指标。
+图片仅接受已登记素材 ID。可以按明确的编辑要求接受数据图片替代，但同时需要
+`required_edit: raster_accepted` 和该页 `raster_acceptances` 的理由与接受人，
+并在交付中说明没有原生数据编辑能力。
+原始数值完全未知时使用 `unknown_data` 内容记录，只登记描述与不确定项，
+不要为满足 schema 填入虚构系列；它只能在明确接受后映射为独立图片。
+
+### 素材与真实图片工具
+
+```bash
+python3 -m engine design crop --task-dir "$TASK" --from-asset ref-one \
+  --asset-id illustration-one --role illustration --pages page-1 \
+  --source 本次图中的独立插画 --source-crop 100 200 180 120
+python3 -m engine design image-request --task-dir "$TASK"
+```
+
+裁片先真正解码并裁切再嵌入，不重复嵌入整张原图；原始字节另存。
+尺寸、压缩字节、总像素、帧数和资源总量均受限，仅允许静态 PNG/JPEG。
+不提供对任意图通用的去底阈值；需要处理时由宿主获得独立合格素材并重新登记。
+
+`image-request.json` 仅是待调用请求，`generated: false`。宿主检查其可见内容，
+实际调用可用的图片工具，然后登记返回的文件；`--tool-result` 接收真实回执：
+
+```json
+{"tool":"实际工具名","model":null,"invocation_id":null,
+ "result_sha256":"工具返回图片的真实SHA256",
+ "prompt_sha256":"实际发送提示词的真实SHA256"}
+```
+
+后端可验证字节对应，不能独立证明外部工具确实被调用；回执真实性由宿主负责。
+若没有图片工具，保留准备结果并披露缺口；已有合格目标的复刻可继续。
+
+## 构建、修订与审核
+
+```bash
+python3 -m engine design validate --task-dir "$TASK" --complete
+python3 -m engine design build --task-dir "$TASK" --isolation macos
+python3 -m engine design status --task-dir "$TASK" --build-id "$BUILD"
+python3 -m engine design review-template --task-dir "$TASK" --build-id "$BUILD"
+```
+
+每次构建创建私有随机目录；不覆盖旧候选。固定 worker 运行于独立进程，限定
+CPU、输出文件大小、描述符和整个进程组的墙钟时间。macOS 模式使用 Seatbelt
+限制文件内容读取、写目录和 IP 网络；目录元数据与祖先目录遍历为运行时保留。
+LibreOffice 本地 IPC 仅允许本次构建目录中的专用 Unix socket。
+宿主禁止嵌套 sandbox 时需要宿主允许这一隔离启动。
+其他系统可用 `--isolation host` 做候选功能验证，但程序不会宣称已验证 OS 隔离，
+不会批准最终交付。Linux/Windows 专用隔离适配器尚未实现。
+
+`--no-preview` 只保留未渲染候选。实际预览使用私有 LibreOffice 配置目录，
+从最终候选 PPTX 转 PDF，再由 Poppler 生成逐页 PNG。目标图不冒充预览。
+`compare-<page>.png` 左为批准目标、右为实际预览。区域 RGB 误差仅用于找差异，
+不代表审美分数或“99% 还原”。
+
+审核须独立检查设计适当性与重建保真，并核查内容、对象编辑和字体。
+复刻任务记录原图限制，不因审美偏好重排版。修改内容、参考用途、目标、素材、
+场景、PPTX、预览、渲染器代码或字体，均会使原审核失效。同名文件也按字节检查。
+审核人 ID 必须与作者不同，但系统不提供审阅者身份认证；禁止伪造第二身份。
+
+```bash
+python3 -m engine design build --task-dir "$TASK" --parent-build "$BUILD"
+python3 -m engine design review --task-dir "$TASK" --build-id "$BUILD" \
+  --review-file review-draft.json
+python3 -m engine design deliver --task-dir "$TASK" --build-id "$BUILD" \
+  --review-file review-draft.json
+```
+
+`review-template` 生成待填写的否决态审核表，不预填通过。审核表必须绑定构建
+manifest 的真实 SHA256，覆盖全部页面与关键内容对象，记录具体观察和目标软件
+中的打开、改字、改数据、替换素材等实际动作。子版本修订预算耗尽时保留问题，
+不能自动批准。新目标变更必须重新确认并重新审阅。
+
+最终 ZIP 包含原始输入、逐页目标映射、可编辑 PPTX、PDF、实际预览、对照图、
+对象清单、验收与编辑限制。`deliver` 每次重新核验当前字节，不信任之前的成功
+状态；相同构建不重复覆盖交付包。
+
+## 能力与发布边界
+
+本流程是模型辅助工作流，尚不是无人值守图片识读产品。复杂参考的解析质量、
+字体识别、遮挡、原图内数据冲突仍需要宿主和独立视觉审阅。
+仅对子进程化或 JSON 校验通过，不宣称完成系统隔离。
+素材登记角色属于语义声明；伪装文字的插画仍需审阅者检查。
+外部 PPTX/SVG/字体不进入此新入口，模板模式按原独立路由处理，不能继承新入口
+的安全结论。正式平台审核与 PowerPoint/WPS 实机兼容性需各自验证。
+
+部署时可运行固定隔离探针，检查真实的拒绝结果，而不是根据平台名称猜测：
+
+```bash
+python3 -m engine.design_scene.isolation_probe --output-dir "$TASK/isolation-check"
+```
+
+探针只访问自行创建的哨兵文件，不读取用户私有材料。内存由输入字节/像素/节点
+上限约束；尚无 OS 级常驻内存限额。PNG/JPEG 登记解码发生在宿主进程，因此
+不把渲染 worker 的隔离证据扩大为所有依赖解码路径均通过部署安全评审。
+
+实现依据已核对的公开接口：
+[python-pptx 原生对象](https://python-pptx.readthedocs.io/en/latest/api/shapes.html)、
+[LibreOffice 命令行转换](https://help.libreoffice.org/latest/en-US/text/shared/guide/start_parameters.html)。

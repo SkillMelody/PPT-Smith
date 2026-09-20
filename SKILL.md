@@ -1,6 +1,6 @@
 ---
 name: "article-html-to-ppt"
-description: "Author professional, editable PPTX decks from Markdown, HTML, text, PDF, data, or a user template. A capable model owns source understanding, narrative, slide content, visual encoding, component selection/composition, speaker notes, and any new native components; PPT Smith supplies source anchors, reviewed template components, deterministic execution, real rendering, and fail-closed QA. Use for bespoke decks, template-driven decks, and diagnostic standard compilations."
+description: "Create editable PPTX from current reference images, articles, data, or a user template. Use the declarative design workflow for image reconstruction, style transfer, and new full-slide designs: the model interprets references and submits checked content and scene JSON; a fixed renderer creates native objects and real PPTX previews. Preserve the separate template route when native template reuse is requested."
 metadata:
   display_name: "MeowClaw PPT Smith"
   english_alias: "MeowClaw PPT Smith"
@@ -10,6 +10,36 @@ metadata:
 ---
 
 # MeowClaw PPT Smith v4 — Model-Directed Presentation Authoring
+
+## Declarative design upgrade (local development)
+
+For image reconstruction, image-led style transfer, or a new professional design,
+start with [references/declarative-design.md](references/declarative-design.md).
+This route supersedes task-authored Python/JavaScript for these requests. The
+model submits data to `python3 -m engine design`; it must not edit renderer code
+or use the legacy `--script` commands to bypass unsupported scene features.
+
+Infer `recreate`, `style_transfer`, or `new_design` from the current request.
+Recreation uses the current image as its target. Style transfer locks the new
+content and establishes a new target. New designs need a real host image tool
+when an image target has not been supplied. Do not carry a prior example's
+layout, palette, content, brand, chart, cards, or footer into the current task.
+Unknown data remains unknown; do not recover exact values from graph geometry.
+
+The host model reads references, checks text and data, creates the full-slide
+target when needed, and writes the five records. The fixed backend handles
+geometry, registered assets, native objects and real rendering. Image-generation
+requests exclude notes, source paths and internal identifiers. Record actual
+tool results; use null for tool metadata that was not returned.
+
+`candidate_unreviewed`, `draft`, and `render_incomplete` are not final delivery.
+An independent page and object review, matching input/output hashes, verified
+execution isolation and target-software edit checks are required by `deliver`.
+Keep original references, confirmed targets and actual PPTX previews distinct.
+
+The instructions below describe V4 compatibility routes. Explicit PPTX template
+preservation continues to use Template; do not silently reconstruct it from a
+blank presentation. The new route does not certify the legacy script runtimes.
 
 PPT Smith is a model-directed authoring system, not a model-independent content
 generator. A capable model must understand the source, decide what the deck
