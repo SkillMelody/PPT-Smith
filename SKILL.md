@@ -5,19 +5,19 @@ metadata:
   display_name: "MeowClaw PPT Smith"
   english_alias: "MeowClaw PPT Smith"
   public_slug: "meowclaw-pptsmith"
-  version: "4.1.0-beta.1"
+  version: "5.0.0-alpha.1"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
-# MeowClaw PPT Smith v4 — Model-Directed Presentation Authoring
+# MeowClaw PPT Smith v5 — Declarative Design Preview
 
-## Declarative design upgrade (local development)
+## V5 declarative design route
 
 For image reconstruction, image-led style transfer, or a new professional design,
-start with [references/declarative-design.md](references/declarative-design.md).
-This route supersedes task-authored Python/JavaScript for these requests. The
-model submits data to `python3 -m engine design`; it must not edit renderer code
-or use the legacy `--script` commands to bypass unsupported scene features.
+read [references/declarative-design.md](references/declarative-design.md) and use
+`python3 -m engine design`. The model submits checked content and scene JSON; it
+must not edit renderer code or use task-authored Python/JavaScript to bypass
+unsupported scene features.
 
 Infer `recreate`, `style_transfer`, or `new_design` from the current request.
 Recreation uses the current image as its target. Style transfer locks the new
@@ -37,9 +37,10 @@ An independent page and object review, matching input/output hashes, verified
 execution isolation and target-software edit checks are required by `deliver`.
 Keep original references, confirmed targets and actual PPTX previews distinct.
 
-The instructions below describe V4 compatibility routes. Explicit PPTX template
+The V4 compatibility routes below remain available. Explicit PPTX template
 preservation continues to use Template; do not silently reconstruct it from a
-blank presentation. The new route does not certify the legacy script runtimes.
+blank presentation. V5 alpha does not certify the legacy script runtimes or
+claim cross-platform PowerPoint/WPS parity.
 
 PPT Smith is a model-directed authoring system, not a model-independent content
 generator. A capable model must understand the source, decide what the deck

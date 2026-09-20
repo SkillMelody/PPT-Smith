@@ -11,14 +11,39 @@
 - **公开品牌：** MeowClaw PPT Smith
 - **兼容安装名：** `article-html-to-ppt`、`meowclaw-decksmith`
 - **兼容搜索词：** MeowClaw PPTSmith、MeowClaw 夜猫 PPT 工坊
-- **当前版本：** `4.1.0-beta.1`（模型主导三路线、模板组件复用、原生高定与可信交付）
+- **当前版本：** `5.0.0-alpha.1`（声明式设计预览；保留 V4 三路线兼容能力）
 - **公共标识：** `meowclaw-pptsmith`
 - **许可证：** `Apache-2.0`
 - **开源定位：** 核心引擎、基础五风格、通用组件、可编辑对象、QA 与可信交付
 
 > PPTSmith 的 GitHub / ClawHub 开源版用于分发、获客与建立可信度。专业生产包、企业品牌适配、专属页面原型、定制组件和代生成/部署服务采用独立商业交付，不包含在本仓库与 ClawHub 包中。
 
-## v4.1 Beta 一眼看懂
+## v5.0 Alpha：声明式设计预览
+
+v5 将“模型直接写构建脚本”收敛为受约束的设计任务：模型提交内容、设计、场景、素材和审核记录；固定后端负责原生对象、素材边界、真实渲染和交付状态。它适用于图片复刻、参考图风格迁移和新页面设计；原生模板保留仍使用 Template 路线。
+
+### 已验证的核心能力
+
+1. **声明式全页场景**：原生文字、形状、曲线、图表、表格、分组和独立图片均由 JSON 合同描述；未知字段、脚本、表达式、外部 URL、SVG 载荷与路径穿越会被拒绝。
+2. **内容与设计分离**：可见文字、图表数据、表格单元格、来源和备注先锁定；设计节点仅引用内容 ID，避免把业务文案藏在绘图代码里。
+3. **参考图与目标图区分**：复刻、风格迁移、新设计和草稿有不同目标规则；新内容不能把旧参考图当作像素目标。
+4. **素材与隔离执行**：素材按哈希、页面范围、裁片和实际工具回执登记；执行器限制目录、网络、资源与构建时间，并用私有 LibreOffice 配置生成真实预览。
+5. **失败关闭式交付**：构建、预览、审核、目标软件编辑检查和哈希必须匹配；候选稿不会因生成成功自动变成最终交付。
+
+### 声明式设计实际样例
+
+下图为 `5.0.0-alpha.1` 开发候选的一页真实原生 PPTX 预览：设计目标保持“内容先行 → 视觉定稿 → 原生重建”的三步结构，而不是将整页设计图直接贴入 PPT。
+
+- **实际原生对象：** 12 个可编辑文本对象 + 22 个原生形状，整页截图为 0；
+- **可编辑验证：** 文本改写、图表数据替换和表格单元格改写均有自动回读测试；
+- **真实预览：** macOS 隔离环境中 PPTX → LibreOffice PDF → PNG；
+- **当前状态：** `candidate_unreviewed`，用于展示运行时能力，不宣称已完成正式视觉交付或跨平台编辑验收。
+
+![PPT Smith v5 declarative design — native PPTX preview](./assets/samples/v5-declarative-design-native-preview.png)
+
+> Alpha 边界：当前实现已完成本地开发候选与真实预览验证，但尚未完成未见参考集、PowerPoint/WPS GUI 编辑、跨环境安全审核及正式发布验收。请在受控试点中使用，不要将它视为已发布的生产承诺。
+
+## v4.1 Beta 兼容路线
 
 PPT Smith v4.1 Beta 是模型主导的演示创作系统。强模型负责理解来源、提炼叙事、设计页面和复核真实渲染；引擎负责来源锚定、原生对象执行、模板组件合同和失败关闭式 QA。
 
@@ -246,7 +271,7 @@ PPTSmith 不把“文件生成成功”等同于“最终完成”：
 - **Verified**：合同、结构、QA 与证据通过验证。
 - **Final**：满足对应生产档位的全部可信门槛。
 
-v4.1.0 Beta 1 已在 Python 3.9.6、PptxGenJS 4.0.1 与 LibreOffice 26.2.4.2 环境完成仓库全量回归。Bespoke 与 Template 的最终状态仍是逐任务声明，不等于已验证所有 Microsoft PowerPoint、Keynote、模型和用户模板。详见 [Beta发布准备报告](docs/v4.1.0-beta.1-release-readiness.md)。
+v5.0.0-alpha.1 的声明式设计运行时已在开发候选环境完成 768 项全量回归（16 项跳过）及 41 项最终路线回归；它的真实预览样例包含 12 个原生文本与 22 个原生形状。该证据不等于对所有参考图、Microsoft PowerPoint、WPS、模型或用户模板的生产承诺。V4.1 Beta 路线的发布证据仍见 [Beta发布准备报告](docs/v4.1.0-beta.1-release-readiness.md)。
 
 ## 隐私与云端导出
 
@@ -255,6 +280,7 @@ v4.1.0 Beta 1 已在 Python 3.9.6、PptxGenJS 4.0.1 与 LibreOffice 26.2.4.2 环
 ## 文档入口
 
 - [OpenClaw 执行规范](./SKILL.md)
+- [V5 声明式设计工作流](references/declarative-design.md)
 - [V4 三路线架构与执行隔离](docs/v4-three-route-architecture.md)
 - [V4 Bespoke 高定路线](docs/v4-bespoke-architecture-plan.md)
 - [V4 Template / Path C 路线](docs/v4-template-route.md)

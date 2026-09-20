@@ -10,11 +10,21 @@ Convert articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation p
 
 `MeowClaw PPT Smith` is the public display name. The public slug is `meowclaw-pptsmith`; `article-html-to-ppt` and `meowclaw-decksmith` remain compatibility aliases for update continuity.
 
-**Current version:** `4.1.0-beta.1` · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
+**Current version:** `5.0.0-alpha.1` · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
+
+## v5.0 Alpha: declarative design preview
+
+The v5 alpha route accepts checked content, design, scene, asset, and review JSON instead of task-authored drawing code. Its fixed backend produces native editable objects, registers assets by hash, renders a real PPTX preview, and fails closed until the exact build is independently reviewed. It supports image reconstruction, image-led style transfer, and new full-slide design; native template preservation remains on the Template route.
+
+**Verified development sample:** one real native PPTX preview contains **12 editable text objects and 22 native shapes** with no whole-slide screenshot. The candidate also exercises text editing, chart-data replacement, table-cell editing, isolated LibreOffice preview, and hash-bound review records. This is an alpha development proof, not a claim of universal reference fidelity or PowerPoint/WPS parity.
+
+![PPT Smith v5 declarative design — native PPTX preview](./assets/samples/v5-declarative-design-native-preview.png)
+
+Read [the declarative design workflow](references/declarative-design.md) before using `python3 -m engine design`.
 
 **v4.1 Beta readiness:** PPT Smith now exposes three isolated routes. Bespoke lets a capable model author a native editable deck from a blank presentation. Template analyzes a user PPTX, reuses reviewed native components where feasible, and creates style-derived native components only when the template cannot express the content. Standard/Engineering remains the deterministic diagnostic and compatibility route. Bespoke and Template final status remains run-specific and requires real rendering plus hash-bound visual review.
 
-## v4.1 Beta: Model-directed three-route authoring
+## v4.1 Beta compatibility: Model-directed three-route authoring
 
 - **Bespoke:** quality-ceiling authoring from a blank presentation.
 - **Template:** reviewed Component Atlas reuse, whole-page composition, native model-authored gaps, provenance, and fail-closed QA.

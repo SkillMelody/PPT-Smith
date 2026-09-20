@@ -10,6 +10,6 @@ Stdlib-only by design so it ships inside the skill, mirroring
 scripts/validate_contracts.py.
 """
 
-__version__ = "4.0.0-dev"
+__version__ = "5.0.0-alpha.1"
 
 IR_SCHEMA_VERSION = "4.0.0"
