@@ -5,7 +5,7 @@
 - Display name: MeowClaw PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `4.1.0-beta.1`
+- Version: `5.0.1`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` are the machine-readable identity source.
@@ -18,7 +18,7 @@ Run `python3 scripts/check_identity.py` before packaging.
 - public schemas, styles, templates, and component contracts;
 - deterministic builders and QA tooling;
 - the lockfile-pinned PptxGenJS runtime source;
-- public sample images and historical release documentation.
+- public sample images and current operating references.
 
 ## Excluded material
 

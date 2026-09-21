@@ -68,7 +68,7 @@ def main(argv=None):
                       "template": "separate_preservation_route", "automatic_visual_approval": False}
         elif args.command == "init":
             if args.mode == "template":
-                raise DesignError("TEMPLATE_ROUTE_REQUIRED: see docs/v4-template-route.md")
+                raise DesignError("TEMPLATE_ROUTE_REQUIRED: see references/routes/v4-template-route.md")
             task = new_task(args.task_id, mode=args.mode, width=args.width, height=args.height,
                             pages=args.pages, author=args.author, audience=args.audience, target_software=args.target_software)
             with Store(args.task_dir, create=True) as store:

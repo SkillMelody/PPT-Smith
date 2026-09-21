@@ -10,7 +10,7 @@ article-html-to-ppt, meowclaw-decksmith <br>
 ## Description: <br>
 MeowClaw PPTSmith converts articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks with direct PPTX, native dynamic PPTX, and Feishu Slides export routing. <br>
 
-Version 5.0.0-alpha.1 adds a declarative design preview: checked content/design/scene/assets JSON, fixed native-object rendering, hash-bound review and fail-closed delivery. The V4 Bespoke, Template and Standard/Engineering routes remain compatible. Declarative candidates may be called final only after source-bound authoring, structural QA, real rendering, target-software edit checks and independent visual approval complete for that run. Public slug: `meowclaw-pptsmith`. <br>
+Version 5.0.1 adds a declarative design preview: checked content/design/scene/assets JSON, fixed native-object rendering, hash-bound review and fail-closed delivery. The V4 Bespoke, Template and Standard/Engineering routes remain compatible. Declarative candidates may be called final only after source-bound authoring, structural QA, real rendering, target-software edit checks and independent visual approval complete for that run. Public slug: `meowclaw-pptsmith`. <br>
 
 ## Owner
 SkillMelody <br>
@@ -50,12 +50,10 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - [Visual Design Archetypes](references/visual-design-archetypes.md) <br>
 - [Visual Systems Reference](references/visual-systems.md) <br>
 - [Export Pipelines Reference](references/export-pipelines.md) <br>
-- [v1.5 / v2.0 Closeout Checklist](docs/v1.5-v2.0-closeout-checklist.md) <br>
-- [v2.0 Acceptance Report](docs/v2.0-acceptance-report.md) <br>
-- [v4.1.0 Beta 1 Release Notes](docs/v4.1.0-beta.1-release-notes.md) <br>
-- [v4.1.0 Beta 1 Release Readiness](docs/v4.1.0-beta.1-release-readiness.md) <br>
-- [v2.1 RC1 Acceptance Report (historical baseline)](docs/v2.1-rc1-acceptance-report.md) <br>
-- [v2.1 Release Notes (historical)](docs/v2.1-release-notes.md) <br>
+- [Declarative Design Workflow](references/declarative-design.md) <br>
+- [V4 Route Architecture](references/routes/v4-three-route-architecture.md) <br>
+- [Bespoke Route](references/routes/v4-bespoke-route.md) <br>
+- [Template Route](references/routes/v4-template-route.md) <br>
 - [Storyboard Template](templates/storyboard-template.md) <br>
 - [Content Lock Template](templates/content-lock-template.md) <br>
 - [Slide Manifest Template](templates/slide-manifest-template.json) <br>
@@ -77,7 +75,7 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - Verification honesty: Checks whether the final handoff clearly distinguishes generated, rendered, read-back, and final states. <br>
 
 ## Skill Version(s): <br>
-5.0.0-alpha.1 <br>
+5.0.1 <br>
 
 Readiness scope: public Beta on the verified macOS + LibreOffice acceptance environment. Bespoke and Template final readiness remains run-specific; native Microsoft PowerPoint pixel parity is not claimed. <br>
 

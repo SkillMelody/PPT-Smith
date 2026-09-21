@@ -1,15 +1,11 @@
-"""PPT Smith v4 engine: deterministic presentation compiler core.
+"""PPT Smith engine: model-directed authoring, execution, and QA.
 
-The engine owns everything downstream of the Presentation IR contract
-(schemas/v4/): source parsing, extractive fallback IR, provenance
-verification, coverage checks, design policy, layout, rendering, and QA.
-The LLM's only job is to produce an IR; the engine's job is to make a
-deck out of it — deterministically.
-
-Stdlib-only by design so it ships inside the skill, mirroring
-scripts/validate_contracts.py.
+The engine anchors source evidence, executes native PPTX objects, validates
+declared design scenes, renders candidates, and fails closed when delivery
+evidence is incomplete. Model-directed Bespoke and Template routes retain
+their distinct authoring authority; Standard remains diagnostic.
 """
 
-__version__ = "5.0.0-alpha.1"
+__version__ = "5.0.1"
 
 IR_SCHEMA_VERSION = "4.0.0"
