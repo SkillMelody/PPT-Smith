@@ -1,5 +1,5 @@
-# ClawHub distribution excludes scanner-triggering test harness files.
-# Full source and tests remain available in the linked GitHub repository.
+# Public registry distribution contains runtime and usage material only.
+# Development files stay local and are also untracked in the public source tree.
 private-pmo-pack/
 test-runs/
 tests/
@@ -11,3 +11,25 @@ runtime/pptxgenjs/node_modules/
 *.pyc
 __pycache__/
 .DS_Store
+
+# Local development material; excluded from all public platforms.
+docs/
+.worktree/
+.worktrees/
+.ppt-work/
+ppt-work/
+.release-artifacts/
+requirements-dev.txt
+pytest.ini
+scripts/benchmark.py
+scripts/benchmark_v4.py
+scripts/compare_benchmark_runs.py
+scripts/fixture_safety.py
+references/benchmark-methodology.md
+references/gate-enforcement-map.md
+schemas/benchmark-case.schema.json
+schemas/benchmark-report.schema.json
+examples/contracts/invalid/
+references/BUNDLE-AUDIT.json
+references/BUNDLE-AUDIT.md
+templates/benchmark-case-example.json

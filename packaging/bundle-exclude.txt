@@ -20,3 +20,24 @@ cache:*.pyc
 credentials.json
 .last-token
 .netrc
+
+# Runtime distributions must not carry development-only material.
+tests/
+.github/
+docs/
+.worktree/
+.worktrees/
+.ppt-work/
+ppt-work/
+requirements-dev.txt
+pytest.ini
+scripts/benchmark.py
+scripts/benchmark_v4.py
+scripts/compare_benchmark_runs.py
+scripts/fixture_safety.py
+references/benchmark-methodology.md
+references/gate-enforcement-map.md
+schemas/benchmark-case.schema.json
+schemas/benchmark-report.schema.json
+examples/contracts/invalid/
+templates/benchmark-case-example.json

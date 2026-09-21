@@ -5,45 +5,49 @@
 - Display name: MeowClaw PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.1.0-dev.1`
+- Version: `5.1.0`
 - License: Apache-2.0
 
-`VERSION` and `packaging/identity.json` are the machine-readable identity source.
-Run `python3 scripts/check_identity.py` before packaging.
+`VERSION` and `packaging/identity.json` define the release identity.
 
-## Included public capability
+## Included material
 
-- `SKILL.md` and route documentation;
-- declarative create/recreate, compact authoring, and verified revision modules;
-- native Template and legacy Bespoke/Standard engine modules;
-- public schemas, styles, templates, and component contracts;
-- deterministic builders and QA tooling;
-- the lockfile-pinned PptxGenJS runtime source;
-- selected public sample images, editable sample PPTX, measured evidence, and current operating references.
+GitHub, ClawHub and other public distributions contain material needed to
+install, use, inspect and package the Skill:
 
-## Excluded material
+- `SKILL.md`, README usage instructions and route references;
+- runtime engine, native builders, rendering and delivery QA tools;
+- dependency declarations and the pinned PptxGenJS runtime source;
+- schemas, reusable styles, templates and valid authoring examples;
+- branding and selected sample previews, editable PPTX files and concise object data;
+- identity and distribution checks that keep the package self-contained.
 
-The public bundle excludes:
+The v5.0 20-slide research example and v5.1 six-slide policy example retain
+separate counts and original file hashes. A replaceable bitmap is not counted
+as an internally editable native object.
 
-- private PMO and enterprise production packs;
-- raw user inputs, local test runs, private customer decks, and review transcripts;
-- dependency caches and virtual environments;
-- credentials, local environment files, and machine-specific paths;
-- development-only tests and CI configuration from the ClawHub package.
+## Local-only material
 
-The source repository may retain public tests and CI. `.clawhubignore` defines
-the smaller registry distribution boundary; `.gitattributes` defines export
-exclusions for source archives.
+Development tests and fixtures, CI, benchmark harnesses, development notes,
+promotional articles, source PDFs, full review/edit logs, intermediate builds,
+worktrees, caches, credentials and private customer/commercial materials are
+excluded from the public source tree and registry bundle. Local files are
+preserved for development. Exclusion does not rewrite earlier published history.
 
-## Required release checks
+`.gitignore` prevents normal staging of local-only files. `.clawhubignore`
+filters registry packaging, `.gitattributes` filters source exports, and
+`packaging/bundle-exclude.txt` makes their presence fail the archive audit.
+Only intentionally selected usage examples belong in `assets/samples/`.
+
+## Checks
 
 ```bash
 python3 scripts/check_identity.py
 python3 scripts/quick_validate_skill.py
-python3 scripts/bootstrap_pptxgenjs_runtime.py --check
-python3 -m pytest -q
-python3 scripts/audit_bundle.py --mode worktree --check --fail-on-finding
+python3 -m engine design capabilities
 ```
 
-Public release is fail-closed: a dirty release tree, identity drift, a bundle
-audit error, failed test, or missing acceptance report blocks publication.
+The public bundle builder audits the exact selected tree before creating the
+ZIP. Its detailed audit reports and archive manifest stay beside the local
+packaging output; the ZIP contains runtime and usage material. The package
+version does not by itself mean any external platform has been updated.

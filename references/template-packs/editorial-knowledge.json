@@ -6,7 +6,7 @@
   "style_contract": {
     "style_id": "editorial-knowledge",
     "schema_version": "2.0",
-    "ref": "../../tests/fixtures/styles/editorial-knowledge.json"
+    "ref": "../../styles/editorial-knowledge.json"
   },
   "compatible_expression_modes": [
     "textual_argument",

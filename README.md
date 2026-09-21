@@ -8,7 +8,7 @@
 
 把源文档、设计图或原生 PPT 模板，转成有来源、有真实预览、可以继续修改的演示文稿。模型负责理解内容和设计页面，固定后端负责生成原生对象与核验交付。
 
-**当前版本：`5.1.0-dev.1`（开发版，尚未正式发布）。** 公共标识为 `meowclaw-pptsmith`，兼容安装名为 `article-html-to-ppt`、`meowclaw-decksmith`；许可证为 Apache-2.0。
+**当前版本：`5.1.0`。** 公共标识为 `meowclaw-pptsmith`，兼容安装名为 `article-html-to-ppt`、`meowclaw-decksmith`；许可证为 Apache-2.0。
 
 ## 适用场景：三个入口
 
@@ -77,6 +77,57 @@
 
 该候选已通过独立逐页视觉与来源审核，门禁状态为 `final_delivery_ready`。在 **macOS + LibreOffice 26.2.4.2** 中通过 Basic/UNO 修改副本的文字、数字文字及形状颜色，保存、关闭、重开后验证修改保留、6 页备注完整，原候选文件未改变。此为实际应用对象编辑测试，并非 GUI 点击测试；不外推为 Windows/Linux 或 PowerPoint/WPS 实机验证。样例使用 Arial Unicode MS，字体未嵌入，换设备需检查字体与排版。
 
+## v5.0 实测保留：20 页中文研究解读
+
+输入为 67 页 *Agents, robots, and us: How AI reshapes work and skills in Latin America* 报告，输出 20 页《智能体、机器人与我们》中文研究解读，涵盖自动化潜力、经济价值、岗位与技能、国家对照和企业案例。每页均有来源与演讲者备注。这是 v5.0 阶段的真实历史成品，单独统计，不与上面的 v5.1 案例混算。
+
+流程为“源文档 → 完整页面设计图 → 多模态识读与声明式重建 → 原生 PPTX → 实际渲染与验收”。以下保留原交付的 20 页总览图；[下载原始可编辑 PPTX](assets/samples/v5.0-latin-america-ai-zh-native.pptx)，[查看逐页对象数据](assets/samples/v5.0-latin-america-ai-zh-evidence.json)。
+
+![v5.0 智能体、机器人与我们：20 页中文可编辑 PPT 实际渲染总览](assets/samples/v5.0-latin-america-ai-zh-overview.png)
+
+| 对象类别 | 数量 | 可编辑范围 |
+| --- | ---: | --- |
+| 原生文本框 | 274 | 修改文字、字体、字号与颜色 |
+| 原生形状与路径 | 164 | 移动、缩放与改色 |
+| 原生图表 | 7 | 修改数据系列；附 7 个内嵌工作簿 |
+| 原生表格 | 2 | 修改单元格、行列和样式 |
+| **原生可编辑对象合计** | **447** | **274 + 164 + 7 + 2** |
+| 独立封面图片 | 1 | 可整体替换，内部插画元素不可逐个编辑 |
+| **幻灯片对象总数** | **448** | **447 个原生对象 + 1 张图片** |
+
+统计直接读取原交付 PPTX，每个对象只计一次；图表数据点、表格单元格、7 个数据工作簿和 20 页备注不重复计数。
+
+<details>
+<summary>展开 20 页可编辑对象明细</summary>
+
+| 页码 | 文本 | 形状/路径 | 图表 | 表格 | 原生可编辑合计 | 可替换图片 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 7 | 2 | 0 | 0 | 9 | 1 |
+| 2 | 15 | 18 | 0 | 0 | 33 | 0 |
+| 3 | 19 | 6 | 0 | 0 | 25 | 0 |
+| 4 | 13 | 5 | 1 | 0 | 19 | 0 |
+| 5 | 14 | 7 | 1 | 0 | 22 | 0 |
+| 6 | 9 | 3 | 1 | 0 | 13 | 0 |
+| 7 | 9 | 3 | 1 | 0 | 13 | 0 |
+| 8 | 16 | 10 | 0 | 0 | 26 | 0 |
+| 9 | 11 | 5 | 0 | 1 | 17 | 0 |
+| 10 | 13 | 8 | 1 | 0 | 22 | 0 |
+| 11 | 9 | 3 | 1 | 0 | 13 | 0 |
+| 12 | 12 | 5 | 1 | 0 | 18 | 0 |
+| 13 | 15 | 9 | 0 | 0 | 24 | 0 |
+| 14 | 7 | 3 | 0 | 1 | 11 | 0 |
+| 15 | 20 | 9 | 0 | 0 | 29 | 0 |
+| 16 | 15 | 6 | 0 | 0 | 21 | 0 |
+| 17 | 16 | 13 | 0 | 0 | 29 | 0 |
+| 18 | 20 | 9 | 0 | 0 | 29 | 0 |
+| 19 | 17 | 28 | 0 | 0 | 45 | 0 |
+| 20 | 17 | 12 | 0 | 0 | 29 | 0 |
+| **全稿** | **274** | **164** | **7** | **2** | **447** | **1** |
+
+</details>
+
+历史验收在 macOS + LibreOffice 26.2.4.2 中通过 Basic/UNO 修改副本的文字、图表数据、表格数据及图片，保存、关闭、重开后改动均保留。设计图与原生重建在字体、图标、渐变及图表样式上仍有差异，不宣称逐像素 1:1；未进行 PowerPoint/WPS 实机验证。使用的 Hiragino Sans GB、Arial 未嵌入，换设备需核对字体与排版。
+
 ## 怎么用：把目标交给 Agent
 
 让支持读取 Skill、运行本地工具的宿主加载本目录 [SKILL.md](SKILL.md)，然后提供源材料和需求。普通用户无需手写对象 JSON。
@@ -130,7 +181,7 @@
 
 | 测量对象 | 原始/完整 | 优化/紧凑 | 字节减少 |
 | --- | ---: | ---: | ---: |
-| Skill 入口（对比 v5.0.1） | 14,384 | 6,278 | 56.4% |
+| Skill 入口（v5.1 开发验收快照，对比 v5.0.1） | 14,384 | 6,278 | 56.4% |
 | 同一任务作者输入 | 69,702 | 42,808 | 38.6% |
 | 同一构建的 CLI 回显 | 24,550 | 631 | 97.4% |
 
@@ -163,21 +214,19 @@ python -m engine design build --task-dir "$PPTSMITH_TASK" --isolation auto
 
 构建成功仅产生候选。继续使用返回的构建 ID 生成审核表、完成独立审核和真实编辑检查，再执行 `review`、`deliver`。任务目录的 `state.json` 记录接续信息，`task.json`、构建 manifest 和原始审核记录保留完整证据。完整命令见 [声明式工作流](references/declarative-design.md)与 [紧凑输入/局部修订](references/declarative-authoring.md)。
 
-只有使用依赖 PptxGenJS 的兼容构建器或运行相关测试时，才需准备 Node/npm 并执行：
+只有使用依赖 PptxGenJS 的兼容构建器时，才需准备 Node/npm 并执行：
 
 ```bash
 python scripts/bootstrap_pptxgenjs_runtime.py
 ```
 
-该脚本在 `runtime/pptxgenjs` 内执行锁定版本的 `npm ci`。开发测试依赖见 `requirements-dev.txt`。
+该脚本在 `runtime/pptxgenjs` 内执行锁定版本的 `npm ci`。
 
 ## 交付与兼容边界
 
 最终交付包括可编辑 PPTX、实际 PDF/PNG 预览、任务及素材记录、对象清单、审核结论和编辑限制。标题、正文、图形和可恢复的数据优先保留原生编辑能力；未经批准的整页截图不能充当可编辑成品。
 
 PPT 质量与 OS 隔离分别验证。`--isolation auto` 在可用的 macOS 环境选择隔离模式，其他环境选择 host；host 通过质量门禁后可交付，并记录 OS 隔离未验证。显式指定 `--require-os-isolation` 时，能力不足仍阻断。运行时适配不等于所有操作系统或办公软件都已实机通过。
-
-本轮全仓库回归有效结果为 **815 通过、18 跳过**：首轮 786 通过，29 项受宿主沙箱影响的真实渲染测试在获准环境重跑后通过。最后的 CLI 修复后，声明式专项回归 **81 通过、2 跳过**；两组有重叠，不相加。跳过项涉及缺失的参考夹具、示例 deck 和必须在 Windows 实机执行的检查。
 
 原生模板继续使用 [Template 工作流](references/routes/v4-template-route.md)。Bespoke 保留为高级兼容路线，Standard/Engineering 用于明确的工程草稿和诊断。`new_design`、`style_transfer` 新建参数映射到 create；已有旧任务继续遵守原来的目标要求。受限浏览器设计板、模板索引缓存和实际模型成本仪表尚未纳入本版。
 
@@ -208,6 +257,8 @@ PPT 质量与 OS 隔离分别验证。`--isolation auto` 在可用的 macOS 环�
 - [Template 模板复用](references/routes/v4-template-route.md) · [Bespoke 高定兼容](references/routes/v4-bespoke-route.md)
 - [V4 路线架构](references/routes/v4-three-route-architecture.md) · [历史导出能力](references/export-pipelines.md)
 - [样例证据](assets/samples/v5.1-no-image-policy-evidence.json)
+
+GitHub、ClawHub 等公开分发仅包含 Skill 运行代码、依赖声明、使用文档、模板/Schema，以及本文引用的示例与必要数据。开发测试、CI、开发笔记、推广文章、原始输入、完整验收日志、临时产物和本地工作树不进入公开版本。
 
 本地构建和预览不自动发布文件；源材料如何传给宿主模型取决于宿主配置。飞书/Lark 云端创建、上传或分享仅在用户授权相应交付时执行。
 

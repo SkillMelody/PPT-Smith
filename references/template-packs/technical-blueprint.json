@@ -6,7 +6,7 @@
   "style_contract": {
     "style_id": "technical-blueprint",
     "schema_version": "2.0",
-    "ref": "../../tests/fixtures/styles/technical-blueprint.json"
+    "ref": "../../styles/technical-blueprint.json"
   },
   "compatible_expression_modes": [
     "textual_argument",

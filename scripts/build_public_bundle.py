@@ -79,7 +79,10 @@ def audit_tree(destination: Path) -> None:
 
 
 def write_zip(source: Path, target: Path) -> tuple[int, str]:
-    files = sorted(path for path in source.rglob("*") if path.is_file())
+    files = sorted(
+        path for path in source.rglob("*")
+        if path.is_file() and path.relative_to(source).as_posix() not in GENERATED_AUDIT
+    )
     with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for path in files:
             relative = path.relative_to(source).as_posix()

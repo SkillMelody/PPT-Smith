@@ -228,13 +228,9 @@ Fail when:
 - required media is missing;
 - render/readback evidence is claimed but not actually available.
 
-## Gate 9: Benchmark Calibration
+## Gate 9: Independent Quality Scoring
 
-For releases or major prompt/tooling changes, run:
-
-```bash
-python3 scripts/benchmark.py --use-reference-rubric
-```
+Record the actual deck review using `schemas/rubric-score.schema.json`.
 
 Read the result as two independent gates:
 

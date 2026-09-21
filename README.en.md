@@ -8,7 +8,7 @@
 
 Turn source documents, slide design images, or native PPTX templates into editable presentations with source evidence and real rendered previews. The model develops the narrative and design; a fixed backend creates native objects and checks delivery evidence.
 
-**Current version: `5.1.0-dev.1` (development version, not a formal release).** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+**Current version: `5.1.0`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
 
 ## Three ways to use it
 
@@ -77,6 +77,57 @@ This example contains **0 images, 0 native charts, 0 native tables, and 0 groups
 
 The candidate passed independent review of all pages and source content, reaching `final_delivery_ready`. On **macOS with LibreOffice 26.2.4.2**, Basic/UNO changed text, numeric text, and a shape fill on a disposable copy. Saving, closing, and reopening preserved the edits and all six notes; the original candidate stayed unchanged. This is an actual application-object edit test, not GUI clicking, and does not establish Windows/Linux or PowerPoint/WPS compatibility. The sample uses Arial Unicode MS without font embedding; verify fonts and layout on another device.
 
+## Retained v5.0 example: a 20-slide Chinese research overview
+
+A 67-page report, *Agents, robots, and us: How AI reshapes work and skills in Latin America*, became a 20-slide Chinese overview covering automation potential, economic value, jobs and skills, country comparisons, and business cases. All 20 slides have sources and speaker notes. This is the original v5.0-era output, counted separately from the v5.1 example above.
+
+The workflow was source document → complete slide design images → multimodal interpretation and declarative reconstruction → native PPTX → real rendering and acceptance. The original contact sheet is preserved below. [Download the original editable PPTX](assets/samples/v5.0-latin-america-ai-zh-native.pptx) or inspect [per-slide object data](assets/samples/v5.0-latin-america-ai-zh-evidence.json).
+
+![v5.0 Agents, robots, and us: actual rendered overview of 20 Chinese slides](assets/samples/v5.0-latin-america-ai-zh-overview.png)
+
+| Object type | Count | Editing scope |
+| --- | ---: | --- |
+| Native text boxes | 274 | Text, font, size and colour |
+| Native shapes and paths | 164 | Position, size and colour |
+| Native charts | 7 | Editable data series with 7 embedded workbooks |
+| Native tables | 2 | Cells, rows, columns and styling |
+| **Native editable objects** | **447** | **274 + 164 + 7 + 2** |
+| Separate cover image | 1 | Replace as a whole; illustration elements are not individually editable |
+| **Total slide objects** | **448** | **447 native objects + 1 image** |
+
+Counts are read directly from the original PPTX. Each object is counted once; chart points, table cells, embedded workbooks and notes are not counted again.
+
+<details>
+<summary>Show all 20 slides' object counts</summary>
+
+| Slide | Text | Shapes/paths | Charts | Tables | Native editable | Replaceable images |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 7 | 2 | 0 | 0 | 9 | 1 |
+| 2 | 15 | 18 | 0 | 0 | 33 | 0 |
+| 3 | 19 | 6 | 0 | 0 | 25 | 0 |
+| 4 | 13 | 5 | 1 | 0 | 19 | 0 |
+| 5 | 14 | 7 | 1 | 0 | 22 | 0 |
+| 6 | 9 | 3 | 1 | 0 | 13 | 0 |
+| 7 | 9 | 3 | 1 | 0 | 13 | 0 |
+| 8 | 16 | 10 | 0 | 0 | 26 | 0 |
+| 9 | 11 | 5 | 0 | 1 | 17 | 0 |
+| 10 | 13 | 8 | 1 | 0 | 22 | 0 |
+| 11 | 9 | 3 | 1 | 0 | 13 | 0 |
+| 12 | 12 | 5 | 1 | 0 | 18 | 0 |
+| 13 | 15 | 9 | 0 | 0 | 24 | 0 |
+| 14 | 7 | 3 | 0 | 1 | 11 | 0 |
+| 15 | 20 | 9 | 0 | 0 | 29 | 0 |
+| 16 | 15 | 6 | 0 | 0 | 21 | 0 |
+| 17 | 16 | 13 | 0 | 0 | 29 | 0 |
+| 18 | 20 | 9 | 0 | 0 | 29 | 0 |
+| 19 | 17 | 28 | 0 | 0 | 45 | 0 |
+| 20 | 17 | 12 | 0 | 0 | 29 | 0 |
+| **Total** | **274** | **164** | **7** | **2** | **447** | **1** |
+
+</details>
+
+Historical acceptance used macOS + LibreOffice 26.2.4.2 through Basic/UNO to edit text, chart data, table data and the cover image on a copy. Changes persisted after saving, closing and reopening. Reconstruction retains differences in fonts, icons, gradients and chart styling; pixel-perfect 1:1 fidelity is not claimed. PowerPoint/WPS was not tested. Hiragino Sans GB and Arial are not embedded; recheck fonts and layout on another device.
+
 ## How to use it with an agent
 
 Load this directory's [SKILL.md](SKILL.md) in a host that can read Skills and execute local tools. Supply the source and intended outcome. Users do not need to write object JSON themselves.
@@ -132,7 +183,7 @@ Measurements for the same six-slide task, with exact semantic round-trip validat
 
 | Measurement | Original/full bytes | New/compact bytes | Reduction |
 | --- | ---: | ---: | ---: |
-| Skill entry, compared with v5.0.1 | 14,384 | 6,278 | 56.4% |
+| Skill entry at v5.1 development acceptance, compared with v5.0.1 | 14,384 | 6,278 | 56.4% |
 | Author input for the same task | 69,702 | 42,808 | 38.6% |
 | CLI feedback for the same build | 24,550 | 631 | 97.4% |
 
@@ -165,21 +216,19 @@ python -m engine design build --task-dir "$PPTSMITH_TASK" --isolation auto
 
 A successful build is a candidate. Use its build ID to prepare the review, complete independent review and actual editing checks, then run `review` and `deliver`. `state.json` records continuation details; the task, build manifest, and original review retain full evidence. See [the workflow](references/declarative-design.md) and [compact authoring/revisions](references/declarative-authoring.md).
 
-Only compatibility builders and tests using PptxGenJS require Node/npm plus:
+Only compatibility builders using PptxGenJS require Node/npm plus:
 
 ```bash
 python scripts/bootstrap_pptxgenjs_runtime.py
 ```
 
-The script runs lockfile-pinned `npm ci` inside `runtime/pptxgenjs`. Development dependencies are listed in `requirements-dev.txt`.
+The script runs lockfile-pinned `npm ci` inside `runtime/pptxgenjs`.
 
 ## Delivery and compatibility boundaries
 
 Final delivery includes editable PPTX, actual PDF/PNG previews, task and asset records, object inventory, review decisions, and editing limitations. Text, shapes, and recoverable data remain native wherever supported. An unapproved whole-slide screenshot cannot stand in for an editable deck.
 
 Quality acceptance and OS isolation are separate. `--isolation auto` selects macOS isolation where available and host execution elsewhere. Host execution can deliver after quality checks, with OS isolation recorded as unverified. Explicit `--require-os-isolation` still blocks when isolation is unavailable. Runtime adapters do not establish actual application parity across operating systems.
-
-The full regression run produced **815 effective passes and 18 skips**: 786 passed initially, and 29 real-render tests affected by the host sandbox passed after an authorized rerun. After the final CLI fixes, the declarative subset had **81 passes and 2 skips**. These sets overlap and must not be added. Skips cover unavailable reference fixtures, sample decks, and checks requiring actual Windows semantics.
 
 Native template preservation continues through [Template](references/routes/v4-template-route.md). Bespoke is an advanced compatibility route; Standard/Engineering serves explicit engineering drafts and diagnostics. New `new_design` and `style_transfer` initializations map to create, while saved legacy tasks retain their original target requirements. A restricted browser design board, template-index cache, and measured model-cost dashboard are not included in this version.
 
@@ -210,6 +259,8 @@ More historical assets are in the [sample directory](assets/samples/).
 - [Template reuse](references/routes/v4-template-route.md) · [Bespoke compatibility](references/routes/v4-bespoke-route.md)
 - [V4 route architecture](references/routes/v4-three-route-architecture.md) · [Historical export capabilities](references/export-pipelines.md)
 - [Sample evidence](assets/samples/v5.1-no-image-policy-evidence.json)
+
+Public distributions on GitHub, ClawHub and similar platforms contain Skill runtime code, dependency declarations, usage documentation, templates/schemas, and the referenced examples with supporting data. Development tests, CI, development notes, promotional articles, raw inputs, full acceptance logs, temporary outputs and local worktrees remain outside the public version.
 
 Local building and rendering do not publish files. Source handling by the model depends on the host configuration. Feishu/Lark creation, upload, or sharing requires user authorization for that delivery.
 

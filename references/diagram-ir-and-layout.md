@@ -64,7 +64,7 @@ Line style is secondary and should normally come from Style Contract `diagram_to
 Run:
 
 ```bash
-python3 scripts/validate_diagram_ir.py --diagram tests/fixtures/diagrams/process-simple.json --strict
-python3 scripts/analyze_diagram_complexity.py --diagram tests/fixtures/diagrams/ecosystem-complex.json --json-output
-python3 scripts/recommend_diagram_layout.py --diagram tests/fixtures/diagrams/layered-agent-architecture.json
+python3 scripts/validate_diagram_ir.py --diagram examples/contracts/valid/diagram-ir.json --strict
+python3 scripts/analyze_diagram_complexity.py --diagram examples/contracts/valid/diagram-ir.json --json-output
+python3 scripts/recommend_diagram_layout.py --diagram examples/contracts/valid/diagram-ir.json
 ```

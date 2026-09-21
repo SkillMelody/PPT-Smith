@@ -97,9 +97,3 @@ python3 -m engine compile \
 python3 -m engine compile --source doc:markdown:source.md \
   --style styles/my-brand.json --output-dir out/
 ```
-
-## 测试
-
-```bash
-python3 -m pytest tests/unit/test_template_from_pptx.py -q
-```

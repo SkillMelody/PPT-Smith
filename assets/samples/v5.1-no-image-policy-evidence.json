@@ -1,7 +1,6 @@
 {
   "schema_version": "1.0",
   "sample": "v5.1 no-image Chinese policy overview",
-  "skill_version": "5.1.0-dev.1",
   "source_commit": "af4b1d2eb052920c38ea472bbc7714a22ffc06c0",
   "build_id": "build-6bb1c937745a4e1588bc500a69aa56fc",
   "input": {
@@ -203,5 +202,7 @@
     "Arial Unicode MS was used; fonts are not embedded. Recheck fonts and layout on another device.",
     "Byte sizes are not measured model token usage or billing.",
     "The native preview demonstrates programmatic design; this sample is not an image-reconstruction fidelity benchmark."
-  ]
+  ],
+  "sample_build_version": "5.1.0-dev.1",
+  "documented_release_version": "5.1.0"
 }

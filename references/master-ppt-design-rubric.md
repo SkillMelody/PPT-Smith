@@ -111,14 +111,8 @@ Revise before handoff if any condition is true:
 - key technical diagrams have connector webs or unclear ownership boundaries;
 - ordinary card, table, matrix, metric, or simple chart content is rasterized without explicit approval.
 
-## Benchmark Calibration
+## Scoring Evidence
 
-Formal scoring should be calibrated against `tests/fixtures/benchmark/` and the contracts in:
-
-- `schemas/benchmark-case.schema.json`
-- `schemas/rubric-score.schema.json`
-- `schemas/benchmark-report.schema.json`
-
-The benchmark keeps QA hard gates and the 18-point rubric decoupled. A deck fails production readiness when QA has `fatal` or `error` issues even if the rubric total is at least 14. A deck also fails quality when the score is below 14 or any dimension is 0, even if QA has no hard error.
+Record formal scores with `schemas/rubric-score.schema.json`. Keep QA hard gates and the 18-point rubric independent: QA `fatal` or `error` issues block production readiness even when the rubric total reaches 14. A total below 14 or any dimension scored 0 also requires revision.
 
 Automatic metrics may inform a dimension, but they do not replace human or configured model judgment. If no scorer is available, the scorecard must say `manual_review_required` instead of inventing final dimension scores.

@@ -14,3 +14,26 @@ styles/v4.0-backup/
 
 # Private commercial extension is maintained outside the public release tree.
 private-pmo-pack/
+
+# Local development material; excluded from all public platforms.
+tests/
+.github/
+docs/
+.worktree/
+.worktrees/
+.ppt-work/
+ppt-work/
+requirements-dev.txt
+pytest.ini
+scripts/benchmark.py
+scripts/benchmark_v4.py
+scripts/compare_benchmark_runs.py
+scripts/fixture_safety.py
+references/benchmark-methodology.md
+references/gate-enforcement-map.md
+schemas/benchmark-case.schema.json
+schemas/benchmark-report.schema.json
+examples/contracts/invalid/
+references/BUNDLE-AUDIT.json
+references/BUNDLE-AUDIT.md
+templates/benchmark-case-example.json

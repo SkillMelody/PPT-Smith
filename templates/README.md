@@ -12,10 +12,7 @@ python3 scripts/validate_contracts.py --ppt-ir my-deck.ppt-ir.json --style my-st
 
 ## Authoring notes
 
-Previously each example carried a top-level `deprecated` note. Every v2 schema
-sets `additionalProperties: false`, so that key made the example itself
-schema-invalid and an agent copying it hit a validation error on the very field
-that said "example only". The notes now live here instead.
+Use sample text only to understand the contract; replace it with the current source material.
 
 | Template | Note |
 | --- | --- |
@@ -29,22 +26,18 @@ that said "example only". The notes now live here instead.
 | `capability-report-example.json` | Emitted by `scripts/capability_probe.py`. Never handwrite a capability claim; the probe is the only authority on what a Builder supports. |
 | `delivery-manifest-example.json` | Emitted by `scripts/package_delivery.py`. Contract is `schemas/delivery-manifest.schema.json`. |
 | `rubric-score-example.json` | Emitted by `scripts/score_deck.py`. For Premium final, the reference rubric must be supplied explicitly. |
-| `benchmark-case-example.json` | Benchmark case shape for `scripts/benchmark.py`. See `references/benchmark-methodology.md`. |
 
-## Fully worked, schema-valid inputs
+## Public example inputs
 
-For a complete nine-slide set that the pipeline accepts as-is, use the
-acceptance fixtures rather than these single-file examples:
+Small contract examples are in `examples/contracts/valid/`. Reusable style
+contracts are in `styles/`; local development fixtures are not distributed.
 
-```text
-tests/fixtures/v2-acceptance/ppt-ir.json
-tests/fixtures/v2-acceptance/style-contract-editorial.json
-tests/fixtures/v2-acceptance/style-contract-technical.json
-tests/fixtures/v2-acceptance/requirements-fast.json
-tests/fixtures/v2-acceptance/requirements-premium.json
+```bash
+python3 scripts/validate_contracts.py --ppt-ir examples/contracts/valid/ppt-ir.json --style examples/contracts/valid/style-contract.json --strict
 ```
 
-`SKILL.md` -> "Minimal Standard Run" shows the exact command line that consumes them.
+For document-driven creation and image reconstruction, follow the current
+[Skill entry](../SKILL.md) and [declarative workflow](../references/declarative-design.md).
 
 ## Markdown templates
 

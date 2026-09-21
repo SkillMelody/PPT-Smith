@@ -5,7 +5,7 @@ metadata:
   display_name: "MeowClaw PPT Smith"
   english_alias: "MeowClaw PPT Smith"
   public_slug: "meowclaw-pptsmith"
-  version: "5.1.0-dev.1"
+  version: "5.1.0"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 

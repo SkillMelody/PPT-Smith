@@ -2,7 +2,7 @@
 
 Use style systems as complete design languages, not skins. **Every style in this file is bound to one or more named palette contracts with exact hex values.** The build must read the full `style-contract.json`; do not invent colors, font sizes, spacing, radius values, table styles, chart colors, connector widths, image crop rules, or footer styling at build time. If a style needs a new palette or token set, add it to this file first, then update the matching style contract fixture.
 
-Strict style fixtures live under `tests/fixtures/styles/`:
+Reusable style contracts live under `styles/`:
 
 - `consulting-light.json`
 - `product-report.json`
@@ -13,7 +13,7 @@ Strict style fixtures live under `tests/fixtures/styles/`:
 Each fixture must pass:
 
 ```bash
-python3 scripts/validate_contracts.py --style tests/fixtures/styles/<style-id>.json --strict
+python3 scripts/validate_contracts.py --style styles/<style-id>.json --strict
 ```
 
 Global color usage rules (apply to every palette):
