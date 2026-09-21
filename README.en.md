@@ -10,9 +10,9 @@ Convert articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation p
 
 `MeowClaw PPT Smith` is the public display name. The public slug is `meowclaw-pptsmith`; `article-html-to-ppt` and `meowclaw-decksmith` remain compatibility aliases for update continuity.
 
-**Current version:** `5.0.0-alpha.1` · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
+**Current version:** `5.0.1` · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
 
-## v5.0 Alpha: declarative design preview
+## v5.0.1: declarative design preview
 
 The v5 alpha route accepts checked content, design, scene, asset, and review JSON instead of task-authored drawing code. Its fixed backend produces native editable objects, registers assets by hash, renders a real PPTX preview, and fails closed until the exact build is independently reviewed. It supports image reconstruction, image-led style transfer, and new full-slide design; native template preservation remains on the Template route.
 
@@ -44,7 +44,7 @@ python scripts/quick_validate_skill.py
 python -m engine --help
 ```
 
-See the [v4.1.0 Beta 1 release notes](docs/v4.1.0-beta.1-release-notes.md) and [release readiness report](docs/v4.1.0-beta.1-release-readiness.md).
+Read the [declarative design workflow](references/declarative-design.md) and the [three-route guide](references/routes/v4-three-route-architecture.md).
 
 ## Historical v3.0 baseline
 
@@ -295,9 +295,8 @@ Before Feishu/Lark export, confirm that the user intended cloud delivery. Do not
 - `SKILL.md` - the actual OpenClaw skill document.
 - `skill-card.md` - public-facing skill card metadata.
 - `README.md` - public documentation entry for `MeowClaw 夜猫 PPT 工坊` / `MeowClaw PPTSmith`, while preserving the `article-html-to-ppt` compatibility route.
-- `docs/migration-v1.1-to-v1.2.md` - migration guide for older manifests and templates.
-- `docs/v1.5-v2.0-closeout-checklist.md` - completed closeout criteria and remaining Premium external acceptance item.
-- `docs/v2.0-acceptance-report.md` - canonical Standard acceptance verdict, evidence, provenance, and limitations.
+- `references/migration-v1.1-to-v1.2.md` - migration guide for older manifests and templates.
+- `references/routes/` - current route guides for Bespoke, Template, Standard, and legacy style packs.
 - `references/export-pipelines.md` - export routing for PPTX, dynamic PPTX, Feishu Slides, and HTML.
 - `references/visual-design-archetypes.md` - visual direction archetypes.
 - `references/visual-systems.md` - reusable visual system constraints.
@@ -315,9 +314,9 @@ Before Feishu/Lark export, confirm that the user intended cloud delivery. Do not
 
 ## Version
 
-4.1.0-beta.1
+5.0.1
 
-The Beta claim is limited to the recorded Python, PptxGenJS, and LibreOffice acceptance environment. Native Microsoft PowerPoint pixel parity has not been verified.
+The declarative design route is a preview: it retains V4 route compatibility but does not claim universal reference fidelity or Microsoft PowerPoint/WPS pixel parity.
 
 ## Publishing Note
 

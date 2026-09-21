@@ -11,14 +11,14 @@
 - **公开品牌：** MeowClaw PPT Smith
 - **兼容安装名：** `article-html-to-ppt`、`meowclaw-decksmith`
 - **兼容搜索词：** MeowClaw PPTSmith、MeowClaw 夜猫 PPT 工坊
-- **当前版本：** `5.0.0-alpha.1`（声明式设计预览；保留 V4 三路线兼容能力）
+- **当前版本：** `5.0.1`（声明式设计预览；保留 V4 三路线兼容能力）
 - **公共标识：** `meowclaw-pptsmith`
 - **许可证：** `Apache-2.0`
 - **开源定位：** 核心引擎、基础五风格、通用组件、可编辑对象、QA 与可信交付
 
 > PPTSmith 的 GitHub / ClawHub 开源版用于分发、获客与建立可信度。专业生产包、企业品牌适配、专属页面原型、定制组件和代生成/部署服务采用独立商业交付，不包含在本仓库与 ClawHub 包中。
 
-## v5.0 Alpha：声明式设计预览
+## v5.0.1：声明式设计预览
 
 v5 将“模型直接写构建脚本”收敛为受约束的设计任务：模型提交内容、设计、场景、素材和审核记录；固定后端负责原生对象、素材边界、真实渲染和交付状态。它适用于图片复刻、参考图风格迁移和新页面设计；原生模板保留仍使用 Template 路线。
 
@@ -27,12 +27,14 @@ v5 将“模型直接写构建脚本”收敛为受约束的设计任务：模�
 1. **声明式全页场景**：原生文字、形状、曲线、图表、表格、分组和独立图片均由 JSON 合同描述；未知字段、脚本、表达式、外部 URL、SVG 载荷与路径穿越会被拒绝。
 2. **内容与设计分离**：可见文字、图表数据、表格单元格、来源和备注先锁定；设计节点仅引用内容 ID，避免把业务文案藏在绘图代码里。
 3. **参考图与目标图区分**：复刻、风格迁移、新设计和草稿有不同目标规则；新内容不能把旧参考图当作像素目标。
-4. **素材与隔离执行**：素材按哈希、页面范围、裁片和实际工具回执登记；执行器限制目录、网络、资源与构建时间，并用私有 LibreOffice 配置生成真实预览。
+4. **素材与执行边界**：素材按哈希、页面范围、裁片和实际工具回执登记；固定 worker 限制任务 I/O、输入输出和构建时间，并用私有 LibreOffice 配置生成真实预览。macOS 隔离模式另限制文件访问与 IP 网络；host 模式不宣称具备 OS 隔离。
 5. **失败关闭式交付**：构建、预览、审核、目标软件编辑检查和哈希必须匹配；候选稿不会因生成成功自动变成最终交付。
+
+跨平台入口默认 `--isolation auto`，没有可用 macOS 隔离时采用 `host`。Linux、Windows 和 macOS 的本地 host 构建通过全部 PPT 质量门禁后均可交付，并保留“OS 隔离未验证”的记录；需要强制隔离的环境使用 `--require-os-isolation`，能力不足即阻断。依赖、字体、平台适配与验证边界见[运行说明](references/declarative-design.md#跨平台运行条件)。
 
 ### 声明式设计实际样例
 
-下图为 `5.0.0-alpha.1` 开发候选的一页真实原生 PPTX 预览：设计目标保持“内容先行 → 视觉定稿 → 原生重建”的三步结构，而不是将整页设计图直接贴入 PPT。
+下图为 `5.0.1` 开发候选的一页真实原生 PPTX 预览：设计目标保持“内容先行 → 视觉定稿 → 原生重建”的三步结构，而不是将整页设计图直接贴入 PPT。
 
 - **实际原生对象：** 12 个可编辑文本对象 + 22 个原生形状，整页截图为 0；
 - **可编辑验证：** 文本改写、图表数据替换和表格单元格改写均有自动回读测试；
@@ -76,40 +78,6 @@ python -m engine --help
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
-
-### 历史：3.0.0 双路径基线
-
-v3.0.0 将两条有明确边界的生成路径产品化：
-
-- **Path A（高定代码路径）**：LLM 直接使用 `python-pptx` 编写独立构建脚本，保留 v1.2.0 曾经展现的非对称构图、飞轮、复杂原生箭头与逐页精修能力。触发词包括「精细做」「高定模式」「手写代码生成」「和之前 State of AI 一样」「质量优先」。
-- **Path B（标准 IR / Pipeline 路径）**：以 PPT IR、Style Contract、组件路由、真实渲染与 QA 交付可追溯的稳定生产底线；IR 完整性与证据质量门禁要求主数据和独立证据都绑定来源，信息不足时以命名 blocker 停止，绝不因渲染成功而误标为 `verified`。适合批量、标准化、PMO/PRD/技术材料及需审计任务。
-
-两条路径不是优劣替代：Path A 追求模型能力所能达到的视觉上限，正式交付仍需真实渲染与人工视觉复核；Path B 追求可验证与可重复的生产下限。详见 [v3.0.0 发布说明、v1.2.0 对比与多模型试验](docs/v3.0.0-release-notes.md)。
-
-- 新增任务路由、Page Design Intent、Visual Planner、Deck Rhythm Gate 与受约束的二次精修请求。
-- 新增原生可编辑热力矩阵、分层架构、指标下钻阶梯和阶段路线图 Renderer。
-- Standard QA 阻断严重文本溢出、低对比文字、箭头凹口不安全文本、旧渲染证据和核心信息不可编辑。
-- macOS PowerPoint 渲染路径改用 `osascript` 参数传递；测试夹具清理被限制在固定目录；能力探测只披露当前样式要求的字体。
-- 保留 2.0.7 的原生连接器、端点绑定与图拓扑门禁；新版能力为增量升级。
-- Standard 已在 macOS + LibreOffice 验收环境验证；Premium 仍需每次运行完成真实渲染、零错误 QA、评分和人工视觉复核。
-
-![PPTSmith 3.0 Hero Showcase](assets/branding/pptsmith-2.1-hero-showcase-overview.png)
-
-### 2.0.7 连接器路由与图拓扑门禁
-
-- 同轴相邻节点使用直线，跨行流程与总线使用原生肘形折线，反馈与恢复路径使用原生曲线。
-- 多对一和一对多关系改用总线与短支线，禁止中心节点放射成不可读线团。
-- QA 阻断连接器穿越无关节点或文字、主连接线交叉、悬空箭头和缺少层间路由通道。
-- 复杂技术图必须先做单页放大渲染验收，再进入整套构建与联系表检查。
-- 保留 2.0.6 的公开名称 **MeowClaw PPT Smith** 与 SEO/兼容别名，不回退旧展示名。
-
-### 2.0.5 质量安全修复
-
-- 简单流程图使用**单一带箭头连接器对象**，箭头不再由独立三角形或 chevron 色块模拟。
-- `python_pptx` 流程连接器绑定两端形状连接点；移动节点时关系随之更新。
-- Standard 能力按组件判定：复杂架构、层级、矩阵、飞轮、生态图与商业阶梯没有合格实现时直接阻断，不降级成文字框。
-- QA 阻断未声明的空白实色色块，避免残留箭头头部、意外覆盖层和偶发多余色块。
-- 文件可打开、文字可编辑、无越界、非空白只是结构条件，不再视为专业视觉质量证明。
 
 ## 样例图库
 
@@ -271,7 +239,7 @@ PPTSmith 不把“文件生成成功”等同于“最终完成”：
 - **Verified**：合同、结构、QA 与证据通过验证。
 - **Final**：满足对应生产档位的全部可信门槛。
 
-v5.0.0-alpha.1 的声明式设计运行时已在开发候选环境完成 768 项全量回归（16 项跳过）及 41 项最终路线回归；它的真实预览样例包含 12 个原生文本与 22 个原生形状。该证据不等于对所有参考图、Microsoft PowerPoint、WPS、模型或用户模板的生产承诺。V4.1 Beta 路线的发布证据仍见 [Beta发布准备报告](docs/v4.1.0-beta.1-release-readiness.md)。
+v5.0.1 的声明式设计运行时已在开发候选环境完成 768 项全量回归（16 项跳过）及 41 项最终路线回归；真实预览样例包含 12 个原生文本与 22 个原生形状。该证据不等于对所有参考图、Microsoft PowerPoint、WPS、模型或用户模板的生产承诺。
 
 ## 隐私与云端导出
 
@@ -281,19 +249,13 @@ v5.0.0-alpha.1 的声明式设计运行时已在开发候选环境完成 768 项
 
 - [OpenClaw 执行规范](./SKILL.md)
 - [V5 声明式设计工作流](references/declarative-design.md)
-- [V4 三路线架构与执行隔离](docs/v4-three-route-architecture.md)
-- [V4 Bespoke 高定路线](docs/v4-bespoke-architecture-plan.md)
-- [V4 Template / Path C 路线](docs/v4-template-route.md)
-- [v4.1.0 Beta 1 发布说明](docs/v4.1.0-beta.1-release-notes.md)
-- [v4.1.0 Beta 1 发布准备报告](docs/v4.1.0-beta.1-release-readiness.md)
+- [V4 三路线架构与执行隔离](references/routes/v4-three-route-architecture.md)
+- [V4 Bespoke 高定路线](references/routes/v4-bespoke-route.md)
+- [V4 Template / Path C 路线](references/routes/v4-template-route.md)
+- [V4 Template 通用化约束](references/routes/v4-template-generalization.md)
+- [旧版本迁移指南](references/migration-v1.1-to-v1.2.md)
 - [英文 README](./README.en.md)
-- [v3.0.0 发布说明与 v1.2.0 对比](docs/v3.0.0-release-notes.md)
-- [v2.1 RC1 验收报告（历史基线）](docs/v2.1-rc1-acceptance-report.md)
-- [v2.1 发布说明（历史）](docs/v2.1-release-notes.md)
-- [v2.0 验收报告](docs/v2.0-acceptance-report.md)
-- [v1.5 → v2.0 收口清单](docs/v1.5-v2.0-closeout-checklist.md)
 - [生产配置说明](references/production-profiles.md)
-- [五套视觉系统](references/five-style-master-systems.md)
 - [组件交付与 Builder 适配](references/builder-adapters.md)
 - [验证体系](references/verification-harness.md)
 

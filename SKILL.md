@@ -5,7 +5,7 @@ metadata:
   display_name: "MeowClaw PPT Smith"
   english_alias: "MeowClaw PPT Smith"
   public_slug: "meowclaw-pptsmith"
-  version: "5.0.0-alpha.1"
+  version: "5.0.1"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
@@ -33,8 +33,13 @@ requests exclude notes, source paths and internal identifiers. Record actual
 tool results; use null for tool metadata that was not returned.
 
 `candidate_unreviewed`, `draft`, and `render_incomplete` are not final delivery.
-An independent page and object review, matching input/output hashes, verified
-execution isolation and target-software edit checks are required by `deliver`.
+An independent page and object review, matching input/output hashes, actual
+rendering, resolved fonts and target-software edit checks are required by `deliver`.
+Use `--isolation auto` (the default): macOS uses its available sandbox; other
+environments use the fixed local host worker. Host execution can pass PPT quality
+acceptance and must retain `os_isolation_verified: false` in the delivery record.
+OS isolation is a separate deployment policy: use `--require-os-isolation` when
+it is required; never downgrade that requirement or claim host mode is sandboxed.
 Keep original references, confirmed targets and actual PPTX previews distinct.
 
 The V4 compatibility routes below remain available. Explicit PPTX template
@@ -79,7 +84,7 @@ required. The model authors the narrative, geometry, native charts, diagrams,
 and visual system from a blank presentation. A reference deck may guide style,
 but is not claimed as a preserved template.
 
-Read [docs/v4-bespoke-architecture-plan.md](docs/v4-bespoke-architecture-plan.md).
+Read [the Bespoke route guide](references/routes/v4-bespoke-route.md).
 
 ### Template — model-directed component reuse
 
@@ -116,7 +121,7 @@ original one from the template's typography, palette, spacing, line, and icon
 grammar and declare `style_derived_original`; do not force an unrelated template
 component into that role.
 
-Read [docs/v4-template-route.md](docs/v4-template-route.md).
+Read [the Template route guide](references/routes/v4-template-route.md).
 
 ### Standard / Engineering — diagnostic only
 
@@ -124,7 +129,7 @@ Use for deterministic smoke tests, schema checks, layout diagnostics, or an
 explicitly requested engineering draft. Standard output is not a final-quality
 substitute for model-authored Bespoke or Template work.
 
-Read [docs/v4-three-route-architecture.md](docs/v4-three-route-architecture.md).
+Read [the three-route guide](references/routes/v4-three-route-architecture.md).
 
 ## Required model workflow
 
@@ -289,10 +294,9 @@ unreviewed or semantically mismatched components merely to increase reuse.
 Template-only page-composition and component-suitability gates must not be
 imported into Bespoke or Standard runtimes.
 
-- [V4 route architecture](docs/v4-three-route-architecture.md)
-- [Bespoke route](docs/v4-bespoke-architecture-plan.md)
-- [Template route](docs/v4-template-route.md)
-- [Template generalization contract](docs/v4-template-generalization.md)
-- [Legacy Standard style-pack guide](docs/template-authoring-guide.md)
-- [Template whole-page design plan](docs/v4-template-whole-page-design-plan.md)
+- [V4 route architecture](references/routes/v4-three-route-architecture.md)
+- [Bespoke route](references/routes/v4-bespoke-route.md)
+- [Template route](references/routes/v4-template-route.md)
+- [Template generalization contract](references/routes/v4-template-generalization.md)
+- [Legacy Standard style-pack guide](references/routes/legacy-standard-style-pack.md)
 - [Presentation IR examples](schemas/v4/examples/)

@@ -1,4 +1,4 @@
-"""Bounded processes, macOS isolation, environment identity, and real rendering."""
+"""Portable bounded processes, optional OS isolation, and real rendering."""
 from __future__ import annotations
 
 import importlib.metadata
@@ -17,15 +17,68 @@ from .store import DesignError, Store, digest
 CODE_ROOT = Path(__file__).resolve().parents[2]
 
 
+def find_tool(name):
+    path = shutil.which(name)
+    if path:
+        if os.name == "nt" and name == "soffice" and Path(path).with_suffix(".com").is_file():
+            path = str(Path(path).with_suffix(".com"))
+        return str(Path(path).absolute())
+    if name == "soffice":
+        candidates = [Path("/Applications/LibreOffice.app/Contents/MacOS/soffice")]
+        if os.name == "nt":
+            candidates = [Path(os.environ[key]) / "LibreOffice/program/soffice.com"
+                          for key in ("ProgramFiles", "ProgramFiles(x86)") if key in os.environ]
+        return next((str(p) for p in candidates if p.is_file()), None)
+    return None
+
+
+def select_isolation(requested="auto"):
+    if requested not in {"auto", "host", "macos"}:
+        raise DesignError("UNKNOWN_ISOLATION_MODE")
+    available = platform.system() == "Darwin" and bool(shutil.which("sandbox-exec"))
+    if requested == "macos" and not available:
+        raise DesignError("OS_SANDBOX_UNAVAILABLE: macos requires Darwin and sandbox-exec; use host for local execution")
+    return ("macos" if available else "host") if requested == "auto" else requested
+
+
+def execution_capabilities():
+    mode = select_isolation()
+    return {"default_mode": mode, "available_modes": ["host", "macos"] if mode == "macos" else ["host"],
+            "host_can_deliver": True, "os_isolation_required_by_default": False,
+            "strict_os_isolation_available": mode == "macos",
+            "filesystem": "windows_locked_handles" if os.name == "nt" else "posix_dir_fd",
+            "posix_resource_limits": os.name == "posix"}
+
+
 def run_process(args, *, cwd, timeout=120, env=None, capture_stderr=False):
-    """No shell; terminate the complete process group after a bounded wait."""
+    """No shell; terminate the process tree after a bounded wait."""
+    options = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt"
+               else {"start_new_session": True})
     p = subprocess.Popen(args, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, start_new_session=True)
+                         stderr=subprocess.PIPE, **options)
     try:
         out, err = p.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as exc:
-        os.killpg(p.pid, signal.SIGKILL)
-        p.communicate()
+        if os.name == "nt":
+            killer = Path(os.environ.get("SystemRoot", "C:/Windows")) / "System32/taskkill.exe"
+            try:
+                subprocess.run([str(killer), "/PID", str(p.pid), "/T", "/F"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            if p.poll() is None:
+                p.kill()
+        else:
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        try:
+            p.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            # An escaped descendant must not leave our pipe drain unbounded.
+            p.stdout.close()
+            p.stderr.close()
         raise DesignError("PROCESS_TIMEOUT") from exc
     if p.returncode:
         raise DesignError(f"PROCESS_FAILED ({Path(args[0]).name}): {(err or out).decode('utf-8', 'replace')[-1800:]}")
@@ -34,23 +87,29 @@ def run_process(args, *, cwd, timeout=120, env=None, capture_stderr=False):
 
 def clean_environment(stage):
     # Deliberately do not forward API keys, proxies, Python hooks, or user env.
-    env = {"PATH": os.defpath + ":/usr/local/bin:/opt/homebrew/bin", "LANG": "en_US.UTF-8",
+    paths = [str(Path(sys.executable).parent)]
+    paths += [str(Path(p).parent) for name in ("soffice", "pdftoppm", "fc-match") if (p := find_tool(name))]
+    paths += [p for p in os.defpath.split(os.pathsep) if os.path.isabs(p)]
+    if os.name != "nt":
+        paths += ["/usr/local/bin", "/opt/homebrew/bin"]
+    env = {"PATH": os.pathsep.join(dict.fromkeys(paths)), "LANG": "en_US.UTF-8", "PYTHONUTF8": "1",
            "PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": str(CODE_ROOT),
-           "TMPDIR": str(stage / "tmp"), "XDG_CACHE_HOME": str(stage / "cache"),
+           "TMPDIR": str(stage / "tmp"), "TMP": str(stage / "tmp"), "TEMP": str(stage / "tmp"),
+           "XDG_CACHE_HOME": str(stage / "cache"),
            "XDG_CONFIG_HOME": str(stage / "config")}
     # Keep the real home identity; do not point HOME at a fake user directory.
     # Seatbelt still denies reads/writes there except explicit trusted libraries.
-    for key in ("HOME", "USER", "LOGNAME"):
+    for key in ("HOME", "USER", "LOGNAME", "SystemRoot", "WINDIR", "USERPROFILE", "APPDATA",
+                "LOCALAPPDATA", "ProgramFiles", "ProgramFiles(x86)"):
         if key in os.environ:
             env[key] = os.environ[key]
     return env
 
 
 def sandbox_command(args, stage, mode):
+    mode = select_isolation(mode)
     if mode == "host":
         return args
-    if mode != "macos" or platform.system() != "Darwin" or not shutil.which("sandbox-exec"):
-        raise DesignError("OS_SANDBOX_UNAVAILABLE: host mode produces an unapproved candidate only")
     roots = {"/System", "/Library", "/usr", "/opt", "/bin", "/sbin", "/Applications", "/private/etc",
              "/private/var/db/dyld", "/private/var/db/timezone", "/private/preboot/Cryptexes",
              str(CODE_ROOT / "engine"), str(stage)}
@@ -81,7 +140,7 @@ def renderer_identity():
         code[p.name] = digest(p.read_bytes())
     tools = {}
     for name in ("soffice", "pdftoppm", "fc-match"):
-        path = shutil.which(name)
+        path = find_tool(name)
         tools[name] = digest(Path(path).resolve().read_bytes()) if path else None
     if Path("/Applications/LibreOffice.app/Contents/MacOS/soffice").is_file():
         tools["libreoffice_binary"] = digest(Path("/Applications/LibreOffice.app/Contents/MacOS/soffice").read_bytes())
@@ -98,7 +157,7 @@ def fonts_for(task):
                 families.add(n["font"]["family"])
             families.update(s["font"]["family"] for s in n.get("spans", []))
     result = []
-    matcher = shutil.which("fc-match")
+    matcher = find_tool("fc-match")
     for family in sorted(families):
         if not matcher:
             result.append({"requested": family, "status": "unverified"})
@@ -114,7 +173,7 @@ def fonts_for(task):
     return result
 
 
-def launch_worker(stage, *, isolation="macos", preview=True, timeout=180):
+def launch_worker(stage, *, isolation="auto", preview=True, timeout=180):
     with Store(stage) as store:
         # Create private work directories using the same no-symlink boundary.
         for directory in ("tmp", "cache", "config", "lo-profile"):
@@ -127,7 +186,7 @@ def launch_worker(stage, *, isolation="macos", preview=True, timeout=180):
 
 
 def real_preview(stage, task):
-    soffice, poppler = shutil.which("soffice"), shutil.which("pdftoppm")
+    soffice, poppler = find_tool("soffice"), find_tool("pdftoppm")
     if not soffice or not poppler:
         return {"status": "unavailable", "reason": "LIBREOFFICE_OR_POPPLER_UNAVAILABLE", "pages": []}
     try:
