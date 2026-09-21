@@ -33,8 +33,13 @@ requests exclude notes, source paths and internal identifiers. Record actual
 tool results; use null for tool metadata that was not returned.
 
 `candidate_unreviewed`, `draft`, and `render_incomplete` are not final delivery.
-An independent page and object review, matching input/output hashes, verified
-execution isolation and target-software edit checks are required by `deliver`.
+An independent page and object review, matching input/output hashes, actual
+rendering, resolved fonts and target-software edit checks are required by `deliver`.
+Use `--isolation auto` (the default): macOS uses its available sandbox; other
+environments use the fixed local host worker. Host execution can pass PPT quality
+acceptance and must retain `os_isolation_verified: false` in the delivery record.
+OS isolation is a separate deployment policy: use `--require-os-isolation` when
+it is required; never downgrade that requirement or claim host mode is sandboxed.
 Keep original references, confirmed targets and actual PPTX previews distinct.
 
 The V4 compatibility routes below remain available. Explicit PPTX template

@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 
 from .backend import inspect_objects
 from .contract import ID, SHORT, SHA, arr, enum, obj, validate, versions, walk
-from .runtime import fonts_for, launch_worker, renderer_identity
+from .runtime import fonts_for, launch_worker, renderer_identity, select_isolation
 from .store import (DesignError, Store, canonical, decode_image, digest, external_bytes,
                     json_bytes, normalized_png)
 
@@ -144,7 +144,9 @@ def comparisons(store, prefix, task, preview, assets):
     return out
 
 
-def build(root, *, isolation="macos", preview=True, parent_build=None):
+def build(root, *, isolation="auto", preview=True, parent_build=None, require_os_isolation=False):
+    requested_isolation = isolation
+    isolation = select_isolation(isolation)
     with Store(root) as store:
         task = store.json("task.json")
         check = validate(task, complete=True)
@@ -164,9 +166,13 @@ def build(root, *, isolation="macos", preview=True, parent_build=None):
             store.write(prefix + "assets/" + a["sha256"] + ".png", assets[a["id"]])
         report = {"build_id": bid, "task_id": task["task_id"], "created_at": now(), "revision": revision,
                   "parent_build": parent_build, "inputs": versions(task), "environment": renderer_identity(),
-                  "fonts": fonts_for(task), "isolation": {"mode": isolation, "verified": False},
+                  "fonts": fonts_for(task),
+                  "isolation": {"requested": requested_isolation, "mode": isolation, "verified": False},
+                  "delivery_policy": {"require_os_isolation": bool(require_os_isolation)},
                   "validation": check, "status": "build_failed", "artifacts": {}}
         try:
+            if require_os_isolation and isolation == "host":
+                raise DesignError("OS_ISOLATION_REQUIRED: no verified OS sandbox selected; worker was not started")
             launch_worker(store.root / prefix, isolation=isolation, preview=preview)
             report["isolation"]["verified"] = isolation == "macos"
             pptx = store.read(prefix + "deck.pptx")
@@ -236,7 +242,7 @@ def review_skeleton(store, bid):
             "target_software": {"name": task["target_software"], "version": "待验证", "status": "not_tested", "actions": []}}
 
 
-def assess(store, bid, review):
+def assess(store, bid, review, *, require_os_isolation=False):
     task, manifest = verify_build(store, bid)
     errors = list(Draft202012Validator(REVIEW_SCHEMA).iter_errors(review))
     if errors:
@@ -254,7 +260,14 @@ def assess(store, bid, review):
         blockers.append("DRAFT_NOT_FINAL")
     if manifest["render"]["status"] != "passed":
         blockers.append("ACTUAL_RENDER_REQUIRED")
-    if not manifest["isolation"]["verified"]:
+    # Old manifests keep their original strict policy. New builds bind their
+    # explicit policy into the hash-reviewed manifest. Callers may strengthen it.
+    strict = require_os_isolation or manifest.get("delivery_policy", {"require_os_isolation": True})["require_os_isolation"]
+    isolation = manifest["isolation"]
+    if isolation["mode"] not in {"host", "macos"} or (isolation["mode"] == "host" and isolation["verified"]):
+        raise DesignError("ISOLATION_RECORD_INVALID")
+    warnings = [] if isolation["verified"] else ["OS_ISOLATION_NOT_VERIFIED"]
+    if strict and not isolation["verified"]:
         blockers.append("OS_ISOLATION_NOT_VERIFIED")
     if any(f["status"] != "matched" for f in manifest["fonts"]):
         blockers.append("FONT_ENVIRONMENT_UNRESOLVED")
@@ -277,11 +290,14 @@ def assess(store, bid, review):
     if target["name"] != task["target_software"] or target["status"] != "pass" or not target["actions"]:
         blockers.append("TARGET_SOFTWARE_EDIT_TEST_REQUIRED")
     return {"status": "final_delivery_ready" if not blockers else "revision_required", "build_id": bid,
-            "blockers": blockers, "review_sha256": digest(canonical(review)), "checked_at": now()}
+            "blockers": blockers, "warnings": warnings,
+            "execution": {"mode": isolation["mode"], "os_isolation_verified": isolation["verified"]},
+            "delivery_policy": {"require_os_isolation": bool(strict)},
+            "review_sha256": digest(canonical(review)), "checked_at": now()}
 
 
-def deliver(store, bid, review):
-    result = assess(store, bid, review)
+def deliver(store, bid, review, *, require_os_isolation=False):
+    result = assess(store, bid, review, require_os_isolation=require_os_isolation)
     if result["blockers"]:
         return result
     task, manifest = verify_build(store, bid)
@@ -297,7 +313,11 @@ def deliver(store, bid, review):
         z.writestr("review.json", json_bytes(review))
         z.writestr("acceptance.json", json_bytes(result))
         notes = ["# PPT Smith 交付说明", "", "预览来自交付 PPTX 的真实 LibreOffice 渲染。",
-                 "目标软件：" + task["target_software"], "", "## 逐页对应与编辑边界", ""]
+                 "目标软件：" + task["target_software"],
+                 "运行模式：" + result["execution"]["mode"],
+                 "OS 隔离：" + ("已验证" if result["execution"]["os_isolation_verified"] else "未验证；本地 host 执行，交付通过仅代表 PPT 质量验收通过"),
+                 "强制 OS 隔离策略：" + str(result["delivery_policy"]["require_os_isolation"]),
+                 "", "## 逐页对应与编辑边界", ""]
         for page, design in zip(task["scene"]["pages"], sorted(task["design"]["pages"], key=lambda d: next(i for i,p in enumerate(task["scene"]["pages"]) if p["id"] == d["page_id"]))):
             notes.append(f"- {page['id']}：目标 {design.get('target_asset_id', '无')}；质量限制 {design['quality_limits']}；已接受差异 {design['accepted_differences']}。")
             notes.extend(f"  - {n['id']}：{n['role']}" for n, *_ in walk(page["nodes"]))

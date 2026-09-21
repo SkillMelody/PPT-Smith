@@ -101,18 +101,47 @@ python3 -m engine design image-request --task-dir "$TASK"
 
 ```bash
 python3 -m engine design validate --task-dir "$TASK" --complete
-python3 -m engine design build --task-dir "$TASK" --isolation macos
+python3 -m engine design build --task-dir "$TASK" --isolation auto
 python3 -m engine design status --task-dir "$TASK" --build-id "$BUILD"
 python3 -m engine design review-template --task-dir "$TASK" --build-id "$BUILD"
 ```
 
 每次构建创建私有随机目录；不覆盖旧候选。固定 worker 运行于独立进程，限定
-CPU、输出文件大小、描述符和整个进程组的墙钟时间。macOS 模式使用 Seatbelt
+输入资源和输出字节、构建墙钟时间。POSIX 系统另设 CPU、文件大小和描述符限制；
+Windows 不声称具备这些 POSIX 限额，超时使用进程树终止。macOS 模式使用 Seatbelt
 限制文件内容读取、写目录和 IP 网络；目录元数据与祖先目录遍历为运行时保留。
 LibreOffice 本地 IPC 仅允许本次构建目录中的专用 Unix socket。
 宿主禁止嵌套 sandbox 时需要宿主允许这一隔离启动。
-其他系统可用 `--isolation host` 做候选功能验证，但程序不会宣称已验证 OS 隔离，
-不会批准最终交付。Linux/Windows 专用隔离适配器尚未实现。
+默认 `auto` 在 Darwin 且存在 `sandbox-exec` 时选择 `macos`，其他环境选择 `host`。
+显式选择 `macos` 而能力不可用时仍失败；启动失败也不会静默改用 `host`。
+macOS 宿主明确不允许嵌套隔离时，可显式选择本地 `--isolation host`。
+
+**PPT 质量验收与 OS 隔离策略分开。** Linux、Windows 和 macOS 的 `host` 模式
+均可在全部质量门禁通过后生成最终 ZIP；manifest 和 acceptance 如实保留隔离
+未验证的记录与提示，交付通过不表示运行环境通过安全认证。
+有强制隔离要求时，构建增加 `--require-os-isolation`：缺少可用隔离即拒绝启动
+worker。此策略写入审核绑定的 manifest，后续省略参数也不能解除；`review` 和
+`deliver` 同样可加此参数进一步收紧验收。旧 manifest 缺少策略字段时保持原来的
+严格规则。Linux/Windows 专用 OS 隔离适配器尚未实现，严格模式不能在 host 上通过。
+
+### 跨平台运行条件
+
+先运行 `capabilities` 检查 `execution` 和 `render`。三个系统都需要 Python 依赖、
+LibreOffice、Poppler 的 `pdftoppm`、Fontconfig 的 `fc-match` 及任务实际使用的字体。
+工具缺失时应安装对应依赖，不能填造预览或把字体状态改为通过。
+引擎从 PATH 发现工具；LibreOffice 另支持 macOS 的标准应用目录与 Windows
+Program Files 的标准安装位置。自定义安装的工具目录应加入启动 CLI 的 PATH，
+worker 只继承已发现工具的目录，不透传全部环境变量或 API 密钥。
+
+Windows 可使用原生 Python 入口 `python -m engine design`，以上多行 Bash 示例
+在 PowerShell 中改为单行执行。可通过 MSYS2 的 UCRT64 Fontconfig/Poppler 包提供
+`fc-match.exe` 和 `pdftoppm.exe`，将相应 `ucrt64/bin` 加入 PATH，并确认 `fc-match`
+实际匹配任务字体。任务放在本地盘的普通目录；拒绝符号链接、junction/reparse
+point、保留设备名和 UNC 网络目录。Windows 使用持有目录句柄的文件边界；
+Linux/macOS 保留原有 descriptor-relative 文件边界。
+
+这些适配不等于 PowerPoint/WPS 已通过兼容性验证；目标软件的实际编辑检查仍是
+独立必过项。三系统回归由 CI 矩阵执行，未运行的平台测试不能声称实机通过。
 
 `--no-preview` 只保留未渲染候选。实际预览使用私有 LibreOffice 配置目录，
 从最终候选 PPTX 转 PDF，再由 Poppler 生成逐页 PNG。目标图不冒充预览。
@@ -150,7 +179,8 @@ manifest 的真实 SHA256，覆盖全部页面与关键内容对象，记录具�
 外部 PPTX/SVG/字体不进入此新入口，模板模式按原独立路由处理，不能继承新入口
 的安全结论。正式平台审核与 PowerPoint/WPS 实机兼容性需各自验证。
 
-部署时可运行固定隔离探针，检查真实的拒绝结果，而不是根据平台名称猜测：
+macOS 隔离部署时可运行固定探针，检查真实的拒绝结果，而不是根据平台名称猜测；
+这不是 host 模式交付的前置步骤，也不提供 Linux/Windows 隔离证明：
 
 ```bash
 python3 -m engine.design_scene.isolation_probe --output-dir "$TASK/isolation-check"

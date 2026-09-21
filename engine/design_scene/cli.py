@@ -3,13 +3,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import platform
 import sys
 
 from .contract import SCHEMA, validate
 from .pipeline import (REVIEW_SCHEMA, assess, build, build_prefix, deliver, image_request,
                        ingest, new_task, read_assets, review_skeleton, verify_build)
-from .runtime import renderer_identity
+from .runtime import execution_capabilities, find_tool, renderer_identity
 from .store import DesignError, Store, external_bytes, parse_json
 
 
@@ -46,22 +45,26 @@ def main(argv=None):
         if command == "validate":
             p.add_argument("--complete", action="store_true")
         if command == "build":
-            p.add_argument("--isolation", choices=["macos", "host"], default="macos" if platform.system() == "Darwin" else "host")
+            p.add_argument("--isolation", choices=["auto", "macos", "host"], default="auto",
+                           help="auto selects available macOS isolation, otherwise local host execution")
             p.add_argument("--no-preview", action="store_true")
             p.add_argument("--parent-build")
         if command in {"status", "review-template", "review", "deliver"}:
             p.add_argument("--build-id", required=True)
         if command in {"review", "deliver"}:
             p.add_argument("--review-file", required=True, help="task-relative JSON file")
+        if command in {"build", "review", "deliver"}:
+            p.add_argument("--require-os-isolation", action="store_true",
+                           help="require verified OS isolation in addition to PPT quality acceptance")
     args = parser.parse_args(argv)
     try:
         if args.command == "schema":
             result = REVIEW_SCHEMA if args.review else SCHEMA
         elif args.command == "capabilities":
-            import shutil
             result = {"backend": renderer_identity(), "image_generation": "host_tool_required_when_needed",
                       "reference_analysis": "host_multimodal_model_required",
-                      "render": {x: bool(shutil.which(x)) for x in ("soffice", "pdftoppm", "fc-match", "sandbox-exec")},
+                      "render": {x: bool(find_tool(x)) for x in ("soffice", "pdftoppm", "fc-match", "sandbox-exec")},
+                      "execution": execution_capabilities(),
                       "template": "separate_preservation_route", "automatic_visual_approval": False}
         elif args.command == "init":
             if args.mode == "template":
@@ -73,7 +76,8 @@ def main(argv=None):
             result = {"status": "preparation_required", "task_id": args.task_id,
                       "next": "Read current references, lock visible content, and establish page-specific design targets."}
         elif args.command == "build":
-            result = build(args.task_dir, isolation=args.isolation, preview=not args.no_preview, parent_build=args.parent_build)
+            result = build(args.task_dir, isolation=args.isolation, preview=not args.no_preview,
+                           parent_build=args.parent_build, require_os_isolation=args.require_os_isolation)
         else:
             with Store(args.task_dir) as store:
                 task = store.json("task.json")
@@ -99,13 +103,16 @@ def main(argv=None):
                 elif args.command == "status":
                     _, m = verify_build(store, args.build_id)
                     result = {"status": m["status"], "build_id": args.build_id,
-                              "render": m["render"]["status"], "isolation": m["isolation"], "review": "not_implied_by_build"}
+                              "render": m["render"]["status"], "isolation": m["isolation"],
+                              "delivery_policy": m.get("delivery_policy", {"require_os_isolation": True}),
+                              "review": "not_implied_by_build"}
                 elif args.command == "review-template":
                     result = review_skeleton(store, args.build_id)
                     store.put_json("review-draft.json", result, exclusive=True)
                 else:
                     review = store.json(args.review_file)
-                    result = deliver(store, args.build_id, review) if args.command == "deliver" else assess(store, args.build_id, review)
+                    operation = deliver if args.command == "deliver" else assess
+                    result = operation(store, args.build_id, review, require_os_isolation=args.require_os_isolation)
                     if args.command == "review":
                         import uuid
                         store.put_json("reviews/" + args.build_id + "-" + uuid.uuid4().hex + ".json",

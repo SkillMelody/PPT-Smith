@@ -1,4 +1,4 @@
-"""Descriptor-relative task I/O, bounded decoding, and content-addressed assets."""
+"""No-follow task I/O, bounded decoding, and content-addressed assets."""
 from __future__ import annotations
 
 import hashlib
@@ -73,6 +73,11 @@ class Store:
 
     def __init__(self, root: str | Path, *, create=False):
         self.root = Path(os.path.abspath(root))
+        self._windows = None
+        if os.name == "nt":
+            from .windows_io import WindowsIO
+            self._windows = WindowsIO(self.root, create=create)
+            return
         fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
         try:
             for part in self.root.parts[1:]:
@@ -93,7 +98,10 @@ class Store:
         return self
 
     def __exit__(self, *args):
-        os.close(self.fd)
+        if self._windows is not None:
+            self._windows.close()
+        else:
+            os.close(self.fd)
 
     @contextmanager
     def parent(self, relative: str, *, create=False):
@@ -116,6 +124,8 @@ class Store:
             os.close(fd)
 
     def read(self, relative: str, limit=MAX_FILE) -> bytes:
+        if self._windows is not None:
+            return self._windows.read(relative, limit)
         with self.parent(relative) as (fd, name):
             src = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
             with os.fdopen(src, "rb") as f:
@@ -128,6 +138,8 @@ class Store:
                 return data
 
     def write(self, relative: str, data: bytes, *, exclusive=False):
+        if self._windows is not None:
+            return self._windows.write(relative, data, exclusive=exclusive)
         if len(data) > MAX_FILE:
             raise DesignError("OUTPUT_TOO_LARGE")
         with self.parent(relative, create=True) as (fd, name):

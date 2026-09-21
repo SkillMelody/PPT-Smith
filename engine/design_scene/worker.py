@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-import resource
+import os
 from pathlib import Path
 
 from .backend import inspect_objects, render
@@ -15,9 +15,11 @@ def main():
     parser.add_argument("stage", type=Path)
     parser.add_argument("--preview", action="store_true")
     args = parser.parse_args()
-    resource.setrlimit(resource.RLIMIT_CPU, (150, 150))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (128 * 1024 * 1024, 128 * 1024 * 1024))
-    resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
+    if os.name == "posix":
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (150, 150))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (128 * 1024 * 1024, 128 * 1024 * 1024))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
     with Store(args.stage) as store:
         task = store.json("task.json")
         assets = {}

@@ -10,6 +10,29 @@ permissions:
   contents: read
 
 jobs:
+  declarative-portable:
+    name: Declarative runtime (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Test portable delivery gates and native host worker
+        run: python -m pytest tests/unit/test_declarative_design.py -q --basetemp=.pytest-tmp/portable --junitxml=portable-results.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: portable-results-${{ matrix.os }}
+          path: portable-results.xml
+
   test:
     runs-on: macos-14
     timeout-minutes: 45
