@@ -10,7 +10,7 @@ article-html-to-ppt, meowclaw-decksmith <br>
 ## Description: <br>
 MeowClaw PPTSmith converts articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks with direct PPTX, native dynamic PPTX, and Feishu Slides export routing. <br>
 
-Version 5.0.1 adds a declarative design preview: checked content/design/scene/assets JSON, fixed native-object rendering, hash-bound review and fail-closed delivery. The V4 Bespoke, Template and Standard/Engineering routes remain compatible. Declarative candidates may be called final only after source-bound authoring, structural QA, real rendering, target-software edit checks and independent visual approval complete for that run. Public slug: `meowclaw-pptsmith`. <br>
+Version 5.1.0-dev.1 is a local development candidate with three user intents: create from sources without requiring image generation, reconstruct supplied design images, and preserve native templates. It adds compact author input, guarded object patches, real-office font preflight and verified page-review inheritance. Real rendering, source checks, target-software edits and independent visual approval remain required. Public slug: `meowclaw-pptsmith`. <br>
 
 ## Owner
 SkillMelody <br>
@@ -75,7 +75,7 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - Verification honesty: Checks whether the final handoff clearly distinguishes generated, rendered, read-back, and final states. <br>
 
 ## Skill Version(s): <br>
-5.0.1 <br>
+5.1.0-dev.1 <br>
 
 Readiness scope: public Beta on the verified macOS + LibreOffice acceptance environment. Bespoke and Template final readiness remains run-specific; native Microsoft PowerPoint pixel parity is not claimed. <br>
 

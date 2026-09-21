@@ -5,7 +5,7 @@
 - Display name: MeowClaw PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.0.1`
+- Version: `5.1.0-dev.1`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` are the machine-readable identity source.

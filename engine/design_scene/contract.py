@@ -103,13 +103,14 @@ DESIGN_PAGE = obj({"page_id": ID, "target_asset_id": ID, "confirmed_by": SHORT,
                   ["page_id", "quality_limits", "accepted_differences", "aspect_policy", "raster_acceptances"])
 SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:pptsmith:design-task:1",
-    **obj({"schema_version": {"const": "1.0"}, "task_id": ID, "author_id": SHORT,
-           "mode": enum("recreate", "style_transfer", "new_design", "draft", "template"),
+    **obj({"schema_version": enum("1.0", "1.1"), "task_id": ID, "author_id": SHORT,
+           "mode": enum("create", "recreate", "style_transfer", "new_design", "draft", "template"),
            "audience": SHORT, "language": SHORT, "target_software": SHORT,
            "canvas": obj({"width": num(72, 4000), "height": num(72, 4000), "unit": {"const": "pt"}}),
            "content": obj({"items": arr(CONTENT, 3000), "notes": arr(obj({"page_id": ID, "text": TEXT}), 60)}),
            "design": obj({"brief": TEXT, "references": arr(REFERENCE, 120), "pages": arr(DESIGN_PAGE, 60, 1),
-                          "revision_budget": {"type": "integer", "minimum": 1, "maximum": 10}}),
+                          "revision_budget": {"type": "integer", "minimum": 1, "maximum": 10},
+                          "requires_style_reference": BOOL}, ["brief", "references", "pages", "revision_budget"]),
            "scene": obj({"pages": arr(obj({"id": ID, "background": COLOR, "nodes": arr({"$ref": "#/$defs/node"}, 500)}), 60, 1)}),
            "assets": obj({"items": arr(ASSET, 500)})}),
     "$defs": {"node": NODE},
@@ -151,6 +152,12 @@ def validate(task: dict, *, complete=False):
         raise DesignError("TOTAL_ASSET_PIXEL_LIMIT")
     if set(pages) != set(designs):
         raise DesignError("DESIGN_PAGE_MAPPING_MISMATCH")
+    if complete and task["mode"] == "create":
+        if not task["design"]["brief"].strip():
+            raise DesignError("DESIGN_BRIEF_REQUIRED")
+        notes = _unique(task["content"]["notes"], "page_id", "DUPLICATE_NOTES")
+        if set(notes) != set(pages) or any(not n["text"].strip() for n in notes.values()):
+            raise DesignError("SPEAKER_NOTES_REQUIRED")
     for item in [*content.values(), *task["content"]["notes"]]:
         if item["page_id"] not in pages:
             raise DesignError("CONTENT_PAGE_MISMATCH")
@@ -167,9 +174,15 @@ def validate(task: dict, *, complete=False):
     for pid, page in pages.items():
         design = designs[pid]
         target = assets.get(design.get("target_asset_id"))
-        if complete and task["mode"] != "draft" and (not target or not design.get("confirmed_by") or not design.get("target_kind")):
+        if design.get("target_asset_id") and not target:
+            raise DesignError("DESIGN_TARGET_ASSET_MISSING")
+        if not target and any(k in design for k in ("target_kind", "confirmed_by")):
+            raise DesignError("TARGET_METADATA_WITHOUT_ASSET")
+        if complete and task["mode"] not in {"create", "draft"} and (not target or not design.get("confirmed_by") or not design.get("target_kind")):
             raise DesignError(f"DESIGN_TARGET_REQUIRED: {pid}")
         if target:
+            if complete and (not design.get("confirmed_by") or not design.get("target_kind")):
+                raise DesignError(f"DESIGN_TARGET_REQUIRED: {pid}")
             if pid not in target["page_ids"] or target["role"] not in {"reference", "target"}:
                 raise DesignError("TARGET_PAGE_OR_ROLE_MISMATCH")
             aspect = task["canvas"]["width"] / task["canvas"]["height"]
@@ -181,14 +194,16 @@ def validate(task: dict, *, complete=False):
                     raise DesignError("ORIGINAL_REFERENCE_REQUIRED")
             if design.get("target_kind") == "generated" and "tool_result" not in target:
                 raise DesignError("ACTUAL_IMAGE_TOOL_RESULT_REQUIRED")
-            if task["mode"] in {"style_transfer", "new_design"} and design.get("target_kind") == "original":
+            if task["mode"] in {"create", "style_transfer", "new_design"} and design.get("target_kind") == "original":
                 raise DesignError("NEW_CONTENT_REQUIRES_NEW_DESIGN_TARGET")
             if task["mode"] == "recreate" and design.get("target_kind") != "original" and not design["accepted_differences"]:
                 raise DesignError("REFERENCE_CHANGE_REQUIRES_DIFFERENCE_RECORD")
-        if complete and task["mode"] == "style_transfer" and not any(pid in r["page_ids"] and "style" in r["roles"] for r in task["design"]["references"]):
+        if complete and (task["mode"] == "style_transfer" or task["design"].get("requires_style_reference")) and not any(pid in r["page_ids"] and "style" in r["roles"] for r in task["design"]["references"]):
             raise DesignError("STYLE_REFERENCE_REQUIRED")
         if complete and not page["nodes"]:
             raise DesignError("EMPTY_SCENE")
+        if complete and task["mode"] == "create" and not any(c["page_id"] == pid for c in content.values()):
+            raise DesignError("PAGE_CONTENT_REQUIRED: " + pid)
         for node, depth, ox, oy in walk(page["nodes"]):
             if node["id"] in seen or node["page_id"] != pid:
                 raise DesignError("NODE_ID_OR_PAGE_MISMATCH")

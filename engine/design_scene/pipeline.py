@@ -25,7 +25,7 @@ def now():
 def new_task(task_id, *, mode, width, height, pages=1, author="host-model",
              audience="待填写", language="zh-CN", target_software="LibreOffice"):
     pids = ["page-" + str(i + 1) for i in range(pages)]
-    task = {"schema_version": "1.0", "task_id": task_id, "author_id": author, "mode": mode,
+    task = {"schema_version": "1.1" if mode == "create" else "1.0", "task_id": task_id, "author_id": author, "mode": mode,
             "audience": audience, "language": language, "target_software": target_software,
             "canvas": {"width": width, "height": height, "unit": "pt"},
             "content": {"items": [], "notes": []}, "assets": {"items": []},
@@ -92,7 +92,8 @@ def image_request(task):
             visible.append({k: c[k] for k in ("type", "text", "categories", "series", "cells") if k in c})
         pages.append({"visible_content": visible,
                       "reference_features": [r["features"] for r in task["design"]["references"] if page["id"] in r["page_ids"]]})
-    return {"status": "reference_analysis_required" if task["mode"] == "recreate" else "image_tool_required",
+    return {"status": ("reference_analysis_required" if task["mode"] == "recreate" else
+                       "optional_image_tool_request" if task["mode"] == "create" else "image_tool_required"),
             "request": {"mode": task["mode"], "audience": task["audience"], "language": task["language"],
                         "canvas": task["canvas"], "visual_brief": task["design"]["brief"], "pages": pages,
                         "instruction": "Design each complete slide using only the supplied visible content. Do not invent data or labels. Charts and tables will be reconstructed deterministically from checked data."},
@@ -186,6 +187,19 @@ def build(root, *, isolation="auto", preview=True, parent_build=None, require_os
             names.extend(p["file"] for p in report["comparisons"])
             names.extend("assets/" + a["sha256"] + ".png" for a in task["assets"]["items"])
             report["artifacts"] = {n: digest(store.read(prefix + n)) for n in names}
+            from .incremental import page_evidence
+            report["page_evidence"] = page_evidence(task, report)
+            previous = {}
+            if parent_build:
+                old_task = store.json(build_prefix(parent_build) + "task.json")
+                previous = page_evidence(old_task, parent)
+            report["changed_pages"] = [p["id"] for p in task["scene"]["pages"]
+                                       if not report["page_evidence"].get(p["id"]) or
+                                       report["page_evidence"].get(p["id"]) != previous.get(p["id"])]
+            report["design_origins"] = [{"page_id": d["page_id"],
+                                        "kind": "external_target" if d.get("target_asset_id") else "programmatic_preview",
+                                        "target_asset_id": d.get("target_asset_id"),
+                                        "scene_sha256": report["inputs"]["scene"]} for d in task["design"]["pages"]]
             report["status"] = "candidate_unreviewed" if report["render"]["status"] == "passed" else "render_incomplete"
             if task["mode"] == "draft":
                 report["status"] = "draft"
@@ -201,10 +215,10 @@ def build_prefix(bid):
     return "builds/" + bid + "/"
 
 
-def verify_build(store, bid):
+def verify_build(store, bid, *, snapshot=False):
     prefix = build_prefix(bid)
     manifest = store.json(prefix + "manifest.json")
-    task = store.json("task.json")
+    task = store.json(prefix + "task.json" if snapshot else "task.json")
     validate(task, complete=True)
     if manifest["inputs"] != versions(task):
         raise DesignError("REVIEW_STALE_INPUTS")
@@ -224,10 +238,13 @@ REVIEW_SCHEMA = obj({
     "build_id": ID, "manifest_sha256": SHA,
     "reviewer": obj({"id": SHORT, "method": enum("human", "independent_multimodal"), "environment": SHORT}),
     "pages": arr(obj({"page_id": ID, "design": enum("pass", "revise", "reject"),
-                      "reconstruction": enum("pass", "revise", "reject"),
+                      "reconstruction": enum("pass", "revise", "reject", "not_applicable"),
                       "content": enum("pass", "revise", "reject"), "editability": enum("pass", "revise", "reject"),
                       "fonts": enum("pass", "revise", "reject"), "observations": arr(SHORT, 50, 1),
-                      "observed_node_ids": arr(ID, 500, 1), "accepted_differences": arr(SHORT, 50)}), 60, 1),
+                      "observed_node_ids": arr(ID, 500, 1), "accepted_differences": arr(SHORT, 50),
+                      "inherited_from": obj({"build_id": ID, "manifest_sha256": SHA, "review_sha256": SHA})},
+                     ["page_id", "design", "reconstruction", "content", "editability", "fonts", "observations",
+                      "observed_node_ids", "accepted_differences"]), 60, 1),
     "target_software": obj({"name": SHORT, "version": SHORT, "status": enum("pass", "not_tested", "fail"),
                             "actions": arr(SHORT, 100)}),
 })
@@ -237,16 +254,18 @@ def review_skeleton(store, bid):
     task, manifest = verify_build(store, bid)
     return {"build_id": bid, "manifest_sha256": digest(store.read(build_prefix(bid) + "manifest.json")),
             "reviewer": {"id": "REPLACE_WITH_INDEPENDENT_REVIEWER", "method": "human", "environment": "填写实际审阅环境"},
-            "pages": [{"page_id": p["id"], **{k: "revise" for k in ("design", "reconstruction", "content", "editability", "fonts")},
+            "pages": [{"page_id": p["id"], **{k: "revise" for k in ("design", "content", "editability", "fonts")},
+                       "reconstruction": "revise" if next(d for d in task["design"]["pages"] if d["page_id"] == p["id"]).get("target_asset_id") else "not_applicable",
                        "observations": [], "observed_node_ids": [], "accepted_differences": []} for p in task["scene"]["pages"]],
             "target_software": {"name": task["target_software"], "version": "待验证", "status": "not_tested", "actions": []}}
 
 
-def assess(store, bid, review, *, require_os_isolation=False):
-    task, manifest = verify_build(store, bid)
+def assess(store, bid, review, *, require_os_isolation=False, snapshot=False, _chain=(), _cache=None):
+    task, manifest = verify_build(store, bid, snapshot=snapshot)
     errors = list(Draft202012Validator(REVIEW_SCHEMA).iter_errors(review))
     if errors:
-        raise DesignError("REVIEW_SCHEMA_INVALID: " + errors[0].message[:300])
+        location = "/".join(str(part) for part in errors[0].absolute_path) or "$"
+        raise DesignError("REVIEW_SCHEMA_INVALID: " + location + ": " + errors[0].message[:300])
     if review["build_id"] != bid or review["manifest_sha256"] != digest(store.read(build_prefix(bid) + "manifest.json")):
         raise DesignError("REVIEW_STALE_MANIFEST")
     if review["reviewer"]["id"] in {task["author_id"], "REPLACE_WITH_INDEPENDENT_REVIEWER"}:
@@ -255,6 +274,8 @@ def assess(store, bid, review, *, require_os_isolation=False):
     pages = task["scene"]["pages"]
     if len(reviewed) != len(review["pages"]) or set(reviewed) != {p["id"] for p in pages}:
         raise DesignError("REVIEW_PAGE_COVERAGE_MISMATCH")
+    from .incremental import verify_inheritance
+    verify_inheritance(store, task, manifest, review, (*_chain, bid), {} if _cache is None else _cache)
     blockers = []
     if manifest["status"] == "draft":
         blockers.append("DRAFT_NOT_FINAL")
@@ -284,7 +305,8 @@ def assess(store, bid, review, *, require_os_isolation=False):
         if not required <= set(r["observed_node_ids"]):
             blockers.append("OBJECT_REVIEW_INCOMPLETE:" + page["id"])
         for check in ("design", "reconstruction", "content", "editability", "fonts"):
-            if r[check] != "pass":
+            expected = "not_applicable" if check == "reconstruction" and not design.get("target_asset_id") else "pass"
+            if r[check] != expected:
                 blockers.append(check.upper() + "_REVIEW_REQUIRED:" + page["id"])
     target = review["target_software"]
     if target["name"] != task["target_software"] or target["status"] != "pass" or not target["actions"]:
@@ -312,6 +334,8 @@ def deliver(store, bid, review, *, require_os_isolation=False):
         z.writestr("manifest.json", store.read(prefix + "manifest.json"))
         z.writestr("review.json", json_bytes(review))
         z.writestr("acceptance.json", json_bytes(result))
+        from .incremental import archive_evidence
+        archive_evidence(store, z, review)
         notes = ["# PPT Smith 交付说明", "", "预览来自交付 PPTX 的真实 LibreOffice 渲染。",
                  "目标软件：" + task["target_software"],
                  "运行模式：" + result["execution"]["mode"],
@@ -319,7 +343,8 @@ def deliver(store, bid, review, *, require_os_isolation=False):
                  "强制 OS 隔离策略：" + str(result["delivery_policy"]["require_os_isolation"]),
                  "", "## 逐页对应与编辑边界", ""]
         for page, design in zip(task["scene"]["pages"], sorted(task["design"]["pages"], key=lambda d: next(i for i,p in enumerate(task["scene"]["pages"]) if p["id"] == d["page_id"]))):
-            notes.append(f"- {page['id']}：目标 {design.get('target_asset_id', '无')}；质量限制 {design['quality_limits']}；已接受差异 {design['accepted_differences']}。")
+            origin = design.get('target_asset_id', '程序设计预览；无外部还原目标，不声明复刻保真')
+            notes.append(f"- {page['id']}：{origin}；质量限制 {design['quality_limits']}；已接受差异 {design['accepted_differences']}。")
             notes.extend(f"  - {n['id']}：{n['role']}" for n, *_ in walk(page["nodes"]))
         notes += ["", "图片仅可替换；不等于恢复内部文字、路径或图表数据。字体未嵌入，跨设备需复验。", "",
                   "平台安全审核和不同软件兼容性属于独立验证范围。"]

@@ -9,16 +9,19 @@ python-pptx 1.0.2、Pillow 11.3.0、jsonschema 4.25.1、lxml 6.1.1。
 
 宿主多模态模型逐次识读当前图像，核对文案、区域、视觉层级、素材与数据。
 这不是独立 OCR 或自动分层引擎，不应宣称已自动恢复未知字体或图表数据。
-宿主可调用当前已授权的图片工具设计整页，不能只生成背景后声称整页设计完成。
+原创任务默认由模型提交结构化设计，原生 PPTX 经实际渲染得到设计预览，再视觉修订。
+宿主也可按需调用已授权的图片工具制作独立插图或完整外部设计目标。
 本地 CLI 不持有图片服务凭证，不自动发起云端调用。
 
 | 模式 | 目标 | 图片工具 |
 | --- | --- | --- |
+| `create` | 源材料 → 结构化设计 → 原生候选 → PNG 预览与修订 | 可选，不是交付前提 |
 | `recreate` | 当前原始图；经授权的修正另存目标并记录差异 | 已有合格目标即可继续 |
-| `style_transfer` | 新内容与当前指定风格形成的新目标 | 需要时由宿主实际调用 |
-| `new_design` | 根据需求生成或用户提供的新整页目标 | 没有目标时必须调用 |
-| `draft` | 明确标注的简化草稿 | 可不生成目标，不能最终交付 |
 | `template` | 保留原生模板 | 路由到 V4 Template，不从空白替代 |
+
+`init --mode new_design/style_transfer` 是 create 的兼容别名；风格图登记为 style 参考。
+既有保存任务中的旧 mode 保持原合同，不自动解除外部目标要求。`draft` 仅用于诊断草稿，
+不能最终交付。CLI `route --template` / `route --design-target` 可查询意图路由。
 
 用户意图已经明确时直接执行。只有显著影响结果的冲突才澄清。品牌规则仅在
 本次请求要求时采用。多图分别声明用途、页映射、采用特征与优先级；不自动混合。
@@ -31,14 +34,23 @@ python-pptx 1.0.2、Pillow 11.3.0、jsonschema 4.25.1、lxml 6.1.1。
 ```bash
 python3 -m engine design capabilities
 python3 -m engine design init --task-dir "$TASK" --task-id example \
-  --mode recreate --width 960 --height 540 --pages 1 \
+  --mode create --width 960 --height 540 --pages 1 \
   --author author-model --audience 产品团队 --target-software LibreOffice
+```
+
+默认 create 不需要参考图片。用户提供完整设计图时改用 recreate，再登记图像：
+
+```bash
 python3 -m engine design ingest --task-dir "$TASK" --file reference.png \
   --asset-id ref-one --role reference --pages page-1 --source 用户提供的本次参考
 python3 -m engine design schema
 ```
 
-宿主阅读 `task.json`，根据当前输入写入内容、设计和场景。不要用程序假装完成
+优先用 [紧凑作者输入与局部修订](declarative-authoring.md) 中的样式/来源/图标引用减少
+重复模型输出。`context --page page-1 --section content` 按页读取，`--section scene`
+用于修改几何；`schema --section node --type text` 仅查询一种节点，完整 Schema 只在必要时读取。
+宿主根据当前输入写入内容、设计和场景。
+create 必须具有当前设计 brief 与逐页备注。不要用程序假装完成
 视觉识读。逐项保留出处及不确定信息；风格图中的业务文案不进入新内容。
 
 `canvas` 与全部几何使用 pt。将原图像素坐标按 `canvas.width / image.width`
@@ -53,7 +65,7 @@ python3 -m engine design schema
 | 记录 | 重要字段 |
 | --- | --- |
 | `content` | 分页文字、真实图表系列、真实表格单元格、来源、核对状态、备注 |
-| `design` | 当前模式、参考用途与优先级、逐页目标、确认人、原图限制、接受差异 |
+| `design` | 当前模式、参考用途与优先级、可选外部目标、确认人、原图限制、接受差异 |
 | `scene` | 页背景、节点、层级、位置、样式、内容绑定、编辑角色 |
 | `assets` | 标识、原始与标准化字节摘要、尺寸、页范围、来源、裁片与真实工具回执 |
 | 验收 | 输入版本、代码/依赖/字体、PPTX、实际预览、双重视觉结论、对象编辑行为 |
@@ -95,16 +107,28 @@ python3 -m engine design image-request --task-dir "$TASK"
 ```
 
 后端可验证字节对应，不能独立证明外部工具确实被调用；回执真实性由宿主负责。
-若没有图片工具，保留准备结果并披露缺口；已有合格目标的复刻可继续。
+没有图片工具时，create 继续程序设计和真实预览，已有目标的 recreate 继续还原。
+仅在用户明确要求图片生成资产且没有合格替代时披露该资产缺口。
+程序预览由 manifest 的 design_origins 记录，不能伪装成 generated 或 provided_design。
 
 ## 构建、修订与审核
 
 ```bash
 python3 -m engine design validate --task-dir "$TASK" --complete
+python3 -m engine design preflight --task-dir "$TASK" --isolation auto
 python3 -m engine design build --task-dir "$TASK" --isolation auto
 python3 -m engine design status --task-dir "$TASK" --build-id "$BUILD"
 python3 -m engine design review-template --task-dir "$TASK" --build-id "$BUILD"
 ```
+
+preflight 使用实际 LibreOffice 样本与 pdffonts/pdftotext 检查所选字体和当前文本字符，
+按字体字节、样本和渲染器缓存。回退或缺字返回 font_review_required；缺少工具返回
+preflight_unavailable。它是提前发现问题的样本检查，不能替代成稿逐页审核。
+模型能力由宿主如实判断，capabilities 只检测本地工具，不声称检测到了当前模型的能力。
+
+build/capabilities/preflight/review-template 默认返回短摘要与文件路径。显式 `--full`
+取得完整结果；`inspect --task-dir "$TASK" --build-id "$BUILD" --page page-1` 读取某页证据。
+state.json 是当前任务的接续摘要，task.json 与 manifest 才是审核绑定的事实来源。
 
 每次构建创建私有随机目录；不覆盖旧候选。固定 worker 运行于独立进程，限定
 输入资源和输出字节、构建墙钟时间。POSIX 系统另设 CPU、文件大小和描述符限制；
@@ -150,11 +174,17 @@ Linux/macOS 保留原有 descriptor-relative 文件边界。
 
 审核须独立检查设计适当性与重建保真，并核查内容、对象编辑和字体。
 复刻任务记录原图限制，不因审美偏好重排版。修改内容、参考用途、目标、素材、
-场景、PPTX、预览、渲染器代码或字体，均会使原审核失效。同名文件也按字节检查。
+场景、PPTX、预览、渲染器代码或字体，均会使原构建审核失效。同名文件也按字节检查。
+新构建可通过 `review-template --inherit-from previous-review.json` 继承未变页的独立证据；
+系统同时核对内容、备注、设计、素材、对象结构、实际预览及全局环境，不能仅凭像素相同
+继承。保留原观察与来源审核哈希，修改过的页面仍从否决态开始。全局字体、brief、画布、
+页序或渲染器变化使相关证据失效。全稿构建、哈希、来源/结构与目标软件编辑验证仍执行。
 审核人 ID 必须与作者不同，但系统不提供审阅者身份认证；禁止伪造第二身份。
 
 ```bash
 python3 -m engine design build --task-dir "$TASK" --parent-build "$BUILD"
+python3 -m engine design review-template --task-dir "$TASK" --build-id "$BUILD" \
+  --output review-draft.json
 python3 -m engine design review --task-dir "$TASK" --build-id "$BUILD" \
   --review-file review-draft.json
 python3 -m engine design deliver --task-dir "$TASK" --build-id "$BUILD" \
@@ -165,6 +195,10 @@ python3 -m engine design deliver --task-dir "$TASK" --build-id "$BUILD" \
 manifest 的真实 SHA256，覆盖全部页面与关键内容对象，记录具体观察和目标软件
 中的打开、改字、改数据、替换素材等实际动作。子版本修订预算耗尽时保留问题，
 不能自动批准。新目标变更必须重新确认并重新审阅。
+
+create 无外部目标时 reconstruction 必须为 not_applicable，其他维度仍须独立批准；
+有外部目标的页面必须为 pass。不能把自身预览当目标来证明保真或审美。
+继承页仅复用已有有效审阅，不冒充新审阅；最终 ZIP 含继承的审阅记录和来源 manifest。
 
 最终 ZIP 包含原始输入、逐页目标映射、可编辑 PPTX、PDF、实际预览、对照图、
 对象清单、验收与编辑限制。`deliver` 每次重新核验当前字节，不信任之前的成功

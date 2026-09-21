@@ -26,7 +26,7 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
       - name: Test portable delivery gates and native host worker
-        run: python -m pytest tests/unit/test_declarative_design.py -q --basetemp=.pytest-tmp/portable --junitxml=portable-results.xml
+        run: python -m pytest tests/unit/test_declarative_design.py tests/unit/test_design_workflow.py -q --basetemp=.pytest-tmp/portable --junitxml=portable-results.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:

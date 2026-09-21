@@ -10,9 +10,15 @@ Convert articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation p
 
 `MeowClaw PPT Smith` is the public display name. The public slug is `meowclaw-pptsmith`; `article-html-to-ppt` and `meowclaw-decksmith` remain compatibility aliases for update continuity.
 
-**Current version:** `5.0.1` · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
+**Current version:** `5.1.0-dev.1` (local development candidate) · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
 
-## v5.0.1: declarative design preview
+## v5.1 development: three user intents
+
+Create from documents, reconstruct supplied design images, or preserve native PPTX templates. Original creation now uses structured native design and real previews without requiring image generation. Compact author inputs, atomic object patches, cached real-office font probes and verified page-review inheritance reduce repetitive work. Image generation remains optional; real rendering, source checks, editing tests and independent visual review still apply.
+
+Read [the workflow](references/declarative-design.md) and [compact authoring](references/declarative-authoring.md). This is an unpublished development candidate. Legacy routes remain available for compatibility.
+
+## v5.0.1 declarative runtime foundation
 
 The v5 alpha route accepts checked content, design, scene, asset, and review JSON instead of task-authored drawing code. Its fixed backend produces native editable objects, registers assets by hash, renders a real PPTX preview, and fails closed until the exact build is independently reviewed. It supports image reconstruction, image-led style transfer, and new full-slide design; native template preservation remains on the Template route.
 
@@ -314,7 +320,7 @@ Before Feishu/Lark export, confirm that the user intended cloud delivery. Do not
 
 ## Version
 
-5.0.1
+5.1.0-dev.1
 
 The declarative design route is a preview: it retains V4 route compatibility but does not claim universal reference fidelity or Microsoft PowerPoint/WPS pixel parity.
 
