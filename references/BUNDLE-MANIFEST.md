@@ -14,18 +14,19 @@ Run `python3 scripts/check_identity.py` before packaging.
 ## Included public capability
 
 - `SKILL.md` and route documentation;
-- Bespoke, Template, and Standard/Engineering engine modules;
+- declarative create/recreate, compact authoring, and verified revision modules;
+- native Template and legacy Bespoke/Standard engine modules;
 - public schemas, styles, templates, and component contracts;
 - deterministic builders and QA tooling;
 - the lockfile-pinned PptxGenJS runtime source;
-- public sample images and current operating references.
+- selected public sample images, editable sample PPTX, measured evidence, and current operating references.
 
 ## Excluded material
 
 The public bundle excludes:
 
 - private PMO and enterprise production packs;
-- user inputs, local test runs, rendered customer decks, and review transcripts;
+- raw user inputs, local test runs, private customer decks, and review transcripts;
 - dependency caches and virtual environments;
 - credentials, local environment files, and machine-specific paths;
 - development-only tests and CI configuration from the ClawHub package.

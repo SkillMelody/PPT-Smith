@@ -4,326 +4,213 @@
   <img src="assets/branding/pptsmith-github-en.png" alt="MeowClaw PPT Smith icon" width="836">
 </p>
 
-> 中文文档（默认）: [README.md](./README.md) · OpenClaw execution contract: [SKILL.md](./SKILL.md)
+> [中文](README.md) · [Skill entry point](SKILL.md) · [Workflow](references/declarative-design.md) · [Editable sample](assets/samples/v5.1-no-image-policy-native.pptx)
 
-Convert articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks.
+Turn source documents, slide design images, or native PPTX templates into editable presentations with source evidence and real rendered previews. The model develops the narrative and design; a fixed backend creates native objects and checks delivery evidence.
 
-`MeowClaw PPT Smith` is the public display name. The public slug is `meowclaw-pptsmith`; `article-html-to-ppt` and `meowclaw-decksmith` remain compatibility aliases for update continuity.
+**Current version: `5.1.0-dev.1` (development version, not a formal release).** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
 
-**Current version:** `5.1.0-dev.1` (local development candidate) · public slug `meowclaw-pptsmith` · license `Apache-2.0`.
+## Three ways to use it
 
-## v5.1 development: three user intents
+| Your task | Input | Route and result |
+| --- | --- | --- |
+| Turn a report, policy document, PRD, or article into a presentation | Source material; optional brand or style references | **create**: design for the content and audience, then produce native PPTX and real previews |
+| Reconstruct a designer's complete slide images | Full slide designs; source documents for checking text and numbers | **recreate**: rebuild editable objects and review against the approved target |
+| Use a company or client template | Native PPTX template and source material | **template**: reuse native components and fill gaps using the template's visual rules |
 
-Create from documents, reconstruct supplied design images, or preserve native PPTX templates. Original creation now uses structured native design and real previews without requiring image generation. Compact author inputs, atomic object patches, cached real-office font probes and verified page-review inheritance reduce repetitive work. Image generation remains optional; real rendering, source checks, editing tests and independent visual review still apply.
+A style reference usually belongs to create; faithful reconstruction of complete pages belongs to recreate. Native templates use the separate Template workflow. Source page count does not determine slide count.
 
-Read [the workflow](references/declarative-design.md) and [compact authoring](references/declarative-authoring.md). This is an unpublished development candidate. Legacy routes remain available for compatibility.
+**The visual style is not fixed.** Typography, palette, composition, charts, and page rhythm follow the current content, audience, and brand constraints. Reusable styles, source references, and decorative symbols reduce repetition without imposing one page layout.
 
-## v5.0.1 declarative runtime foundation
+## Design previews without an image-generation model
 
-The v5 alpha route accepts checked content, design, scene, asset, and review JSON instead of task-authored drawing code. Its fixed backend produces native editable objects, registers assets by hash, renders a real PPTX preview, and fails closed until the exact build is independently reviewed. It supports image reconstruction, image-led style transfer, and new full-slide design; native template preservation remains on the Template route.
+The default original-design workflow is:
 
-**Verified development sample:** one real native PPTX preview contains **12 editable text objects and 22 native shapes** with no whole-slide screenshot. The candidate also exercises text editing, chart-data replacement, table-cell editing, isolated LibreOffice preview, and hash-bound review records. This is an alpha development proof, not a claim of universal reference fidelity or PowerPoint/WPS parity.
+```text
+Full source → content and evidence → structured design
+→ native editable PPTX → LibreOffice PDF → PNG previews
+→ independent visual review and revisions → edit/save/reopen checks → delivery
+```
 
-![PPT Smith v5 declarative design — native PPTX preview](./assets/samples/v5-declarative-design-native-preview.png)
+A model that understands images and writes text can describe layouts and inspect programmatic renders. It does not need to generate bitmap images itself. This workflow creates an internal native candidate before producing its design preview. Image generation remains optional for illustrations or an explicitly requested external design target.
 
-Read [the declarative design workflow](references/declarative-design.md) before using `python3 -m engine design`.
+| Available capability | Supported workflow |
+| --- | --- |
+| Vision, no image generation | Create original slides, reconstruct supplied designs, inspect actual previews |
+| Vision and image generation | Add independent image assets when needed |
+| Text-only model | Author structured designs; use another visual reviewer or a human for image understanding and independent visual acceptance |
+| No office renderer | Prepare content and design, then install rendering tools before final delivery |
 
-**v4.1 Beta readiness:** PPT Smith now exposes three isolated routes. Bespoke lets a capable model author a native editable deck from a blank presentation. Template analyzes a user PPTX, reuses reviewed native components where feasible, and creates style-derived native components only when the template cannot express the content. Standard/Engineering remains the deterministic diagnostic and compatibility route. Bespoke and Template final status remains run-specific and requires real rendering plus hash-bound visual review.
+Photography and complex illustration still require suitable assets. The declarative entry point does not accept arbitrary HTML/CSS, SVG, or model-authored scripts, and does not promise lossless reconstruction of every reference. Recoverable chart/table data stays native; a replaceable image does not make its internal elements editable.
 
-## v4.1 Beta compatibility: Model-directed three-route authoring
+## v5.1 example: six Chinese slides, no image generation
 
-- **Bespoke:** quality-ceiling authoring from a blank presentation.
-- **Template:** reviewed Component Atlas reuse, whole-page composition, native model-authored gaps, provenance, and fail-closed QA.
-- **Standard / Engineering:** deterministic compilation and diagnostics; not a substitute for a model-authored final deck.
+An independent author used the current Skill and a seven-page user-provided PDF, *AI SME Entrepreneurship Support Plan (2026–2028)*, to create a six-slide Chinese overview without image-generation calls. Every slide includes speaker notes and source references. The 90-day action sequence is explicitly labeled as an author recommendation.
 
-Beta does not promise that every model or template succeeds on the first render. It promises that incomplete evidence, placeholder content, invalid template use, structural defects, and missing visual approval do not silently become a final delivery.
+Download the same [editable PPTX](assets/samples/v5.1-no-image-policy-native.pptx), or inspect the [object counts and acceptance evidence](assets/samples/v5.1-no-image-policy-evidence.json). These images are unmodified previews rendered from that PPTX.
 
-### Install and verify
+### Cover: 13 text objects and 6 native shapes
+
+![v5.1 original cover rendered without image generation](assets/samples/v5.1-no-image-policy-page-01.png)
+
+### Targets: 16 text objects and 3 native shapes
+
+![v5.1 policy targets with original numeric qualifiers preserved](assets/samples/v5.1-no-image-policy-page-02.png)
+
+### Actions: 18 text objects and 5 native shapes
+
+![v5.1 native timeline labeled as author advice, not an official application process](assets/samples/v5.1-no-image-policy-page-06.png)
+
+Counts come directly from the delivered PPTX. Each text box or shape is counted once:
+
+| Slide | Native text | Native shapes | Editable objects |
+| --- | ---: | ---: | ---: |
+| 1 · Policy overview | 13 | 6 | 19 |
+| 2 · Three-year targets | 16 | 3 | 19 |
+| 3 · Resource supply | 15 | 4 | 19 |
+| 4 · Enterprise development | 12 | 3 | 15 |
+| 5 · Open source and support | 20 | 5 | 25 |
+| 6 · Author recommendations | 18 | 5 | 23 |
+| **Total** | **94** | **26** | **120** |
+
+This example contains **0 images, 0 native charts, 0 native tables, and 0 groups**, with notes on all six slides. Numbers are editable text; they are not counted as charts. Decorative lines and dots count as shapes. Characters and notes placeholders are not counted again. Object count describes editability, not design quality.
+
+The candidate passed independent review of all pages and source content, reaching `final_delivery_ready`. On **macOS with LibreOffice 26.2.4.2**, Basic/UNO changed text, numeric text, and a shape fill on a disposable copy. Saving, closing, and reopening preserved the edits and all six notes; the original candidate stayed unchanged. This is an actual application-object edit test, not GUI clicking, and does not establish Windows/Linux or PowerPoint/WPS compatibility. The sample uses Arial Unicode MS without font embedding; verify fonts and layout on another device.
+
+## How to use it with an agent
+
+Load this directory's [SKILL.md](SKILL.md) in a host that can read Skills and execute local tools. Supply the source and intended outcome. Users do not need to write object JSON themselves.
+
+**From a document, without image generation:**
+
+```text
+Use PPT Smith to turn this PDF into about 10 editable Chinese slides.
+Audience: SME leaders. Goal: understand the policy and identify useful actions.
+The model has vision but no image-generation tool.
+Choose a visual style for the content. Preserve numeric qualifiers,
+page-level sources and speaker notes. Label author advice separately.
+Deliver after real rendering, independent review, and target-software edit/save/reopen checks.
+```
+
+**From complete design images:**
+
+```text
+Use these complete slide designs as reconstruction targets and the PDF
+as evidence for text and numbers. Preserve the approved layout.
+Identify conflicts that need correction. Keep text and recoverable chart/table data native.
+Explain image and effect limitations and provide target/actual preview comparisons.
+```
+
+**From a native template:**
+
+```text
+Use this company PPTX template for a 15-slide Chinese report.
+Reuse native components, preserve brand fonts and colours, and include sources and notes.
+Adapt page structure where content does not fit, explain the changes,
+and verify editing and saving in the target software.
+```
+
+**For a small revision:**
+
+```text
+Use the previous task. Change only the title on slide 6 and the notes on slide 7.
+Apply object patches and review affected pages again.
+Reuse unchanged-page review only through the verified inheritance mechanism.
+```
+
+Specify audience, purpose, language, slide budget, target software, and whether reference images express style or exact reconstruction. For revisions, retain the task directory and identify the affected pages/objects so the agent can load only the relevant context.
+
+## Less repeated input and rework
+
+- **Load instructions as needed:** the Skill entry keeps shared rules; route details load when selected.
+- **Compact authoring:** reusable styles, sources, colour values, and symbols expand into strict native objects.
+- **Short feedback:** build summaries point to complete evidence; content and objects can be inspected by page.
+- **Real font preflight:** test office-rendered fonts and characters before expanding a large deck, with environment-bound caching.
+- **Guarded patches and review inheritance:** revise objects without rewriting the task. Notes or data changes invalidate relevant review even when pixels stay the same.
+
+Measurements for the same six-slide task, with exact semantic round-trip validation:
+
+| Measurement | Original/full bytes | New/compact bytes | Reduction |
+| --- | ---: | ---: | ---: |
+| Skill entry, compared with v5.0.1 | 14,384 | 6,278 | 56.4% |
+| Author input for the same task | 69,702 | 42,808 | 38.6% |
+| CLI feedback for the same build | 24,550 | 631 | 97.4% |
+
+These are UTF-8 byte counts, using identical canonical JSON encoding for task input. The [sample evidence](assets/samples/v5.1-no-image-policy-evidence.json) records the scope. **They are not measured token, billing, or runtime savings.** Full source, object, build, and review evidence remains on disk. Revisions still build and render the whole deck; inheritance reduces repeated review, not rendering work.
+
+## Installation and local checks
+
+Install Python dependencies from the Skill root. Bash example for macOS/Linux:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-python scripts/bootstrap_pptxgenjs_runtime.py
 python scripts/check_identity.py
 python scripts/quick_validate_skill.py
-python -m engine --help
+python -m engine design capabilities
 ```
 
-Read the [declarative design workflow](references/declarative-design.md) and the [three-route guide](references/routes/v4-three-route-architecture.md).
+Real previews and font probes also require **LibreOffice, Poppler (pdftoppm, pdffonts, pdftotext), Fontconfig (fc-match), and the selected fonts**. Tools must be discoverable through PATH. On Windows use the corresponding virtual-environment Python executable; see [platform requirements](references/declarative-design.md#跨平台运行条件). `capabilities` checks local tools, not the host model's vision or image-generation capabilities.
 
-## Historical v3.0 baseline
-
-## v3.0 Hero Showcase
-
-The 12-slide *Future of Work 2030* showcase uses native editable objects and passed real rendering without whole-slide rasterization.
-
-![PPTSmith 3.0 Hero Showcase](assets/branding/pptsmith-2.1-hero-showcase-overview.png)
-
-## Sample Gallery
-
-These samples mirror the repository-home gallery and are copied into the Skill-owned asset directory so they render directly from this page.
-
-### State of AI 2025: complete 14-slide sample
-
-![State of AI 2025 14-page PPT sample](./assets/samples/stateofai-2025-final-contact-sheet.png)
-
-### Unified palette-system upgrade
-
-![Palette upgrade overview](./assets/samples/palette-upgrade-overview.png)
-
-### Native editable architecture diagram
-
-![Native editable architecture diagram](./assets/samples/native-architecture-diagram.png)
-
-## v2.0.7 AI Engineering Project Deck
-
-These screenshots come from a real 19-slide AI project deck rendered and reviewed with LibreOffice. They demonstrate the v2.0.7 upgrades for execution layers, state machines, Agent routing, RAG, model routing, and deployment evolution.
-
-![AI engineering project core upgrade contact sheet](./assets/samples/ai-project-core-upgrade-contact-sheet.png)
-
-### Execution layer: elbow routing across layers
-
-Runtime-to-capability relationships use reserved connector channels instead of diagonal lines through content.
-
-![AI project execution layer](./assets/samples/ai-project-execution-layer.png)
-
-### Agent Router: a dispatch bus instead of a radial connector web
-
-Policy, Router, Dispatch Bus, and Agent Groups are separated so every route remains traceable.
-
-![AI project Agent Router](./assets/samples/ai-project-agent-router.png)
-
-### Model routing: input container, score policy, and capability pools
-
-Constraints enter one explicit container before Routing Score and the three capability pools, keeping the main path and external-action boundary clear.
-
-![AI project model routing](./assets/samples/ai-project-model-routing.png)
-
-This skill is designed for article-to-presentation and source-to-deck workflows where the output must be more than a quick template conversion. It helps an agent identify the user persona, derive a storyline, lock content, select a fitting visual baseline, generate editable PPTX files when possible, create native dynamic PPTX decks for presentation mode, upload to Feishu Slides when requested, and report verification status honestly.
-
-This skill supports:
-
-- direct PPTX export
-- native dynamic PPTX via progressive build slides
-- HTML preview or dynamic HTML companion decks
-- Feishu Slides routing
-- MeowClawLab visual systems
-- persona-fit deck defaults for product owners, agent engineers, and knowledge creators
-- consulting-style and editorial knowledge deck baselines
-- SVG/HTML preview policy for simple, polished, code-backed layouts
-- evidence-backed storyboards
-- content lock, slide manifest, and lightweight visual QA gates
-- production profiles (`fast`, `standard`, `premium`) with trusted status reporting
-- formal PPT IR, Style Contract v2, build, QA, and delivery contracts
-- a minimal `python_pptx` runtime builder for native text/table smoke builds
-
-## Quality Contract
-
-- Important claims, numbers, examples, diagrams, and recommendations must trace back to source material or be labeled as reconstruction or assumption.
-- Storyline comes before slide production.
-- Persona and delivery context come before visual styling.
-- Slide content is locked before visual previews or PPTX export.
-- Non-trivial decks should maintain `slide_manifest.json`.
-- Core text should remain editable where the export format supports it.
-- Visual structure should not be downgraded into a flat screenshot unless the user explicitly accepts that tradeoff.
-- Platform capability gaps are reported instead of hidden.
-- Dynamic PPT requests are answered with native PPTX progressive-build decks unless the user explicitly asks for web-only output.
-- A handoff must separate `Created`, `Rendered`, `Read back`, and `Final`.
-
-## Persona Defaults
-
-- Product owners / product reporters: executive summary, decision ask, metrics, roadmap, risks, and next steps.
-- Agent engineers / automation developers: workflow, architecture, failure modes, implementation plan, permissions, and ROI.
-- Self-media authors / knowledge bloggers: hook, framework, examples, practical steps, reusable social/content cards, and brand rhythm.
-
-## When To Use
-
-Use this skill when you need to:
-
-- Convert long-form writing into a slide deck.
-- Turn a WeChat article, Markdown draft, HTML article, PRD, automation proposal, product report, knowledge post, or research synthesis into a presentation.
-- Generate a local `.pptx` file that can be opened in PowerPoint, Keynote, LibreOffice Impress, or imported into Google Slides.
-- Generate a dynamic PPTX that reveals content step by step during presentation.
-- Create or upload a Feishu Slides deck for online collaboration and sharing.
-- Preserve source-rights boundaries and attribution.
-- Keep a deck professional, readable, persona-fit, and brand-consistent.
-- Use SVG or HTML/CSS as a preview/design aid while preserving editable PPT core objects where practical.
-- Maintain slide manifests and lightweight QA gates for non-trivial decks.
-- Distinguish generated, rendered, read-back, and final delivery states.
-
-## Stage 6 Verification
-
-After building a deck, run the verifier:
+The following illustrates the agent workflow. The model writes `author.json` from the source into the task directory; `init` does not parse a PDF or design slides by itself:
 
 ```bash
-python3 scripts/verify_deck.py deck.pptx \
-  --ppt-ir .ppt-work/contracts/ppt-ir.json \
-  --style .ppt-work/contracts/style-contract.json \
-  --delivery .ppt-work/contracts/delivery-plan.json \
-  --build .ppt-work/contracts/build-manifest.json \
-  --render \
-  --output .ppt-work/qa/qa-report.json
+PPTSMITH_TASK="./ppt-work/demo"
+python -m engine design init --task-dir "$PPTSMITH_TASK" --task-id demo --mode create --pages 6
+python -m engine design author --task-dir "$PPTSMITH_TASK" --file author.json
+python -m engine design preflight --task-dir "$PPTSMITH_TASK" --isolation auto
+python -m engine design build --task-dir "$PPTSMITH_TASK" --isolation auto
 ```
 
-Exit codes are `0` pass, `1` verification failure, `2` renderer unavailable,
-`3` bad input, and `4` internal error. This repository does not fabricate render
-evidence: if PowerPoint/Keynote/LibreOffice is unavailable, the report records
-`RENDER_ENGINE_UNAVAILABLE` and caps the build status.
+A successful build is a candidate. Use its build ID to prepare the review, complete independent review and actual editing checks, then run `review` and `deliver`. `state.json` records continuation details; the task, build manifest, and original review retain full evidence. See [the workflow](references/declarative-design.md) and [compact authoring/revisions](references/declarative-authoring.md).
 
-For repair loops:
+Only compatibility builders and tests using PptxGenJS require Node/npm plus:
 
 ```bash
-python3 scripts/repair_deck.py deck.pptx \
-  --qa-report .ppt-work/qa/qa-report.json \
-  --output-pptx .ppt-work/qa/repaired.pptx \
-  --output-report .ppt-work/qa/repair-report.json
+python scripts/bootstrap_pptxgenjs_runtime.py
 ```
 
-Only registered safe deterministic repairs may run. Visual/render defects remain
-manual until a real renderer can recheck them.
+The script runs lockfile-pinned `npm ci` inside `runtime/pptxgenjs`. Development dependencies are listed in `requirements-dev.txt`.
 
-## Privacy And Cloud Export Notice
+## Delivery and compatibility boundaries
 
-Local PPTX export is the safer default for sensitive drafts, PRDs, internal metrics, automation designs, and unpublished content. Feishu/Lark Slides export sends source content, generated slide text, and relevant metadata to the Feishu/Lark cloud environment. Only use Feishu/Lark upload or sharing when the user explicitly asks for cloud delivery and the content is appropriate for that service. Before uploading, summarize what will be transmitted and confirm the intended destination or sharing boundary.
+Final delivery includes editable PPTX, actual PDF/PNG previews, task and asset records, object inventory, review decisions, and editing limitations. Text, shapes, and recoverable data remain native wherever supported. An unapproved whole-slide screenshot cannot stand in for an editable deck.
 
-## How To Use
+Quality acceptance and OS isolation are separate. `--isolation auto` selects macOS isolation where available and host execution elsewhere. Host execution can deliver after quality checks, with OS isolation recorded as unverified. Explicit `--require-os-isolation` still blocks when isolation is unavailable. Runtime adapters do not establish actual application parity across operating systems.
 
-Give the agent the source material, audience/persona, and desired export target:
+The full regression run produced **815 effective passes and 18 skips**: 786 passed initially, and 29 real-render tests affected by the host sandbox passed after an authorized rerun. After the final CLI fixes, the declarative subset had **81 passes and 2 skips**. These sets overlap and must not be added. Skips cover unavailable reference fixtures, sample decks, and checks requiring actual Windows semantics.
 
-```text
-Use MeowClaw PPTSmith to turn this PRD and metrics summary into an editable PPTX.
-Compatible route: article-html-to-ppt.
-Audience: product leadership
-Persona: product owner / product reporter
-Goal: secure roadmap approval
-Style: clean product review, consulting-style, low rework
-Slides: around 8-12
-```
+Native template preservation continues through [Template](references/routes/v4-template-route.md). Bespoke is an advanced compatibility route; Standard/Engineering serves explicit engineering drafts and diagnostics. New `new_design` and `style_transfer` initializations map to create, while saved legacy tasks retain their original target requirements. A restricted browser design board, template-index cache, and measured model-cost dashboard are not included in this version.
 
-For Agent engineering or automation decks:
+## Historical examples
 
-```text
-Use MeowClaw PPTSmith to create a technical review PPT.
-Compatible route: article-html-to-ppt.
-Persona: Agent engineer / automation developer
-Include: workflow diagram, architecture, failure modes, implementation plan, ROI.
-Use SVG for simple architecture or state-machine diagrams if helpful.
-```
+These are real renders from earlier versions and are not part of the v5.1 object counts above.
 
-For knowledge creators:
+<details>
+<summary>Show V4 Template and Bespoke examples</summary>
 
-```text
-Use MeowClaw PPTSmith to turn this article into a knowledge deck.
-Compatible route: article-html-to-ppt.
-Persona: self-media author / knowledge blogger
-Include: hook, framework, examples, practical steps, and reusable social-card slides.
-```
+**Template: a 31-slide research presentation**, with notes on 29 body slides, using a source report and native template components.
 
-For native dynamic PPTX:
+![V4 Template 31-slide rendered contact sheet](assets/samples/mgi-template-v4-31-page-contact-sheet.png)
 
-```text
-Use MeowClaw PPTSmith to create a dynamic PPTX.
-Compatible route: article-html-to-ppt.
-The exported PPT should reveal bullets step by step during presentation.
-Also include speaker notes and a verification report.
-```
+**Bespoke: a 23-slide independent presentation**, with 12 native charts and notes on all 23 slides. These examples use different reports and are not a controlled quality comparison. They do not imply partnership, authorization, or endorsement by report publishers or template brands.
 
-For Feishu Slides:
+![V4 Bespoke 23-slide rendered contact sheet](assets/samples/state-ai-2025-independent-bespoke-23-page-contact-sheet.png)
 
-```text
-Use MeowClaw PPTSmith to turn this article into Feishu Slides
-and send me the shareable Feishu Slides link.
-```
+More historical assets are in the [sample directory](assets/samples/).
 
-## Export Behavior
+</details>
 
-The skill chooses the export route from the user's wording, persona, delivery context, and available capabilities.
+## Documentation and distribution
 
-### Generates a PPTX file
+- [Skill execution contract](SKILL.md)
+- [Declarative workflow, native objects, and acceptance](references/declarative-design.md)
+- [Compact authoring, object patches, and review inheritance](references/declarative-authoring.md)
+- [Template reuse](references/routes/v4-template-route.md) · [Bespoke compatibility](references/routes/v4-bespoke-route.md)
+- [V4 route architecture](references/routes/v4-three-route-architecture.md) · [Historical export capabilities](references/export-pipelines.md)
+- [Sample evidence](assets/samples/v5.1-no-image-policy-evidence.json)
 
-The skill should generate a local PPTX file when the user asks for:
+Local building and rendering do not publish files. Source handling by the model depends on the host configuration. Feishu/Lark creation, upload, or sharing requires user authorization for that delivery.
 
-- `PPT`, `PPTX`, `PowerPoint`, `Keynote`, or an editable deck file
-- direct export
-- a file that can be sent, archived, opened locally, or imported elsewhere
-- dynamic PPT / animated PPT that must work in presentation mode
-- both a local deck and a cloud upload
-
-Typical outputs:
-
-- `deck.pptx` for a static editable deck
-- `deck-dynamic-native.pptx` for a native dynamic deck
-- `pptx-build-report.json` or `native-dynamic-pptx-report.json`
-- `verification-report.md`
-
-### Uses SVG or HTML/CSS when useful
-
-SVG and HTML/CSS are design aids, not excuses to flatten the whole deck:
-
-- Use native PPT objects for standard text, shapes, tables, diagrams, and simple charts.
-- Use SVG for simple, scalable effects: issue trees, icons, line diagrams, badges, dividers, simple architecture maps, and state machines.
-- Use HTML/CSS as a preview surface for layout, typography, tables, dashboards, longform editorial pages, or dense technical diagrams before rebuilding/exporting to PPTX.
-- Do not use HTML screenshots as the final deck unless the user accepts low editability.
-
-### Generates a native dynamic PPTX
-
-When the user asks for dynamic PPT, the default is **native dynamic PPTX**, not HTML.
-
-The stable implementation is progressive-build slides:
-
-- one logical slide may become multiple physical PPTX slides
-- each physical slide reveals the next bullet, diagram part, or emphasis
-- PowerPoint/Keynote presentation mode advances through these build steps
-- optional native fade transitions make the reveal feel smoother
-
-The handoff should report both:
-
-- logical slide count
-- native build-step slide count
-
-### Uploads or creates Feishu Slides
-
-The skill should create or upload to Feishu Slides when the user asks for:
-
-- `Feishu Slides`, `飞书幻灯片`, `Lark Slides`, or an online slide deck
-- a shareable cloud link
-- collaborative editing in Feishu
-- direct upload to a specific Feishu location
-- final delivery as a Feishu document rather than a local file
-
-Feishu delivery depends on the current environment's Feishu/Lark authorization and API capability. Creation/upload is not the same as final verification: when possible, the agent should read back or screenshot the Feishu Slides result before calling it final.
-
-Before Feishu/Lark export, confirm that the user intended cloud delivery. Do not silently upload sensitive drafts, internal PRDs, metrics, automation designs, or unpublished content.
-
-## Files
-
-- `SKILL.md` - the actual OpenClaw skill document.
-- `skill-card.md` - public-facing skill card metadata.
-- `README.md` - public documentation entry for `MeowClaw 夜猫 PPT 工坊` / `MeowClaw PPTSmith`, while preserving the `article-html-to-ppt` compatibility route.
-- `references/migration-v1.1-to-v1.2.md` - migration guide for older manifests and templates.
-- `references/routes/` - current route guides for Bespoke, Template, Standard, and legacy style packs.
-- `references/export-pipelines.md` - export routing for PPTX, dynamic PPTX, Feishu Slides, and HTML.
-- `references/visual-design-archetypes.md` - visual direction archetypes.
-- `references/visual-systems.md` - reusable visual system constraints.
-- `templates/storyboard-template.md` - storyboard and verification template.
-- `templates/content-lock-template.md` - content lock template.
-- `templates/slide-manifest-template.json` - slide manifest template.
-- `templates/visual-qa-gate-template.json` - visual QA gate template.
-
-## Templates
-
-- `templates/storyboard-template.md`
-- `templates/content-lock-template.md`
-- `templates/slide-manifest-template.json`
-- `templates/visual-qa-gate-template.json`
-
-## Version
-
-5.1.0-dev.1
-
-The declarative design route is a preview: it retains V4 route compatibility but does not claim universal reference fidelity or Microsoft PowerPoint/WPS pixel parity.
-
-## Publishing Note
-
-This skill is intended to be reusable and GitHub-friendly. It should not contain local secrets, user-specific credentials, private paths, raw chat logs, or platform tokens.
+The core engine, general components, editable objects, and QA are open source under Apache-2.0. Enterprise brand adaptations, dedicated masters, industry packages, custom components, and managed generation/deployment services are separate commercial deliverables, excluded from the public repository and Skill bundle.
