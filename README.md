@@ -12,6 +12,51 @@
 
 本次更新明确区分原生模板保留与模板风格参考，并补充可选生图设计目标、按页内容绑定及逐页视觉审核。下方的 v5.0、v5.1 历史样例保留原始版本与统计口径。
 
+## 作品画廊
+
+以下收录 `assets/samples/` 中的示例图，按**图片首次加入仓库的日期倒序**排列；日期不是 PPT 的制作日期。点击缩略图查看原图，较早的设计与架构示例可展开查看。可编辑对象数仅对应各自的交付 PPTX，历史案例的验证范围见下文。
+
+<table>
+  <tr>
+    <td width="33%" valign="top"><a href="assets/samples/v5.1-template-image-guided-4page-2col-overview.png"><img src="assets/samples/v5.1-template-image-guided-4page-2col-overview.png" alt="生图设计后原生重建，四页两列总览" width="100%"></a><br><strong>2026-09-23 · 模板风格重建</strong><br><small>4 页 · 179 个可编辑对象 · <a href="assets/samples/v5.1-template-image-guided-4page.pptx">下载 PPTX</a></small></td>
+    <td width="33%" valign="top"><a href="assets/samples/v5.1-template-native-4page-2col-overview.png"><img src="assets/samples/v5.1-template-native-4page-2col-overview.png" alt="原生模板组件复用，四页两列总览" width="100%"></a><br><strong>2026-09-23 · 原生组件复用</strong><br><small>4 页 · 61 个可编辑对象 · <a href="assets/samples/v5.1-template-native-4page.pptx">下载 PPTX</a></small></td>
+    <td width="33%" valign="top"><a href="assets/samples/v5.1-no-image-policy-page-01.png"><img src="assets/samples/v5.1-no-image-policy-page-01.png" alt="v5.1 无生图政策解读封面" width="100%"></a><br><strong>2026-09-21 · v5.1 无生图封面</strong><br><small>6 页政策解读中的第 1 页 · <a href="assets/samples/v5.1-no-image-policy-native.pptx">下载 PPTX</a></small></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><a href="assets/samples/v5.1-no-image-policy-page-02.png"><img src="assets/samples/v5.1-no-image-policy-page-02.png" alt="v5.1 无生图政策解读三年目标页" width="100%"></a><br><strong>2026-09-21 · v5.1 目标页</strong><br><small>同一份 6 页可编辑政策 PPT</small></td>
+    <td width="33%" valign="top"><a href="assets/samples/v5.1-no-image-policy-page-06.png"><img src="assets/samples/v5.1-no-image-policy-page-06.png" alt="v5.1 无生图政策解读行动页" width="100%"></a><br><strong>2026-09-21 · v5.1 行动页</strong><br><small>同一份 6 页可编辑政策 PPT</small></td>
+    <td width="33%" valign="top"><a href="assets/samples/v5.0-latin-america-ai-zh-overview.png"><img src="assets/samples/v5.0-latin-america-ai-zh-overview.png" alt="v5.0 拉美 AI 与就业研究二十页总览" width="100%"></a><br><strong>2026-09-21 · v5.0 研究解读</strong><br><small>20 页 · 447 个原生可编辑对象 · <a href="assets/samples/v5.0-latin-america-ai-zh-native.pptx">下载 PPTX</a></small></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><a href="assets/samples/v5-declarative-design-native-preview.png"><img src="assets/samples/v5-declarative-design-native-preview.png" alt="v5 声明式设计原生预览" width="100%"></a><br><strong>2026-09-20 · v5 设计预览</strong><br><small>早期声明式设计示例</small></td>
+    <td width="33%" valign="top"><a href="assets/samples/mgi-template-v4-31-page-contact-sheet.png"><img src="assets/samples/mgi-template-v4-31-page-contact-sheet.png" alt="V4 模板路线三十一页联系表" width="100%"></a><br><strong>2026-09-10 · V4 Template</strong><br><small>31 页研究报告演示</small></td>
+    <td width="33%" valign="top"><a href="assets/samples/state-ai-2025-independent-bespoke-23-page-contact-sheet.png"><img src="assets/samples/state-ai-2025-independent-bespoke-23-page-contact-sheet.png" alt="V4 Bespoke 路线二十三页联系表" width="100%"></a><br><strong>2026-09-10 · V4 Bespoke</strong><br><small>23 页独立设计演示</small></td>
+  </tr>
+</table>
+
+<details>
+<summary>展开更早的 9 张示例图（2026-08 → 2026-07）</summary>
+
+<table>
+  <tr>
+    <td width="33%" valign="top"><a href="assets/samples/v120-deepseek-v4-pro-state-of-ai-contact-sheet.png"><img src="assets/samples/v120-deepseek-v4-pro-state-of-ai-contact-sheet.png" alt="早期 State of AI 模型路径演示联系表" width="100%"></a><br><strong>2026-08-11 · State of AI 对照稿</strong></td>
+    <td width="33%" valign="top"><a href="assets/samples/model-path-comparison-grid.png"><img src="assets/samples/model-path-comparison-grid.png" alt="模型路径对照网格" width="100%"></a><br><strong>2026-08-11 · 模型路径对照</strong></td>
+    <td width="33%" valign="top"><a href="assets/samples/stateofai-2025-final-contact-sheet.png"><img src="assets/samples/stateofai-2025-final-contact-sheet.png" alt="早期 State of AI 演示联系表" width="100%"></a><br><strong>2026-07-21 · State of AI 演示</strong></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><a href="assets/samples/ai-project-core-upgrade-contact-sheet.png"><img src="assets/samples/ai-project-core-upgrade-contact-sheet.png" alt="AI 项目核心升级示例联系表" width="100%"></a><br><strong>2026-07-21 · AI 项目升级</strong></td>
+    <td width="33%" valign="top"><a href="assets/samples/ai-project-model-routing.png"><img src="assets/samples/ai-project-model-routing.png" alt="AI 项目模型路由示意" width="100%"></a><br><strong>2026-07-21 · 模型路由</strong></td>
+    <td width="33%" valign="top"><a href="assets/samples/ai-project-agent-router.png"><img src="assets/samples/ai-project-agent-router.png" alt="AI 项目 Agent Router 示意" width="100%"></a><br><strong>2026-07-21 · Agent Router</strong></td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><a href="assets/samples/ai-project-execution-layer.png"><img src="assets/samples/ai-project-execution-layer.png" alt="AI 项目执行层示意" width="100%"></a><br><strong>2026-07-21 · 执行层</strong></td>
+    <td width="33%" valign="top"><a href="assets/samples/palette-upgrade-overview.png"><img src="assets/samples/palette-upgrade-overview.png" alt="早期配色升级总览" width="100%"></a><br><strong>2026-07-21 · 配色升级</strong></td>
+    <td width="33%" valign="top"><a href="assets/samples/native-architecture-diagram.png"><img src="assets/samples/native-architecture-diagram.png" alt="原生架构示意图" width="100%"></a><br><strong>2026-07-21 · 原生架构</strong></td>
+  </tr>
+</table>
+
+</details>
+
 ## 适用场景：三个入口
 
 | 你要完成的事 | 输入 | 路线与结果 |
