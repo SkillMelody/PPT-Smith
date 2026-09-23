@@ -76,7 +76,10 @@ NODE = {"oneOf": [
     variant(BASE, "path", {"role": {"const": "native_shape"}, "commands": arr(PATH_COMMAND, 512, 2), "style": STYLE}),
     variant(BASE, "chart", {"role": {"const": "native_chart"}, "content_id": ID,
                             "chart_type": enum("bar", "column", "line", "pie", "doughnut"),
-                            "font": FONT, "colors": arr(COLOR, 20, 1), "legend": BOOL, "labels": BOOL}),
+                            "font": FONT, "colors": arr(COLOR, 20, 1), "legend": BOOL, "labels": BOOL,
+                            "label_colors": arr(COLOR, 200, 1), "label_number_format": SHORT,
+                            "legend_position": enum("bottom", "right"), "hole_size": num(10, 90)},
+            ("label_colors", "label_number_format", "legend_position", "hole_size")),
     variant(BASE, "table", {"role": {"const": "native_table"}, "content_id": ID, "font": FONT,
                             "fill": COLOR, "header_fill": COLOR, "header_color": COLOR,
                             "column_widths": arr(num(0.1), 50, 1)}, ("column_widths",)),
@@ -90,12 +93,15 @@ ASSET = obj({"id": ID, "sha256": SHA, "original_sha256": SHA, "width": {"type": 
              "crop": arr({"type": "integer", "minimum": 0}, 4, 4),
              "tool_result": obj({"tool": SHORT, "model": {"anyOf": [SHORT, {"type": "null"}]},
                                   "result_sha256": SHA, "prompt_sha256": SHA,
-                                  "invocation_id": {"anyOf": [SHORT, {"type": "null"}]}})},
+                                  "request_sha256": SHA,
+                                  "invocation_id": {"anyOf": [SHORT, {"type": "null"}]}},
+                                 ["tool", "model", "result_sha256", "prompt_sha256", "invocation_id"])},
             ["id", "sha256", "original_sha256", "width", "height", "page_ids", "role", "source"])
 REFERENCE = obj({"asset_id": ID, "page_ids": arr(ID, 60, 1),
                  "roles": arr(enum("reconstruction_target", "style", "content", "material"), 4, 1),
                  "priority": {"type": "integer", "minimum": 0, "maximum": 100}, "features": arr(SHORT, 40)})
 DESIGN_PAGE = obj({"page_id": ID, "target_asset_id": ID, "confirmed_by": SHORT,
+                   "target_content_sha256": SHA, "target_context_sha256": SHA,
                    "target_kind": enum("original", "generated", "provided_design", "approved_revision"),
                    "quality_limits": arr(SHORT, 30), "accepted_differences": arr(SHORT, 30),
                    "aspect_policy": enum("exact", "contain"),
@@ -176,11 +182,16 @@ def validate(task: dict, *, complete=False):
         target = assets.get(design.get("target_asset_id"))
         if design.get("target_asset_id") and not target:
             raise DesignError("DESIGN_TARGET_ASSET_MISSING")
-        if not target and any(k in design for k in ("target_kind", "confirmed_by")):
+        if not target and any(k in design for k in ("target_kind", "confirmed_by", "target_content_sha256", "target_context_sha256")):
             raise DesignError("TARGET_METADATA_WITHOUT_ASSET")
         if complete and task["mode"] not in {"create", "draft"} and (not target or not design.get("confirmed_by") or not design.get("target_kind")):
             raise DesignError(f"DESIGN_TARGET_REQUIRED: {pid}")
         if target:
+            from .targets import visible_content, target_context
+            for field, value in (("target_content_sha256", visible_content(task, pid)),
+                                 ("target_context_sha256", target_context(task, pid))):
+                if field in design and design[field] != digest(canonical(value)):
+                    raise DesignError(f"STALE_DESIGN_TARGET: {pid}/{field}")
             if complete and (not design.get("confirmed_by") or not design.get("target_kind")):
                 raise DesignError(f"DESIGN_TARGET_REQUIRED: {pid}")
             if pid not in target["page_ids"] or target["role"] not in {"reference", "target"}:

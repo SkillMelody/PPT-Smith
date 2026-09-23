@@ -4,7 +4,10 @@
   "type": "object",
   "properties": {
     "schema_version": {
-      "const": "1.0"
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
     },
     "task_id": {
       "type": "string",
@@ -17,6 +20,7 @@
     },
     "mode": {
       "enum": [
+        "create",
         "recreate",
         "style_transfer",
         "new_design",
@@ -537,6 +541,14 @@
                 "minLength": 1,
                 "maxLength": 500
               },
+              "target_content_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "target_context_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
               "target_kind": {
                 "enum": [
                   "original",
@@ -618,6 +630,9 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 10
+        },
+        "requires_style_reference": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -754,6 +769,10 @@
                     "pattern": "^[0-9a-f]{64}$"
                   },
                   "prompt_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "request_sha256": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
                   },
@@ -1486,6 +1505,31 @@
             },
             "labels": {
               "type": "boolean"
+            },
+            "label_colors": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9A-Fa-f]{6}$"
+              },
+              "maxItems": 200,
+              "minItems": 1
+            },
+            "label_number_format": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "legend_position": {
+              "enum": [
+                "bottom",
+                "right"
+              ]
+            },
+            "hole_size": {
+              "type": "number",
+              "minimum": 10,
+              "maximum": 90
             }
           },
           "required": [

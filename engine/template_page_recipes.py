@@ -3,7 +3,18 @@
 from __future__ import annotations
 
 
+FOCUSED_ARCHETYPES = frozenset({"focused_message", "focused_evidence"})
+
 PAGE_ARCHETYPES = {
+    "focused_message": {
+        "required_roles": {"primary_evidence"},
+        "minimum_modules": 1, "minimum_information_units": 1,
+    },
+    "focused_evidence": {
+        "required_roles": {"primary_evidence"},
+        "minimum_modules": 1, "minimum_information_units": 2,
+        "quantitative": True,
+    },
     "executive_summary": {
         "required_roles": {"primary_evidence", "interpretation", "implication"},
         "minimum_modules": 3,

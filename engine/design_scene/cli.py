@@ -18,19 +18,30 @@ ALIASES = {"new_design": "create", "style_transfer": "create"}
 MODES = ("create", "recreate", "template", "new_design", "style_transfer", "draft")
 
 
-def route(intent="auto", *, template=False, design_target=False):
-    if template and design_target and intent == "auto":
+def route(intent="auto", *, template=False, design_target=False, template_use="preserve"):
+    if template_use not in {"preserve", "style"}:
+        raise DesignError("UNKNOWN_TEMPLATE_USE")
+    if template_use == "style" and not template:
+        raise DesignError("TEMPLATE_STYLE_REQUIRES_TEMPLATE")
+    preserve = template and template_use == "preserve"
+    if preserve and design_target and intent == "auto":
         raise DesignError("ROUTE_CONFLICT: specify template preservation or image reconstruction")
     chosen = ALIASES.get(intent, intent)
     if chosen == "auto":
-        chosen = "template" if template else "recreate" if design_target else "create"
+        chosen = "template" if preserve else "recreate" if design_target else "create"
+    if template and template_use == "style" and chosen == "template":
+        raise DesignError("ROUTE_CONFLICT: style reference does not preserve a native template")
+    if preserve and chosen != "template":
+        raise DesignError("ROUTE_CONFLICT: native preservation requires template; explicitly choose --template-use style for redesign")
     if chosen not in {"create", "recreate", "template"}:
         raise DesignError("UNKNOWN_USER_INTENT")
     return {"intent": chosen, "entrypoint": "engine design" if chosen != "template" else "engine strict-template",
             "guide": "references/routes/v4-template-route.md" if chosen == "template" else "references/declarative-design.md",
             "image_generation_required": False,
             "external_target_required": chosen == "recreate",
-            "native_template_preservation": chosen == "template"}
+            "native_template_preservation": chosen == "template",
+            "template_use": template_use if template else None,
+            "style_reference_required": template and template_use == "style"}
 
 
 def save_state(store, task, *, phase, manifest=None, review_file=None, report=None, delivery=None):
@@ -117,6 +128,8 @@ def main(argv=None):
     routing = sub.add_parser("route", help="choose create, recreate or template from input intent")
     routing.add_argument("--intent", choices=["auto", *MODES[:-1]], default="auto")
     routing.add_argument("--template", action="store_true")
+    routing.add_argument("--template-use", choices=["preserve", "style"], default="preserve",
+                         help="preserve native template, or explicitly permit a new design in its style")
     routing.add_argument("--design-target", action="store_true")
     init = sub.add_parser("init")
     init.add_argument("--task-dir", required=True)
@@ -130,11 +143,18 @@ def main(argv=None):
     init.add_argument("--language", default="zh-CN")
     init.add_argument("--target-software", default="LibreOffice")
     commands = ("ingest", "crop", "validate", "image-request", "build", "status", "review-template",
-                "review", "deliver", "author", "compact", "patch", "context", "inspect", "preflight")
+                "review", "deliver", "author", "compact", "patch", "context", "inspect", "preflight", "freeze-target")
     for command in commands:
         p = sub.add_parser(command)
         p.add_argument("--task-dir", required=True)
         p.add_argument("--full", action="store_true", help="explicit detailed output; default feedback is compact")
+        if command == "image-request":
+            p.add_argument("--pages", help="comma-separated page IDs; default is all pages")
+        if command == "freeze-target":
+            p.add_argument("--page", required=True)
+            p.add_argument("--asset-id", required=True)
+            p.add_argument("--request-file", default="image-request.json")
+            p.add_argument("--confirmed-by", required=True)
         if command in {"ingest", "crop"}:
             p.add_argument("--asset-id", required=True)
             p.add_argument("--pages", required=True)
@@ -183,7 +203,8 @@ def main(argv=None):
             if args.section == "node" and not args.review:
                 result = {**result, "$defs": SCHEMA["$defs"]} if not args.type or args.type == "group" else result
         elif args.command == "route":
-            result = route(args.intent, template=args.template, design_target=args.design_target)
+            result = route(args.intent, template=args.template, design_target=args.design_target,
+                           template_use=args.template_use)
         elif args.command == "capabilities":
             identity = renderer_identity()
             result = {"backend": identity if args.full else {"dependencies": identity["dependencies"],
@@ -274,9 +295,19 @@ def main(argv=None):
                     result = validate(task, complete=args.complete)
                     read_assets(store, task)
                 elif args.command == "image-request":
-                    request = image_request(task)
+                    request = image_request(task, page_ids=args.pages.split(",") if args.pages else None)
                     store.put_json("image-request.json", request)
                     result = request if args.full else {"status": request["status"], "file": "image-request.json", "generated": False}
+                elif args.command == "freeze-target":
+                    from .targets import freeze_generated_target
+                    candidate = freeze_generated_target(task, store.json(args.request_file), page_id=args.page,
+                                                        asset_id=args.asset_id, confirmed_by=args.confirmed_by)
+                    read_assets(store, candidate)
+                    store.put_json("history/" + versions(task)["task"] + ".json", task)
+                    store.put_json("task.json", candidate)
+                    save_state(store, candidate, phase="target_confirmed_requires_build")
+                    result = {"status": "target_confirmed_requires_build", "page_id": args.page,
+                              "target_asset_id": args.asset_id, "independent_review_required": True}
                 elif args.command == "status":
                     if not args.build_id:
                         result = context(task)

@@ -19,7 +19,7 @@ metadata:
 | Reconstruct supplied complete slide designs as editable objects | `recreate` | [Declarative workflow](references/declarative-design.md) |
 | Reuse a native PPTX template and its components | `template` | [Template workflow](references/routes/v4-template-route.md) |
 
-Infer intent, audience, language and page budget from the request. Ask only about material conflicts, such as exact image reconstruction versus native template preservation. A style image does not imply exact reconstruction. A source page count does not prescribe slide count.
+Infer intent, audience, language and page budget from the request. Ask only about material conflicts, such as exact image reconstruction versus native template preservation. A style image does not imply exact reconstruction. A PPTX supplied only as a style reference uses create; preserve masters/native layouts only when requested. For template-inspired redesign, read [template visual design](references/template-visual-design.md). A source page count does not prescribe slide count.
 
 ## Shared authoring contract
 

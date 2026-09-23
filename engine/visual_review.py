@@ -89,6 +89,10 @@ def apply_template_visual_review(strict_report_path: str | Path, review: dict) -
         return _reject("VISUAL_REVIEW_DECK_HASH_MISMATCH")
     if review.get("render_report_sha256") != _canonical_sha(render):
         return _reject("VISUAL_REVIEW_RENDER_HASH_MISMATCH")
+    if strict.get("visual_review_contract") == "page_visual_v1":
+        result = _template_page_review(render, review)
+        if result:
+            return result
     reviewer = review.get("reviewer", {})
     if not all(
         isinstance(reviewer.get(key), str) and reviewer[key]
@@ -116,3 +120,30 @@ def apply_template_visual_review(strict_report_path: str | Path, review: dict) -
         "review_round": round_number,
         "visual_review": review,
     }
+
+
+def _template_page_review(render: dict, review: dict) -> dict | None:
+    """Require observations against every real preview, never just an empty findings list."""
+    expected = {p["slide_index"]: p for p in render.get("slides", [])}
+    pages = review.get("pages")
+    if (not expected or not isinstance(pages, list)
+        or any(not isinstance(p, dict) or type(p.get("slide_index")) is not int for p in pages)
+        or len(pages) != len(expected) or {p["slide_index"] for p in pages} != set(expected)):
+        return _reject("TEMPLATE_REVIEW_PAGE_COVERAGE_REQUIRED")
+    for page in pages:
+        evidence = expected[page["slide_index"]]
+        path = Path(evidence.get("image", ""))
+        if (not path.is_file() or not evidence.get("sha256")
+            or _sha(path) != evidence["sha256"] or page.get("preview_sha256") != evidence["sha256"]):
+            return _reject("TEMPLATE_REVIEW_PREVIEW_HASH_MISMATCH", slide_index=page["slide_index"])
+        for key in ("hierarchy", "reading_order", "template_match", "readability", "content", "editability"):
+            observation = page.get(key, {})
+            if (not isinstance(observation, dict) or observation.get("status") not in {"pass", "fail"}
+                or not isinstance(observation.get("observation"), str) or not observation["observation"].strip()):
+                return _reject("TEMPLATE_REVIEW_OBSERVATION_REQUIRED", slide_index=page["slide_index"], criterion=key)
+            if review.get("status") == "approved" and observation["status"] != "pass":
+                return _reject("TEMPLATE_REVIEW_APPROVAL_HAS_FAILED_CRITERION", slide_index=page["slide_index"])
+    rhythm = review.get("deck_rhythm")
+    if not isinstance(rhythm, str) or not rhythm.strip():
+        return _reject("TEMPLATE_REVIEW_DECK_RHYTHM_REQUIRED")
+    return None

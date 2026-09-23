@@ -78,25 +78,41 @@ def read_assets(store, task):
     return result
 
 
-def image_request(task):
+def image_request(task, *, page_ids=None):
     """An allowlist projection, not serialization of internal content records."""
     validate(task)
+    from .targets import target_context
+    all_ids = {p["id"] for p in task["scene"]["pages"]}
+    selected = all_ids if page_ids is None else set(page_ids)
+    if not selected or not selected <= all_ids or page_ids is not None and len(selected) != len(page_ids):
+        raise DesignError("IMAGE_REQUEST_PAGE_SELECTION_INVALID")
     pages = []
     for page in task["scene"]["pages"]:
+        if page["id"] not in selected:
+            continue
         visible = []
         for c in task["content"]["items"]:
             if c["page_id"] != page["id"]:
                 continue
             if not c["provenance"]["checked"]:
                 raise DesignError("CHECK_CONTENT_BEFORE_IMAGE_REQUEST")
-            visible.append({k: c[k] for k in ("type", "text", "categories", "series", "cells") if k in c})
-        pages.append({"visible_content": visible,
-                      "reference_features": [r["features"] for r in task["design"]["references"] if page["id"] in r["page_ids"]]})
+            visible.append({k: c[k] for k in ("id", "type", "text", "categories", "series", "cells", "required_edit") if k in c})
+        refs = [r for r in task["design"]["references"] if page["id"] in r["page_ids"]]
+        pages.append({"page_id": page["id"], "visible_content": visible,
+                      "content_sha256": digest(canonical(visible)),
+                      "context_sha256": digest(canonical(target_context(task, page["id"]))),
+                      "references": [{"asset_id": r["asset_id"], "roles": r["roles"],
+                                      "priority": r["priority"], "features": r["features"]} for r in refs],
+                      "reference_features": [r["features"] for r in refs]})
     return {"status": ("reference_analysis_required" if task["mode"] == "recreate" else
                        "optional_image_tool_request" if task["mode"] == "create" else "image_tool_required"),
+            "task_sha256": versions(task)["task"],
             "request": {"mode": task["mode"], "audience": task["audience"], "language": task["language"],
                         "canvas": task["canvas"], "visual_brief": task["design"]["brief"], "pages": pages,
-                        "instruction": "Design each complete slide using only the supplied visible content. Do not invent data or labels. Charts and tables will be reconstructed deterministically from checked data."},
+                        "instruction": "Design each complete slide using only the supplied visible content. Do not invent data or labels. Style references supply visual rules, not business content. Preserve exact facts and units. Prefer clean editable typography, flat shapes and native charts; avoid effects unsupported by the renderer. Charts and tables will be reconstructed deterministically from checked data. Review the design and reconstruction feasibility before freezing it as a target.",
+                        "editable_types": ["text", "shape", "path", "chart", "table"],
+                        "unsupported_effects": ["gradient", "mask", "embedded_font", "automatic_text_reflow"],
+                        "asset_policy": "Standalone illustrations may remain replaceable images; complete slide images cannot substitute for editable content."},
             "generated": False}
 
 

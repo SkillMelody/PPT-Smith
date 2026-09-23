@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import Counter
 from math import ceil
 
-from .template_page_recipes import evaluate_template_page_recipe
+from .template_page_recipes import FOCUSED_ARCHETYPES, evaluate_template_page_recipe
 from .template_series_planner import evaluate_template_series
 
 
@@ -88,6 +88,7 @@ def _validate_page(
         _issue(issues, "TEMPLATE_PAGE_SEMANTIC_LAYERS_INVALID", slide_id)
         layers = []
     layer_set = set(layers)
+    focused = contract.get("composition_archetype") in FOCUSED_ARCHETYPES
 
     modules = contract.get("content_modules", [])
     planned_components = {
@@ -177,14 +178,14 @@ def _validate_page(
                 declared_layers=sorted(layer_set),
             )
         substantive_roles = {module.get("role") for module in substantive_modules}
-        if len(substantive_modules) < 2:
+        if len(substantive_modules) < (1 if focused else 2):
             _issue(
                 issues, "TEMPLATE_PAGE_SINGLE_COMPONENT_SHELL", slide_id,
                 substantive_module_count=len(substantive_modules),
             )
         if "primary_evidence" not in substantive_roles:
             _issue(issues, "TEMPLATE_PAGE_PRIMARY_EVIDENCE_REQUIRED", slide_id)
-        if not ({"interpretation", "implication", "context", "kpi", "annotation"} & substantive_roles):
+        if not focused and not ({"interpretation", "implication", "context", "kpi", "annotation"} & substantive_roles):
             _issue(issues, "TEMPLATE_PAGE_SUPPORTING_MODULE_REQUIRED", slide_id)
         for component_id in planned_components:
             component = atlas_by_id.get(component_id)
@@ -198,14 +199,26 @@ def _validate_page(
                     issues, "TEMPLATE_COMPONENT_COMPANION_REQUIRED", slide_id,
                     component_id=component_id, missing_companion_roles=missing_companions,
                 )
-        if information_units < 4:
+        if information_units < (1 if focused else 4):
             _issue(
                 issues, "TEMPLATE_PAGE_INFORMATION_SATURATION_LOW", slide_id,
-                information_unit_count=information_units, minimum_information_units=4,
+                information_unit_count=information_units, minimum_information_units=1 if focused else 4,
             )
         takeaway = contract.get("takeaway")
-        if not isinstance(takeaway, str) or len(takeaway.strip()) < 20:
+        if not isinstance(takeaway, str) or len(takeaway.strip()) < (1 if focused else 20):
             _issue(issues, "TEMPLATE_PAGE_TAKEAWAY_REQUIRED", slide_id)
+        if focused:
+            intent = contract.get("visual_intent", {})
+            ids = [m.get("module_id") for m in substantive_modules]
+            order = intent.get("reading_order") if isinstance(intent, dict) else None
+            if (not isinstance(intent, dict)
+                or any(not isinstance(intent.get(k), str) or not intent[k].strip()
+                       for k in ("message", "focal_component_id", "rationale", "interpretation"))
+                or intent.get("focal_component_id") not in planned_components
+                or not isinstance(order, list) or any(not isinstance(x, str) for x in order)
+                or any(not isinstance(x, str) or not x for x in ids)
+                or len(ids) != len(set(ids)) or len(order) != len(ids) or set(order) != set(ids)):
+                _issue(issues, "TEMPLATE_FOCUSED_VISUAL_INTENT_REQUIRED", slide_id)
 
         data_shape = slide.get("component_intent", {}).get("data_shape", {})
         is_quantitative = bool(slide.get("chart") or slide.get("charts")) or (
@@ -252,6 +265,7 @@ def _validate_page(
         "module_density": module_reports,
         "series_context": contract.get("series_context"),
         "composition_archetype": contract.get("composition_archetype"),
+        "visual_intent": contract.get("visual_intent") if focused else None,
     }, issues
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from .template_page_recipes import FOCUSED_ARCHETYPES
 
 
 GENERIC_FAMILIES = frozenset({"card_grid", "icon_card_grid"})
@@ -27,6 +28,8 @@ def _is_semantic_content_name(name: str) -> bool:
 
 
 def _minimum_visible_text(page: dict) -> tuple[int, str]:
+    if page.get("composition_archetype") in FOCUSED_ARCHETYPES:
+        return 1, "focused"
     archetype = page.get("archetype", "body")
     if archetype in {"cover", "section", "closing"}:
         return 30, archetype
@@ -81,7 +84,7 @@ def evaluate_template_visual_quality(pages: list[dict]) -> dict:
             and isinstance(declared_units, int)
             and declared_units > 0
         ):
-            rendered_floor = min(4, declared_units)
+            rendered_floor = 1 if density_role == "focused" else min(4, declared_units)
             if bound_objects < rendered_floor:
                 issues.append({
                     "code": "VISUAL_DECLARED_INFORMATION_UNDER_RENDERED",
@@ -163,6 +166,7 @@ def inspect_template_visual_quality(
             "declared_substantive_module_count": composition.get(
                 "substantive_module_count"
             ),
+            "composition_archetype": composition.get("composition_archetype"),
             "declared_information_unit_count": composition.get(
                 "information_unit_count"
             ),
@@ -179,7 +183,7 @@ def inspect_template_visual_quality(
         })
         if (
             page["density_role"] not in {"cover", "section", "closing"}
-            and source["bound_semantic_object_count"] < 2
+            and source["bound_semantic_object_count"] < (1 if page["density_role"] == "focused" else 2)
         ):
             report["issues"].append({
                 "code": "VISUAL_PAGE_SINGLE_SEMANTIC_OBJECT",

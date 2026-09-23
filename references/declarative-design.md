@@ -22,6 +22,8 @@ python-pptx 1.0.2、Pillow 11.3.0、jsonschema 4.25.1、lxml 6.1.1。
 `init --mode new_design/style_transfer` 是 create 的兼容别名；风格图登记为 style 参考。
 既有保存任务中的旧 mode 保持原合同，不自动解除外部目标要求。`draft` 仅用于诊断草稿，
 不能最终交付。CLI `route --template` / `route --design-target` 可查询意图路由。
+`route --template --template-use style` 表示已允许参考模板重新设计，返回 create；
+原生模板保留仍使用 template。详细流程见[模板风格设计](template-visual-design.md)。
 
 用户意图已经明确时直接执行。只有显著影响结果的冲突才澄清。品牌规则仅在
 本次请求要求时采用。多图分别声明用途、页映射、采用特征与优先级；不自动混合。

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shutil
+import hashlib
 import posixpath
 from pathlib import Path
 import zipfile
@@ -1310,6 +1311,10 @@ def execute_strict_template(
         engine=render_engine, expected_slides=int(delivery["output_slide_count"]),
         expected_aspect=aspect, dpi=96,
     )
+    for page in render.get("slides", []):
+        image = Path(page.get("image", ""))
+        if image.is_file():
+            page["sha256"] = "sha256:" + hashlib.sha256(image.read_bytes()).hexdigest()
     assets = _asset_preservation(template_path, output_path)
     from .template_readability import inspect_template_native_visual_floor
     from .template_delivery_quality import inspect_template_delivery_quality
@@ -1360,4 +1365,5 @@ def execute_strict_template(
         },
         "output_pptx": str(output_path),
         "visual_review": "required_before_final_delivery",
+        "visual_review_contract": "page_visual_v1",
     }

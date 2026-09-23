@@ -18,6 +18,9 @@ Template 是强模型主导的模板组件编排路线。用户模板提供原�
 strict plan → 原生绑定/克隆 → 真实渲染 → 内容与视觉复审
 ```
 
+严格保留模板资产时使用本路线；只参考模板风格并允许重新设计时使用 create，
+按[模板风格设计流程](../template-visual-design.md)选择原生预览或可选生图目标。
+
 ## Component Atlas
 
 Atlas 不只是形状清单。每个 reviewed 组件必须记录：
@@ -52,9 +55,11 @@ Atlas 不只是形状清单。每个 reviewed 组件必须记录：
 `page_composition`：页面配方与变体、判断/主证据/解释/含义层、实质内容模块、信息单元
 数量、关键数字、图表标注和 takeaway。新版模型计划还必须声明模板无关的
 `composition_archetype`，由总览、数据证据、机制、案例、比较系列、行动框架、方法、
-概念框架等语义合同验证模块角色与信息量，而不是绑定某套模板坐标。普通正文页至少包含
-两个实质模块；“标题、副标题
-与单个复用组件”必须被拒绝。
+概念框架等语义合同验证模块角色与信息量，而不是绑定某套模板坐标。普通正文页默认至少包含两个实质模块。聚焦单一判断/证据的页面可显式使用
+`focused_message` / `focused_evidence`，声明 `visual_intent`（message、
+focal_component_id、reading_order 的模块 ID、rationale、interpretation）。
+这两类允许一个实质模块与简短 takeaway，但保留语义层、来源绑定、组件专属容量/
+搭配要求、数据标注、真实渲染与逐页视觉复审，不能用来绕过模板组件本身的限制。
 
 全稿按页面配方和实际变体检查节奏，而不是只统计 component family 名称。相同精确变体
 不得连续超过两页；长稿必须达到与页数相称的配方多样性。系列页可以保留比较锚点，但
@@ -142,3 +147,11 @@ recipe，Template 路线必须使用 `style_derived_original`：模型从模板�
 绕过候选审计。
 
 旧的确定性长文自动规划和源页截图实验只作为失败样本，不属于正式交付路线。
+
+## 逐页视觉复审记录
+
+新构建报告标记 `visual_review_contract: page_visual_v1`。`review-template` 的外部审核 JSON
+须提供 `pages`，逐页包含 slide_index、preview_sha256，以及 hierarchy、reading_order、
+template_match、readability、content、editability 六项 `{status: pass|fail, observation: 具体观察}`。
+全稿提供 `deck_rhythm` 观察。审核覆盖每个真实预览并绑定其字节哈希，批准时不得有失败项。
+该记录证明审核对象与覆盖完整，不提供自动审美打分或审阅者身份认证。

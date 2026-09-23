@@ -180,7 +180,8 @@ def render(task, asset_bytes):
                 chart.has_legend = n["legend"]
                 _font(chart.font, n["font"])
                 if n["legend"]:
-                    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+                    chart.legend.position = (XL_LEGEND_POSITION.RIGHT if n.get("legend_position") == "right"
+                                             else XL_LEGEND_POSITION.BOTTOM)
                     chart.legend.include_in_layout = False
                     _font(chart.legend.font, n["font"])
                 for i, series in enumerate(chart.series):
@@ -194,12 +195,30 @@ def render(task, asset_bytes):
                         target.format.fill.fore_color.rgb = color
                         target.format.line.color.rgb = color
                 plot = chart.plots[0]
+                if n["chart_type"] == "doughnut" and "hole_size" in n:
+                    holes = plot._element.xpath("c:holeSize")
+                    hole = holes[0] if holes else _xml("c:holeSize")
+                    hole.set("val", str(round(n["hole_size"])))
+                    if not holes:
+                        plot._element.insert_element_before(hole, "c:extLst")
                 plot.has_data_labels = n["labels"]
                 if n["labels"]:
                     _font(plot.data_labels.font, n["font"])
                     plot.data_labels.show_value = True
+                    if "label_number_format" in n:
+                        plot.data_labels.number_format = n["label_number_format"]
+                        plot.data_labels.number_format_is_linked = False
                     if n["chart_type"] in {"pie", "doughnut"}:
                         plot.data_labels.position = XL_DATA_LABEL_POSITION.BEST_FIT
+                        if "label_colors" in n:
+                            for j, point in enumerate(chart.series[0].points):
+                                _font(point.data_label.font, {**n["font"],
+                                      "color": n["label_colors"][j % len(n["label_colors"])]})
+                                # Per-point labels override plot defaults in LibreOffice.
+                                if "label_number_format" in n:
+                                    label = point.data_label._get_or_add_dLbl()
+                                    fmt = _xml("c:numFmt", formatCode=n["label_number_format"], sourceLinked="0")
+                                    label.insert_element_before(fmt, "c:spPr", "c:txPr", "c:dLblPos", "c:showLegendKey", "c:showVal")
             elif kind == "table":
                 cells = content[n["content_id"]]["cells"]
                 shape = shapes.add_table(len(cells), len(cells[0]), x, y, w, h)
