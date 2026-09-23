@@ -5,7 +5,7 @@
 - Display name: MeowClaw PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.1.0`
+- Version: `5.1.1`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` define the release identity.
@@ -22,9 +22,10 @@ install, use, inspect and package the Skill:
 - branding and selected sample previews, editable PPTX files and concise object data;
 - identity and distribution checks that keep the package self-contained.
 
-The v5.0 20-slide research example and v5.1 six-slide policy example retain
-separate counts and original file hashes. A replaceable bitmap is not counted
-as an internally editable native object.
+The v5.0 20-slide research example, v5.1 six-slide policy example and two
+four-slide template comparison examples retain separate counts and original
+file hashes. A replaceable bitmap is not counted as an internally editable
+native object.
 
 ## Local-only material
 

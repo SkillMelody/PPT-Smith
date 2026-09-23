@@ -8,7 +8,9 @@
 
 Turn source documents, slide design images, or native PPTX templates into editable presentations with source evidence and real rendered previews. The model develops the narrative and design; a fixed backend creates native objects and checks delivery evidence.
 
-**Current version: `5.1.0`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+**Current version: `5.1.1`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+
+This update distinguishes preservation of native PPTX templates from template-inspired redesign, and adds optional image-generated design targets bound to page content and page-by-page visual review. Historical examples retain their original version labels and object counts.
 
 ## Three ways to use it
 
