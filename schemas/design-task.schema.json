@@ -612,6 +612,92 @@
                 },
                 "maxItems": 100,
                 "minItems": 0
+              },
+              "composition": {
+                "type": "object",
+                "properties": {
+                  "page_role": {
+                    "enum": [
+                      "cover",
+                      "contents",
+                      "section",
+                      "body",
+                      "closing"
+                    ]
+                  },
+                  "claim_content_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"
+                  },
+                  "content_relation": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "layout_family": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "reading_path": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"
+                    },
+                    "maxItems": 500,
+                    "minItems": 1
+                  },
+                  "information_attachment": {
+                    "enum": [
+                      "inside_structure",
+                      "along_path",
+                      "paired_with_visual",
+                      "mixed"
+                    ]
+                  },
+                  "layer_plan": {
+                    "type": "object",
+                    "properties": {
+                      "primary": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      "secondary": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      },
+                      "detail": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      }
+                    },
+                    "required": [
+                      "primary",
+                      "secondary",
+                      "detail"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "page_role",
+                  "content_relation",
+                  "layout_family",
+                  "reading_path",
+                  "information_attachment",
+                  "layer_plan",
+                  "rationale"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -633,6 +719,11 @@
         },
         "requires_style_reference": {
           "type": "boolean"
+        },
+        "review_profile": {
+          "enum": [
+            "decorative_business"
+          ]
         }
       },
       "required": [

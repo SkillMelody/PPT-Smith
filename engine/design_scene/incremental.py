@@ -16,6 +16,8 @@ def page_evidence(task, manifest):
     common.update(brief=task["design"]["brief"], page_order=[p["id"] for p in task["scene"]["pages"]],
                   environment=manifest["environment"], fonts=manifest["fonts"],
                   render={k: manifest["render"].get(k) for k in ("engine", "version", "path", "dpi")})
+    if "review_profile" in task["design"]:
+        common["review_profile"] = task["design"]["review_profile"]
     result = {}
     for page in task["scene"]["pages"]:
         pid = page["id"]
@@ -36,6 +38,11 @@ def _page_can_inherit(assessment, pid):
     # A different page's unresolved visual issue does not revoke this page's
     # review. Global failures (fonts, render, editing, isolation) always do.
     for blocker in assessment["blockers"]:
+        # Whole-deck rhythm is reviewed afresh on every candidate. An unresolved
+        # deck composition does not erase independent evidence for unchanged
+        # pages; review_skeleton never inherits the whole-deck approval.
+        if blocker == "DECK_COMPOSITION_REVIEW_REQUIRED":
+            continue
         parts = blocker.rsplit(":", 1)
         if len(parts) != 2 or parts[1] == pid or parts[0] not in {x.upper() + "_REVIEW_REQUIRED" for x in CHECKS}:
             return False

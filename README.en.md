@@ -24,6 +24,8 @@ A style reference usually belongs to create; faithful reconstruction of complete
 
 **The visual style is not fixed.** Typography, palette, composition, charts, and page rhythm follow the current content, audience, and brand constraints. Reusable styles, source references, and decorative symbols reduce repetition without imposing one page layout.
 
+**Decorative business reports.** The optional `decorative_business` review profile records each page's content relationship, reading order, information-bearing graphics and visual layers, then requires an independent whole-deck composition review. Diagnostics flag declared repetition for inspection; they do not score aesthetics or certify originality. See the [design guide](references/decorative-business-design.md), [planning sheet](templates/decorative-page-plan.md), and [37-page refinement case](references/cases/decorative-business-refinement.md) (Chinese). The case documents design practice in a separate authoring environment, not an end-to-end certification of that PPTX by this engine.
+
 ## Design previews without an image-generation model
 
 The default original-design workflow is:

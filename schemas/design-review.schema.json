@@ -56,7 +56,8 @@
             "enum": [
               "pass",
               "revise",
-              "reject"
+              "reject",
+              "not_applicable"
             ]
           },
           "content": {
@@ -108,6 +109,29 @@
             },
             "maxItems": 50,
             "minItems": 0
+          },
+          "inherited_from": {
+            "type": "object",
+            "properties": {
+              "build_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"
+              },
+              "manifest_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "review_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "build_id",
+              "manifest_sha256",
+              "review_sha256"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -162,6 +186,43 @@
         "version",
         "status",
         "actions"
+      ],
+      "additionalProperties": false
+    },
+    "deck_composition": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "pass",
+            "revise",
+            "reject"
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "maxItems": 50,
+          "minItems": 1
+        },
+        "reviewed_page_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,79}$"
+          },
+          "maxItems": 60,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "status",
+        "observations",
+        "reviewed_page_ids"
       ],
       "additionalProperties": false
     }

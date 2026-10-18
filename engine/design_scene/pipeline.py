@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import copy
 import re
 import uuid
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from jsonschema import Draft202012Validator
 
 from .backend import inspect_objects
 from .contract import ID, SHORT, SHA, arr, enum, obj, validate, versions, walk
+from .composition import composition_diagnostics
 from .runtime import fonts_for, launch_worker, renderer_identity, select_isolation
 from .store import (DesignError, Store, canonical, decode_image, digest, external_bytes,
                     json_bytes, normalized_png)
@@ -98,22 +100,25 @@ def image_request(task, *, page_ids=None):
                 raise DesignError("CHECK_CONTENT_BEFORE_IMAGE_REQUEST")
             visible.append({k: c[k] for k in ("id", "type", "text", "categories", "series", "cells", "required_edit") if k in c})
         refs = [r for r in task["design"]["references"] if page["id"] in r["page_ids"]]
+        design = next(d for d in task["design"]["pages"] if d["page_id"] == page["id"])
         pages.append({"page_id": page["id"], "visible_content": visible,
                       "content_sha256": digest(canonical(visible)),
                       "context_sha256": digest(canonical(target_context(task, page["id"]))),
                       "references": [{"asset_id": r["asset_id"], "roles": r["roles"],
                                       "priority": r["priority"], "features": r["features"]} for r in refs],
-                      "reference_features": [r["features"] for r in refs]})
-    return {"status": ("reference_analysis_required" if task["mode"] == "recreate" else
+                      "reference_features": [r["features"] for r in refs],
+                      **({"composition": design["composition"]} if "composition" in design else {})})
+    return copy.deepcopy({"status": ("reference_analysis_required" if task["mode"] == "recreate" else
                        "optional_image_tool_request" if task["mode"] == "create" else "image_tool_required"),
             "task_sha256": versions(task)["task"],
             "request": {"mode": task["mode"], "audience": task["audience"], "language": task["language"],
                         "canvas": task["canvas"], "visual_brief": task["design"]["brief"], "pages": pages,
+                        **({"review_profile": task["design"]["review_profile"]} if "review_profile" in task["design"] else {}),
                         "instruction": "Design each complete slide using only the supplied visible content. Do not invent data or labels. Style references supply visual rules, not business content. Preserve exact facts and units. Prefer clean editable typography, flat shapes and native charts; avoid effects unsupported by the renderer. Charts and tables will be reconstructed deterministically from checked data. Review the design and reconstruction feasibility before freezing it as a target.",
                         "editable_types": ["text", "shape", "path", "chart", "table"],
                         "unsupported_effects": ["gradient", "mask", "embedded_font", "automatic_text_reflow"],
                         "asset_policy": "Standalone illustrations may remain replaceable images; complete slide images cannot substitute for editable content."},
-            "generated": False}
+            "generated": False})
 
 
 def _fit_target(im, size, background):
@@ -187,6 +192,8 @@ def build(root, *, isolation="auto", preview=True, parent_build=None, require_os
                   "isolation": {"requested": requested_isolation, "mode": isolation, "verified": False},
                   "delivery_policy": {"require_os_isolation": bool(require_os_isolation)},
                   "validation": check, "status": "build_failed", "artifacts": {}}
+        if task["design"].get("review_profile") or any("composition" in p for p in task["design"]["pages"]):
+            report["composition_diagnostics"] = composition_diagnostics(task)
         try:
             if require_os_isolation and isolation == "host":
                 raise DesignError("OS_ISOLATION_REQUIRED: no verified OS sandbox selected; worker was not started")
@@ -263,17 +270,23 @@ REVIEW_SCHEMA = obj({
                       "observed_node_ids", "accepted_differences"]), 60, 1),
     "target_software": obj({"name": SHORT, "version": SHORT, "status": enum("pass", "not_tested", "fail"),
                             "actions": arr(SHORT, 100)}),
-})
+    "deck_composition": obj({"status": enum("pass", "revise", "reject"),
+                             "observations": arr(SHORT, 50, 1),
+                             "reviewed_page_ids": arr(ID, 60, 1)}),
+}, ["build_id", "manifest_sha256", "reviewer", "pages", "target_software"])
 
 
 def review_skeleton(store, bid):
     task, manifest = verify_build(store, bid)
-    return {"build_id": bid, "manifest_sha256": digest(store.read(build_prefix(bid) + "manifest.json")),
+    result = {"build_id": bid, "manifest_sha256": digest(store.read(build_prefix(bid) + "manifest.json")),
             "reviewer": {"id": "REPLACE_WITH_INDEPENDENT_REVIEWER", "method": "human", "environment": "填写实际审阅环境"},
             "pages": [{"page_id": p["id"], **{k: "revise" for k in ("design", "content", "editability", "fonts")},
                        "reconstruction": "revise" if next(d for d in task["design"]["pages"] if d["page_id"] == p["id"]).get("target_asset_id") else "not_applicable",
                        "observations": [], "observed_node_ids": [], "accepted_differences": []} for p in task["scene"]["pages"]],
             "target_software": {"name": task["target_software"], "version": "待验证", "status": "not_tested", "actions": []}}
+    if task["design"].get("review_profile") == "decorative_business":
+        result["deck_composition"] = {"status": "revise", "observations": [], "reviewed_page_ids": []}
+    return result
 
 
 def assess(store, bid, review, *, require_os_isolation=False, snapshot=False, _chain=(), _cache=None):
@@ -293,6 +306,18 @@ def assess(store, bid, review, *, require_os_isolation=False, snapshot=False, _c
     from .incremental import verify_inheritance
     verify_inheritance(store, task, manifest, review, (*_chain, bid), {} if _cache is None else _cache)
     blockers = []
+    deck = review.get("deck_composition")
+    if task["design"].get("review_profile") == "decorative_business" and deck is None:
+        blockers.append("DECK_COMPOSITION_REVIEW_REQUIRED")
+    if deck is not None:
+        if any(not observation.strip() for observation in deck["observations"]):
+            raise DesignError("DECK_COMPOSITION_OBSERVATIONS_REQUIRED")
+        page_ids = {p["id"] for p in pages}
+        observed = deck["reviewed_page_ids"]
+        if len(observed) != len(set(observed)) or set(observed) != page_ids:
+            raise DesignError("DECK_COMPOSITION_PAGE_COVERAGE_MISMATCH")
+        if deck["status"] != "pass":
+            blockers.append("DECK_COMPOSITION_REVIEW_REQUIRED")
     if manifest["status"] == "draft":
         blockers.append("DRAFT_NOT_FINAL")
     if manifest["render"]["status"] != "passed":
