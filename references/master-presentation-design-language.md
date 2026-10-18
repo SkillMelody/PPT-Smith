@@ -1,6 +1,6 @@
 # Master Presentation Design Language
 
-Use this as the shared design language for serious decks. It is a hierarchy system, not decoration.
+Use this as a shared hierarchy system for serious decks. Adapt its visual treatment to the requested genre. Decorative business reports can use rich, layered compositions while retaining evidence, hierarchy and legibility; read [decorative business design](decorative-business-design.md) for that profile.
 
 ## Order Of Design Decisions
 
@@ -32,7 +32,7 @@ Prefer:
 - fewer stronger elements
 - clear sectioning
 - restrained color
-- consistent component geometry
+- consistent component language, with geometry chosen for the content relationship
 - explicit source and assumption notes
 
 Avoid:
@@ -44,6 +44,8 @@ Avoid:
 - tables used as storage bins
 - full-slide screenshots unless explicitly approved
 - raw hex values, ad hoc font sizes, arbitrary spacing, or one-off component styling outside the style contract
+
+Restraint does not require sparse pages, and richness does not require more words. For decorative work, coordinate a dominant structure, medium information-bearing layers and small labels/details. Rectangles may support this hierarchy; avoid making every page the same equal-card grid. Review the actual reading topology across the deck, not just the variety of silhouettes.
 
 ## Hybrid Editable Delivery
 

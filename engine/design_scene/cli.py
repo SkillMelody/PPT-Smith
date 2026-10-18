@@ -97,6 +97,8 @@ def context(task, page_id=None, section="content"):
         return {"task_id": task["task_id"], "mode": task["mode"], "task_sha256": versions(task)["task"],
                 "audience": task["audience"], "language": task["language"], "canvas": task["canvas"],
                 "brief": task["design"]["brief"],
+                **({"review_profile": task["design"]["review_profile"]}
+                   if "review_profile" in task["design"] else {}),
                 "pages": [{"page_id": p["id"], "nodes": sum(1 for _ in walk(p["nodes"])),
                            "content_items": sum(c["page_id"] == p["id"] for c in task["content"]["items"])}
                           for p in task["scene"]["pages"]]}
@@ -142,8 +144,11 @@ def main(argv=None):
     init.add_argument("--audience", default="待填写")
     init.add_argument("--language", default="zh-CN")
     init.add_argument("--target-software", default="LibreOffice")
+    init.add_argument("--review-profile", choices=["decorative_business"],
+                      help="require page composition plans and an independent whole-deck review")
     commands = ("ingest", "crop", "validate", "image-request", "build", "status", "review-template",
-                "review", "deliver", "author", "compact", "patch", "context", "inspect", "preflight", "freeze-target")
+                "review", "deliver", "author", "compact", "patch", "context", "inspect", "preflight", "freeze-target",
+                "composition-check")
     for command in commands:
         p = sub.add_parser(command)
         p.add_argument("--task-dir", required=True)
@@ -223,6 +228,8 @@ def main(argv=None):
                             author=args.author, audience=args.audience, language=args.language, target_software=args.target_software)
             if args.mode == "style_transfer":
                 task["design"]["requires_style_reference"] = True
+            if args.review_profile:
+                task["design"]["review_profile"] = args.review_profile
             with Store(args.task_dir, create=True) as store:
                 store.put_json("task.json", task, exclusive=True)
                 result = save_state(store, task, phase="preparation_required")
@@ -265,6 +272,9 @@ def main(argv=None):
                     if (any(candidate[k] != task[k] for k in ("task_id", "author_id", "mode")) or
                             task["design"].get("requires_style_reference") and not candidate["design"].get("requires_style_reference")):
                         raise DesignError("AUTHOR_TASK_IDENTITY_MISMATCH")
+                    if (task["design"].get("review_profile") and
+                            candidate["design"].get("review_profile") != task["design"]["review_profile"]):
+                        raise DesignError("AUTHOR_REVIEW_PROFILE_DOWNGRADE")
                     read_assets(store, candidate)
                     source = "author-inputs/" + digest(canonical(document)) + ".json"
                     store.put_json(source, document)
@@ -291,6 +301,10 @@ def main(argv=None):
                               "next": "Build with --parent-build; existing reviews remain stale."}
                 elif args.command == "context":
                     result = context(task, args.page, args.section)
+                elif args.command == "composition-check":
+                    from .composition import composition_diagnostics
+                    validate(task)
+                    result = composition_diagnostics(task)
                 elif args.command == "validate":
                     result = validate(task, complete=args.complete)
                     read_assets(store, task)

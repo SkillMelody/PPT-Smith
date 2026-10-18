@@ -14,9 +14,16 @@ def visible_content(task, page_id):
 def target_context(task, page_id):
     refs = [r for r in task["design"]["references"] if page_id in r["page_ids"] and "style" in r["roles"]]
     ids = {r["asset_id"] for r in refs}
-    return {"brief": task["design"]["brief"], "canvas": task["canvas"], "references": refs,
-            "assets": [{k: a[k] for k in ("id", "sha256", "original_sha256")}
-                       for a in task["assets"]["items"] if a["id"] in ids]}
+    result = {"brief": task["design"]["brief"], "canvas": task["canvas"], "references": refs,
+              "assets": [{k: a[k] for k in ("id", "sha256", "original_sha256")}
+                         for a in task["assets"]["items"] if a["id"] in ids]}
+    # Omit absent optional fields so old frozen targets retain their hashes.
+    if "review_profile" in task["design"]:
+        result["review_profile"] = task["design"]["review_profile"]
+    design = next(p for p in task["design"]["pages"] if p["page_id"] == page_id)
+    if "composition" in design:
+        result["composition"] = design["composition"]
+    return copy.deepcopy(result)
 
 
 def freeze_generated_target(task, request, *, page_id, asset_id, confirmed_by):

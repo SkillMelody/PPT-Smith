@@ -55,6 +55,14 @@ python3 -m engine design schema
 create 必须具有当前设计 brief 与逐页备注。不要用程序假装完成
 视觉识读。逐项保留出处及不确定信息；风格图中的业务文案不进入新内容。
 
+装饰商务汇报、原创模板，或需要修复页面趋同/空散时，先读
+[装饰商务设计](decorative-business-design.md)。初始化时可增加
+`--review-profile decorative_business`：在 `design.pages[].composition` 记录本页主结论的
+内容引用、信息关系、构图家族、阅读顺序和层次安排；完整构建要求逐页覆盖。
+这不是固定模板，不改变原生对象后端，也不为旧任务追加必填字段。
+`python3 -m engine design composition-check --task-dir "$TASK"` 输出构图矩阵与重复风险提示，
+供代表页试制及合并后复审使用；没有提示不代表审美、原创性或实际排版合格。
+
 `canvas` 与全部几何使用 pt。将原图像素坐标按 `canvas.width / image.width`
 与 `canvas.height / image.height` 等比例转换。声明 `contain` 时，先算留白偏移，
 再转坐标。字号、线宽也需换算。不要照搬文档案例中的 1672×941 或固定栏数。
@@ -197,6 +205,12 @@ python3 -m engine design deliver --task-dir "$TASK" --build-id "$BUILD" \
 manifest 的真实 SHA256，覆盖全部页面与关键内容对象，记录具体观察和目标软件
 中的打开、改字、改数据、替换素材等实际动作。子版本修订预算耗尽时保留问题，
 不能自动批准。新目标变更必须重新确认并重新审阅。
+
+启用 `decorative_business` 的候选还须填写 `deck_composition`：检查当前合并稿的整册
+构图、视觉层次和阅读路径，记录实际观察并覆盖所有页面。它从 `revise` 开始，不能
+因为逐页审核通过或继承了未变页证据就自动通过。先看总览定位重复，再打开相关单页
+检查文字归属、形状内部的安全区、连接/遮挡、色彩主次和小字；不使用对象数、空白率或
+图形品种数替代视觉判断。缺少整册审核会阻止该 profile 的最终交付。
 
 create 无外部目标时 reconstruction 必须为 not_applicable，其他维度仍须独立批准；
 有外部目标的页面必须为 pass。不能把自身预览当目标来证明保真或审美。

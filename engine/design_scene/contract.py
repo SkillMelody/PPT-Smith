@@ -100,12 +100,25 @@ ASSET = obj({"id": ID, "sha256": SHA, "original_sha256": SHA, "width": {"type": 
 REFERENCE = obj({"asset_id": ID, "page_ids": arr(ID, 60, 1),
                  "roles": arr(enum("reconstruction_target", "style", "content", "material"), 4, 1),
                  "priority": {"type": "integer", "minimum": 0, "maximum": 100}, "features": arr(SHORT, 40)})
+REVIEW_PROFILE = enum("decorative_business")
+COMPOSITION = obj({
+    "page_role": enum("cover", "contents", "section", "body", "closing"),
+    "claim_content_id": ID,
+    "content_relation": SHORT,
+    "layout_family": SHORT,
+    "reading_path": arr(ID, 500, 1),
+    "information_attachment": enum("inside_structure", "along_path", "paired_with_visual", "mixed"),
+    "layer_plan": obj({"primary": SHORT, "secondary": SHORT, "detail": SHORT}),
+    "rationale": SHORT,
+}, ["page_role", "content_relation", "layout_family", "reading_path", "information_attachment",
+    "layer_plan", "rationale"])
 DESIGN_PAGE = obj({"page_id": ID, "target_asset_id": ID, "confirmed_by": SHORT,
                    "target_content_sha256": SHA, "target_context_sha256": SHA,
                    "target_kind": enum("original", "generated", "provided_design", "approved_revision"),
                    "quality_limits": arr(SHORT, 30), "accepted_differences": arr(SHORT, 30),
                    "aspect_policy": enum("exact", "contain"),
-                   "raster_acceptances": arr(obj({"content_id": ID, "reason": SHORT, "accepted_by": SHORT}), 100)},
+                   "raster_acceptances": arr(obj({"content_id": ID, "reason": SHORT, "accepted_by": SHORT}), 100),
+                   "composition": COMPOSITION},
                   ["page_id", "quality_limits", "accepted_differences", "aspect_policy", "raster_acceptances"])
 SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:pptsmith:design-task:1",
@@ -116,7 +129,8 @@ SCHEMA = {
            "content": obj({"items": arr(CONTENT, 3000), "notes": arr(obj({"page_id": ID, "text": TEXT}), 60)}),
            "design": obj({"brief": TEXT, "references": arr(REFERENCE, 120), "pages": arr(DESIGN_PAGE, 60, 1),
                           "revision_budget": {"type": "integer", "minimum": 1, "maximum": 10},
-                          "requires_style_reference": BOOL}, ["brief", "references", "pages", "revision_budget"]),
+                          "requires_style_reference": BOOL, "review_profile": REVIEW_PROFILE},
+                         ["brief", "references", "pages", "revision_budget"]),
            "scene": obj({"pages": arr(obj({"id": ID, "background": COLOR, "nodes": arr({"$ref": "#/$defs/node"}, 500)}), 60, 1)}),
            "assets": obj({"items": arr(ASSET, 500)})}),
     "$defs": {"node": NODE},
@@ -179,6 +193,24 @@ def validate(task: dict, *, complete=False):
     seen, bindings, warnings = set(), Counter(), []
     for pid, page in pages.items():
         design = designs[pid]
+        composition = design.get("composition")
+        if complete and task["design"].get("review_profile") == "decorative_business" and not composition:
+            raise DesignError("PAGE_COMPOSITION_REQUIRED: " + pid)
+        if composition:
+            prose = [composition[k] for k in ("content_relation", "layout_family", "rationale")]
+            if any(not value.strip() for value in [*prose, *composition["layer_plan"].values()]):
+                raise DesignError("COMPOSITION_REASONING_REQUIRED: " + pid)
+            reading = composition["reading_path"]
+            if len(reading) != len(set(reading)):
+                raise DesignError("COMPOSITION_READING_PATH_DUPLICATE: " + pid)
+            if any(cid not in content or content[cid]["page_id"] != pid for cid in reading):
+                raise DesignError("COMPOSITION_CONTENT_PAGE_MISMATCH: " + pid)
+            claim = composition.get("claim_content_id")
+            if composition["page_role"] == "body" and not claim:
+                raise DesignError("COMPOSITION_CLAIM_REQUIRED: " + pid)
+            if claim and (claim not in reading or content.get(claim, {}).get("page_id") != pid
+                          or content[claim]["type"] != "text" or not content[claim]["text"].strip()):
+                raise DesignError("COMPOSITION_CLAIM_INVALID: " + pid)
         target = assets.get(design.get("target_asset_id"))
         if design.get("target_asset_id") and not target:
             raise DesignError("DESIGN_TARGET_ASSET_MISSING")
@@ -282,6 +314,8 @@ def validate(task: dict, *, complete=False):
                         raise DesignError("TABLE_COLUMN_WIDTH_MISMATCH")
     if complete and any(bindings[cid] != 1 for cid in content):
         raise DesignError("CONTENT_COVERAGE_MISMATCH: each item needs exactly one editable object or accepted raster")
+    from .composition import composition_diagnostics
+    warnings.extend(composition_diagnostics(task)["warnings"])
     return {"status": "valid", "warnings": warnings, "nodes": len(seen)}
 
 
