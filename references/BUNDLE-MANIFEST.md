@@ -5,7 +5,7 @@
 - Display name: MeowClaw PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.1.1`
+- Version: `5.2.0`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` define the release identity.
@@ -26,6 +26,11 @@ The v5.0 20-slide research example, v5.1 six-slide policy example and two
 four-slide template comparison examples retain separate counts and original
 file hashes. A replaceable bitmap is not counted as an internally editable
 native object.
+
+The v5.2 addition is the unmodified 22-slide Xiaomi Q2/H1 2025 overview PNG.
+It was rendered during development commit `af23320`, before the version file
+was bumped from `5.1.1` to `5.2.0`. Only the preview and a concise scope summary
+are included; its source inputs, full PPTX, logs and evidence package are not.
 
 ## Local-only material
 

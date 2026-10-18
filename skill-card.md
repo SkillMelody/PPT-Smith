@@ -10,7 +10,7 @@ article-html-to-ppt, meowclaw-decksmith <br>
 ## Description: <br>
 MeowClaw PPTSmith converts articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks with direct PPTX, native dynamic PPTX, and Feishu Slides export routing. <br>
 
-Version 5.1.1 supports three user intents: create from sources without requiring image generation, reconstruct supplied design images, and preserve native templates. It distinguishes native template preservation from template-inspired redesign, with optional image-generated design targets bound to page content. Compact author input, guarded object patches, real-office font preflight, verified page-review inheritance, real rendering, source checks, target-software edits and independent visual approval remain part of the workflow. Public slug: `meowclaw-pptsmith`. <br>
+Version 5.2.0 adds an optional `decorative_business` review profile with page composition plans, declared-layout diagnostics and independent whole-deck review. The three user intents remain create from sources, reconstruct supplied designs and preserve native templates. Tasks that do not enable the profile retain their existing contract. Composition diagnostics do not score aesthetics or certify originality; final review remains bound to the actual candidate and its evidence. Compact author input, guarded object patches, real-office font preflight, verified page-review inheritance, real rendering, source checks and target-software editing checks remain part of the workflow. Public slug: `meowclaw-pptsmith`. <br>
 
 ## Owner
 SkillMelody <br>
@@ -51,6 +51,8 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - [Visual Systems Reference](references/visual-systems.md) <br>
 - [Export Pipelines Reference](references/export-pipelines.md) <br>
 - [Declarative Design Workflow](references/declarative-design.md) <br>
+- [Decorative Business Design](references/decorative-business-design.md) <br>
+- [Page Composition Planning Sheet](templates/decorative-page-plan.md) <br>
 - [V4 Route Architecture](references/routes/v4-three-route-architecture.md) <br>
 - [Bespoke Route](references/routes/v4-bespoke-route.md) <br>
 - [Template Route](references/routes/v4-template-route.md) <br>
@@ -75,9 +77,9 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - Verification honesty: Checks whether the final handoff clearly distinguishes generated, rendered, read-back, and final states. <br>
 
 ## Skill Version(s): <br>
-5.1.1 <br>
+5.2.0 <br>
 
-Readiness scope: actual application acceptance is verified on macOS + LibreOffice. Bespoke and Template final readiness remains run-specific; native Microsoft PowerPoint pixel parity is not claimed. <br>
+Readiness scope: historical examples include macOS + LibreOffice application checks; the 22-slide decorative-business development example verifies sampled text and table edits on Linux + LibreOffice. Validation remains run-specific, and the latter does not establish in-application chart-data editing or PowerPoint/WPS compatibility. Bespoke and Template final readiness also remains run-specific. <br>
 
 ## Ethical Considerations: <br>
 This skill should not be used to repackage copyrighted third-party articles or images as owned public content without permission. It is designed to make transformation boundaries explicit and to prevent synthetic or reconstructed visuals from being presented as factual historical screenshots. <br>

@@ -8,9 +8,31 @@
 
 Turn source documents, slide design images, or native PPTX templates into editable presentations with source evidence and real rendered previews. The model develops the narrative and design; a fixed backend creates native objects and checks delivery evidence.
 
-**Current version: `5.1.1`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+**Current version: `5.2.0`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
 
-This update distinguishes preservation of native PPTX templates from template-inspired redesign, and adds optional image-generated design targets bound to page content and page-by-page visual review. Historical examples retain their original version labels and object counts.
+## What is new in v5.2.0
+
+- **Optional `decorative_business` review profile:** plan each page's content relationship, reading path, information-bearing graphics, and layers for the main claim, supporting evidence, and detail.
+- **Composition diagnostics:** `composition-check` summarizes declared layouts and flags repeated sequences or a dominant structure for inspection. It does not score aesthetics or certify originality.
+- **Independent whole-deck review:** when the profile is enabled, inspect the final assembled deck for rhythm, content-to-graphic relationships, and visual hierarchy as well as reviewing individual pages. Review evidence is bound to the candidate build and content/design hashes; inheriting unchanged-page evidence never inherits the whole-deck verdict.
+- **Design and refinement guidance:** practical steps address recolouring without redesign, dense decks reduced to tables, and large decorative shapes with disconnected text.
+
+**The three entry points remain `create`, `recreate`, and `template`.** Add `--review-profile decorative_business` when initializing a decorative business task. Existing tasks that do not enable the profile retain their original contract and do not need new composition fields. Users can describe the desired style to their agent; they do not need to author JSON. Historical examples retain their original version labels and object counts.
+
+## Gallery: 22-slide Xiaomi business review
+
+**2026-10-18 · Decorative business design.** The user-supplied Xiaomi Q2/H1 2025 report and data sheet became a 22-slide presentation through real rendering, revisions, and independent agent review. Click the image for the full preview.
+
+[![Xiaomi Q2/H1 2025 business review: actual rendered overview of 22 slides](assets/samples/v5.2-xiaomi-q2-h1-22page-overview.png)](assets/samples/v5.2-xiaomi-q2-h1-22page-overview.png)
+
+<details>
+<summary>Version and validation scope</summary>
+
+The experiment used development commit `af23320`, whose version file still read `5.1.1`. Those changes are now included in `5.2.0`; the historical run has not been relabelled as a test of the final release. The PPTX contains 370 text objects, 139 shapes/paths, 6 native charts and 4 native tables: 519 native objects and no images.
+
+On Linux + LibreOffice, sampled text and table edits persisted after saving and reopening. In-application chart-data editing was not successfully validated, and PowerPoint/WPS was not tested. Alibaba PuHuiTi fonts are not embedded. Only the overview image is distributed here; raw inputs, full logs and evidence packages remain outside the public repository.
+
+</details>
 
 ## Three ways to use it
 
@@ -145,6 +167,18 @@ The model has vision but no image-generation tool.
 Choose a visual style for the content. Preserve numeric qualifiers,
 page-level sources and speaker notes. Label author advice separately.
 Deliver after real rendering, independent review, and target-software edit/save/reopen checks.
+```
+
+**For a decorative business report:**
+
+```text
+Use PPT Smith to turn this business report into about 20 editable Chinese slides.
+Enable the decorative_business review profile. Plan each page's main claim,
+content relationship and reading path before choosing its visual structure.
+Use suitable expressions for target attainment, progress, issues and actions,
+and major results. Review representative pages before expanding the deck.
+Deliver after real rendering, independent page and whole-deck review,
+and target-software edit/save/reopen checks.
 ```
 
 **From complete design images:**
