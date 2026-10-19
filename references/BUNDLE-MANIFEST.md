@@ -5,7 +5,7 @@
 - Display name: MeowClaw PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.2.0`
+- Version: `5.2.1`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` define the release identity.
@@ -32,13 +32,22 @@ It was rendered during development commit `af23320`, before the version file
 was bumped from `5.1.1` to `5.2.0`. Only the preview and a concise scope summary
 are included; its source inputs, full PPTX, logs and evidence package are not.
 
+Version 5.2.1 adds the written two-round business report case, planning/review
+guidance and read-only composition observations. The case's original 5.2.0 runs
+are not relabelled as 5.2.1 tests; no additional customer source files or decks
+are included.
+
 ## Local-only material
 
-Development tests and fixtures, CI, benchmark harnesses, development notes,
+Development fixtures, CI, benchmark harnesses, development notes,
 promotional articles, source PDFs, full review/edit logs, intermediate builds,
 worktrees, caches, credentials and private customer/commercial materials are
 excluded from the public source tree and registry bundle. Local files are
 preserved for development. Exclusion does not rewrite earlier published history.
+
+The public source tree intentionally includes `tests/test_composition_diagnostics.py`
+as a regression for the added diagnostics. Development tests, including that
+regression, remain excluded from registry/runtime archives.
 
 `.gitignore` prevents normal staging of local-only files. `.clawhubignore`
 filters registry packaging, `.gitattributes` filters source exports, and
