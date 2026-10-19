@@ -14,6 +14,8 @@ Turn source documents, slide design images, or native PPTX templates into editab
 
 This iteration updates onboarding and authoring guidance: identify what must be preserved and what may be analyzed or changed, asking only about consequential gaps. See [user tasks and content boundaries](references/user-task-intent.md). It builds on 5.2.1 and is not a new release; task formats and runtime gates remain unchanged.
 
+The [graphic semantics guidance](references/decorative-business-design.md#3-从内容关系到页面构图) (Chinese) also checks signed changes, item correspondence and parallel work, and distinguishes editable shapes from data-linked charts. This does not change the usage flow or establish improvements across all tasks.
+
 ## What is new in v5.2.1
 
 - **Three separate review dimensions:** vary body compositions with the content while keeping titles, navigation, type hierarchy and graphic weight consistent. Review variety, coherence and narrative completeness separately.
