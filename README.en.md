@@ -8,7 +8,38 @@
 
 Turn source documents, slide design images, or native PPTX templates into editable presentations with source evidence and real rendered previews. The model develops the narrative and design; a fixed backend creates native objects and checks delivery evidence.
 
-**Current version: `5.2.0`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+**Current version: `5.2.1`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+
+## What is new in v5.2.1
+
+- **Three separate review dimensions:** vary body compositions with the content while keeping titles, navigation, type hierarchy and graphic weight consistent. Review variety, coherence and narrative completeness separately.
+- **Plan chapters and the ending:** choose contents, section, summary, decision and closing pages for the reporting context, then update pagination and navigation after reordering. Short briefs do not have to add section or thank-you pages.
+- **More useful composition diagnostics:** `composition-check` now exposes native body-claim positions/fonts and the declared page-role sequence to locate pages for visual inspection. These observations are not aesthetic scores or semantic acceptance.
+- **Lessons from two real revisions:** a new [business report case](references/cases/business-deck-diversity-coherence.md) (Chinese) informs the design guide, page plan and complete-object review guidance. Suspected collisions in thumbnails must be checked on actual pages.
+
+Entry points, task formats and existing warning rules remain compatible; old tasks need no migration. This update improves planning, diagnostics and review. It does not add an automated business-analysis engine or new native chart types. Historical previews and validation records retain their original version labels. A repository version change does not mean installation platforms have published it.
+
+## Start with a business report
+
+Load the Skill in an agent with the required runtime already configured, attach your material, and describe the outcome:
+
+```text
+Use PPT Smith to create about 15 slides for a monthly business review
+from the attached operating data and business notes.
+Audience: management. Explain target gaps, sources of change and decisions needed.
+Use restrained, orderly consulting-style communication: conclusions first,
+with body layouts chosen for the content.
+Preserve metric definitions and sources, identify missing information,
+and distinguish possible causes from established facts.
+Check material gaps before authoring. Deliver editable PPTX and actual previews.
+```
+
+Provide the **audience, question to answer, reporting period and approximate duration or slide budget**. Include any company template or target-software requirement. Metric definitions, data gaps and business judgments need confirmation against the material. The agent handles routing, object descriptions, rendering and checks; users do not need to author JSON or memorize commands.
+
+Business analysis is the reporting use case; consulting-style communication organizes conclusions and evidence; data visualization expresses comparisons, trends, composition and contribution. The existing workflow can produce such reports, but quality depends on source material, the model and actual review. “Consulting-style” does not imply an official consulting-firm template or quality certification. First use requires a local-tool-capable agent, Python dependencies, an office renderer and fonts; see [Installation](#installation-and-local-checks) and [more usage examples](#how-to-use-it-with-an-agent).
+
+<details>
+<summary>v5.2.0 recap: decorative business design and whole-deck refinement</summary>
 
 ## What is new in v5.2.0
 
@@ -18,6 +49,8 @@ Turn source documents, slide design images, or native PPTX templates into editab
 - **Design and refinement guidance:** practical steps address recolouring without redesign, dense decks reduced to tables, and large decorative shapes with disconnected text.
 
 **The three entry points remain `create`, `recreate`, and `template`.** Add `--review-profile decorative_business` when initializing a decorative business task. Existing tasks that do not enable the profile retain their original contract and do not need new composition fields. Users can describe the desired style to their agent; they do not need to author JSON. Historical examples retain their original version labels and object counts.
+
+</details>
 
 ## Gallery: 22-slide Xiaomi business review
 

@@ -10,7 +10,7 @@ article-html-to-ppt, meowclaw-decksmith <br>
 ## Description: <br>
 MeowClaw PPTSmith converts articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks with direct PPTX, native dynamic PPTX, and Feishu Slides export routing. <br>
 
-Version 5.2.0 adds an optional `decorative_business` review profile with page composition plans, declared-layout diagnostics and independent whole-deck review. The three user intents remain create from sources, reconstruct supplied designs and preserve native templates. Tasks that do not enable the profile retain their existing contract. Composition diagnostics do not score aesthetics or certify originality; final review remains bound to the actual candidate and its evidence. Compact author input, guarded object patches, real-office font preflight, verified page-review inheritance, real rendering, source checks and target-software editing checks remain part of the workflow. Public slug: `meowclaw-pptsmith`. <br>
+Version 5.2.1 separates layout variety, visual coherence and narrative completeness in whole-deck review, adds native body-claim and page-role observations to composition diagnostics, and documents two rounds of business report refinement. It retains the optional `decorative_business` review profile with page composition plans and independent whole-deck review. The three user intents remain create from sources, reconstruct supplied designs and preserve native templates. Tasks that do not enable the profile retain their existing contract; short briefs do not have to add navigation pages. Composition diagnostics do not score aesthetics or certify originality; final review remains bound to the actual candidate and its evidence. Compact author input, guarded object patches, real-office font preflight, verified page-review inheritance, real rendering, source checks and target-software editing checks remain part of the workflow. Public slug: `meowclaw-pptsmith`. <br>
 
 ## Owner
 SkillMelody <br>
@@ -53,6 +53,7 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - [Declarative Design Workflow](references/declarative-design.md) <br>
 - [Decorative Business Design](references/decorative-business-design.md) <br>
 - [Page Composition Planning Sheet](templates/decorative-page-plan.md) <br>
+- [Two-round Business Report Case](references/cases/business-deck-diversity-coherence.md) <br>
 - [V4 Route Architecture](references/routes/v4-three-route-architecture.md) <br>
 - [Bespoke Route](references/routes/v4-bespoke-route.md) <br>
 - [Template Route](references/routes/v4-template-route.md) <br>
@@ -77,7 +78,7 @@ Mitigation: The skill defaults sensitive work to local PPTX output and requires 
 - Verification honesty: Checks whether the final handoff clearly distinguishes generated, rendered, read-back, and final states. <br>
 
 ## Skill Version(s): <br>
-5.2.0 <br>
+5.2.1 <br>
 
 Readiness scope: historical examples include macOS + LibreOffice application checks; the 22-slide decorative-business development example verifies sampled text and table edits on Linux + LibreOffice. Validation remains run-specific, and the latter does not establish in-application chart-data editing or PowerPoint/WPS compatibility. Bespoke and Template final readiness also remains run-specific. <br>
 
