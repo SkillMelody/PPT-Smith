@@ -13,6 +13,10 @@ metadata:
 
 ## Select the user's intent
 
+Start with the user's situation: who will use the deck, for what occasion, with which materials, and what result and constraints matter. Infer these from the request and files; ask only about consequential gaps. A report category, language, season or previous sample does not select the user's task.
+
+Respect the requested content freedom: preserve explicitly approved wording/order, organize or analyze where authorized, and limit revisions to the requested scope. These can coexist in one deck and are not extra routes or a required form. Supplied or reviewed material is not automatically frozen word for word. Read [user task and content boundaries](references/user-task-intent.md) when preservation, analysis or revision scope needs interpretation.
+
 | User wants | Route | Read when selected |
 | --- | --- | --- |
 | Make a presentation from a document, optionally with brand/style references | `create` (default) | [Declarative workflow](references/declarative-design.md) |
@@ -23,7 +27,7 @@ Infer intent, audience, language and page budget from the request. Ask only abou
 
 ## Shared authoring contract
 
-Read the full source once, preserve page/evidence anchors, then use the relevant evidence for each slide. The model owns narrative, assertion titles, visual encoding and page-specific design. The backend executes those decisions; it does not replace them with generic extractive layouts. Insufficient authoring capability returns `MODEL_AUTHORING_REQUIRED`.
+Read the full source once, preserve page/evidence anchors, then use the relevant evidence for each slide. Within the user's content boundaries, the model owns narrative, appropriate title roles, visual encoding and page-specific design. Use evidence-backed assertion titles when they serve the task; retain approved titles and use topic, instructional or navigation titles where appropriate. The backend executes those decisions; it does not replace them with generic extractive layouts. Insufficient authoring capability returns `MODEL_AUTHORING_REQUIRED`.
 
 Choose typography, palette, composition and visual rhythm for the current content, audience and references. Do not copy the last task's colours, card layout, footer or brand. Reusable components are primitives, not mandatory page styles.
 
@@ -50,6 +54,8 @@ Default tool feedback is a summary. Read full reports only for relevant failures
 ## Review and delivery
 
 Actual PPTX rendering, checked content/data, resolved fonts, structural editability, target-software edit/save/reopen checks, and independent visual review are required. Review every new or changed page at readable resolution; a contact sheet alone cannot verify small text.
+
+Compare the candidate with the user's required content and allowed changes. Confirm that protected wording, qualifiers, numbers, order and page count remain intact, and that new analysis stays within the evidence. Do not satisfy brevity or visual variety by silently deleting protected content or moving it only into notes. If fixed content conflicts with a route's actual gate, report the specific conflict; do not pad copy, relabel page roles or bypass checks.
 
 Also inspect the assembled deck separately for body-layout variety, visual coherence and narrative completeness. Check title/navigation stability, numeric baselines, graphic weight, chapter transitions and the actual summary/decision/closing order alongside information topology and visual layers. Review nonrectangular text against the visible shape interior. Use actual full-size pages or crops to resolve suspected collisions seen in a contact sheet. Automated composition diagnostics locate evidence; they cannot approve originality, visual richness or craft. Recheck the merged candidate after parallel authoring, and never inherit a whole-deck design verdict from separate page approvals.
 

@@ -2,6 +2,9 @@
 
 在已选择 create/recreate 并锁定内容后读取。此格式由固定编译器展开为完整 task.json，
 不执行模型脚本；当前不提供任意 HTML/SVG 导入或浏览器到 PPT 转换。
+这里的内容锁定指当前构建的已核对基线；用户明确要求保留的文字、数据或顺序仍受原要求约束。
+按[用户任务与内容边界](user-task-intent.md)记录允许的归纳、分析或局部修改，不能用重新生成基线
+解除用户限制，也不把所有输入材料自动视为禁止改写。
 
 ## 作者输入
 
@@ -28,7 +31,7 @@ task 填入 init 产生的信封、设计 brief、逐页 content/notes/scene 与
 内容可用 source_ref 替代重复 provenance，但核对状态应对应实际完成的工作：
 
 ```json
-{"id":"title","page_id":"page-1","type":"text","text":"当前页的完整判断",
+{"id":"title","page_id":"page-1","type":"text","text":"本页已确认标题或核心信息",
  "required_edit":"native","source_ref":"source-p1"}
 ```
 

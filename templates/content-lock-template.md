@@ -2,6 +2,8 @@
 
 Content Lock records what the deck is allowed to say before layout and implementation decisions are made. Do not use this template to lock coordinates, card counts, font sizes, colors, connector styles, SVG routes, or native implementation details.
 
+Distinguish the current build's checked content baseline from the user's restrictions. Record explicitly protected wording, figures or order and the allowed changes in the existing context; supplying or reviewing a source does not automatically freeze all its wording. Infer these boundaries from the request, using [user task guidance](../references/user-task-intent.md) when needed. Do not turn this template into a required user questionnaire.
+
 ## Deck Context
 
 - Source:
@@ -15,6 +17,7 @@ Content Lock records what the deck is allowed to say before layout and implement
 - Required source sections:
 - Known assumptions:
 - Sensitive or uncertain claims:
+- Explicitly protected content/order and allowed changes (when relevant):
 - Items that must not appear in slide-visible text:
 
 ## Slide Content Locks
@@ -94,6 +97,6 @@ Content Lock records what the deck is allowed to say before layout and implement
 ## Legacy Migration Notes
 
 - `judgment_title` -> `working_title` + `title_role`; add `judgment` only when `title_role=judgment`.
-- `Locked title` -> `Working title` until the storyboard locks the final title.
+- `Locked title` -> `Working title` until the storyboard locks the final title, except titles explicitly fixed by the user, which remain fixed.
 - `One-message takeaway` -> `Message`.
 - `Source evidence` -> structured `Evidence` + `Source references`.

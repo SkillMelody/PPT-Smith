@@ -15,9 +15,16 @@ styles/v4.0-backup/
 # Private commercial extension is maintained outside the public release tree.
 private-pmo-pack/
 
-# Keep the public diagnostics regression in Git; registry packages still exclude tests/.
+# Keep selected public regressions in Git; registry packages still exclude tests/.
 tests/*
 !tests/test_composition_diagnostics.py
+!tests/fixtures/
+tests/fixtures/*
+!tests/fixtures/scenario-intent/
+tests/fixtures/scenario-intent/*
+!tests/fixtures/scenario-intent/approved-project-review.md
+!tests/fixtures/scenario-intent/planning-requests.md
+!tests/fixtures/scenario-intent/README.md
 # Other local development material; excluded from all public platforms.
 .github/
 docs/

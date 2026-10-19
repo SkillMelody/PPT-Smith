@@ -29,6 +29,10 @@ python-pptx 1.0.2、Pillow 11.3.0、jsonschema 4.25.1、lxml 6.1.1。
 本次请求要求时采用。多图分别声明用途、页映射、采用特征与优先级；不自动混合。
 同一 PPTX 的画布一致，不同比例只能明确留白适配或拆分交付，禁止静默拉伸。
 
+先按[用户任务与内容边界](user-task-intent.md)识别受众、使用场合、已有材料、预期交付和
+明确限制。将必要的保留范围与允许变动记入现有 brief/content/notes；上传或审核过的材料
+不自动逐字冻结，版式调整权限也不自动授权改写指定文案、数据或页序。
+
 ## 快速开始
 
 所有命令在技能根目录执行；`TASK` 是当前用户已授权的任务目录。
@@ -57,8 +61,9 @@ create 必须具有当前设计 brief 与逐页备注。不要用程序假装完
 
 装饰商务汇报、原创模板，或需要修复页面趋同/空散时，先读
 [装饰商务设计](decorative-business-design.md)。初始化时可增加
-`--review-profile decorative_business`：在 `design.pages[].composition` 记录本页主结论的
+`--review-profile decorative_business`：在 `design.pages[].composition` 记录本页核心信息的
 内容引用、信息关系、构图家族、阅读顺序和层次安排；完整构建要求逐页覆盖。
+`claim_content_id` 可引用已批准标题或已有核心信息，不要求将主题、流程或教学标题改成判断句。
 这不是固定模板，不改变原生对象后端，也不为旧任务追加必填字段。
 `python3 -m engine design composition-check --task-dir "$TASK"` 输出构图矩阵与重复风险提示，
 供代表页试制及合并后复审使用；没有提示不代表审美、原创性或实际排版合格。
