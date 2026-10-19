@@ -119,3 +119,54 @@ explicitly constrained create task, not all routes or user scenarios. Real-user
 adoption, complex business/visual outcomes, time/cost savings and broader editing
 remain unvalidated. Select the next iteration from observed task failures and user
 feedback rather than treating the remaining work packages as mandatory stages.
+
+## Follow-up: update an already delivered task
+
+The next bounded user task uses [revision-request.md](revision-request.md) with
+the saved, delivered four-page task above. It updates project dates/status and
+directly related next steps; it is not another visual redesign or a real company
+record. A fresh author received the raw baseline task and update record, without
+the expected changes or other agents' findings.
+
+- Two guarded patches and two complete builds produced the final candidate
+  `build-e4c63b99bc904164885596efe8cb71d6`; PPTX SHA-256
+  `625aa4f97e2b7ba3ec57c030fefe5d92f2d5da8adc530ab5440a4937ff42a87c`.
+- Four visible content records, related provenance/notes and two progress-marker
+  colours changed. All object geometry, typography, titles and page order stayed
+  fixed. The other 15 visible records were unchanged; pages 1 and 3 had identical
+  native slide XML and rendered pixels to the approved baseline.
+- The first update made one progress sentence too close to a divider. A second
+  patch shortened that updated sentence while preserving planned/actual dates;
+  the completed-review detail remains in notes. An initial absolute `--file`
+  argument was rejected; the author used the documented task-relative path.
+- Fourteen source/scope/output checks passed. The scope check was corrected to
+  allow status-marker colour changes: preserving layout does not require an
+  obsolete visual status. The earlier overstrict assertion is retained privately.
+- Formal review inheritance reused only pages 1 and 3. An independent reviewer
+  inspected all four actual pages and 19 bindings, reviewed changed pages 2/4 and
+  the assembled deck, and preserved the inherited observations and identity.
+  A small difference between the two completed-state markers was non-blocking;
+  readable text states both are complete.
+- A disposable exact-candidate copy was edited in LibreOfficeKit on page 4:
+  `10月20日` became `10月21日`, then saved, closed, reopened and read natively.
+  The production copy kept `10月20日`; its hash and 46 native objects were retained.
+  The first read-only XML check falsely failed because Office split the date into
+  multiple runs. Joining runs within each paragraph fixed the local test helper;
+  a fresh actual edit passed. The original failed-check record was not overwritten.
+- `review`/`deliver` passed with the existing `OS_ISOLATION_NOT_VERIFIED` warning.
+  No runtime, schema or gate change was necessary for this request. The scenario
+  and results remain excluded from the runtime distribution.
+
+This establishes one scoped revision of a saved PPT Smith task, not arbitrary
+third-party PPTX editing, chart-data updates, long-term reuse, aesthetic superiority
+or PowerPoint/WPS compatibility. It reuses a configured environment; installation,
+total time/cost and external-user success were not measured.
+
+One follow-up remains: this task reached revision 3 of budget 3. Current `build`
+counts every parent-linked build toward the same budget; CLI has no dedicated
+new-request cycle. Code inspection confirms the next linked build would reject,
+but that rejection was not invoked as an extra build in this run. Do not raise the
+budget or drop the parent to disguise unresolved rework. A new, distinct request
+after formal delivery needs a documented transition that preserves constraints,
+lineage and fresh review; that transition was not implemented or end-to-end
+validated here. Resolve this bounded workflow issue before claiming ongoing reuse.

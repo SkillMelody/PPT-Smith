@@ -25,6 +25,7 @@ tests/fixtures/scenario-intent/*
 !tests/fixtures/scenario-intent/approved-project-review.md
 !tests/fixtures/scenario-intent/planning-requests.md
 !tests/fixtures/scenario-intent/README.md
+!tests/fixtures/scenario-intent/revision-request.md
 # Other local development material; excluded from all public platforms.
 .github/
 docs/
