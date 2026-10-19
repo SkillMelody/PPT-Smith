@@ -48,6 +48,8 @@ A style reference usually belongs to create; faithful reconstruction of complete
 
 **Decorative business reports.** The optional `decorative_business` review profile records each page's content relationship, reading order, information-bearing graphics and visual layers, then requires an independent whole-deck composition review. Diagnostics flag declared repetition for inspection; they do not score aesthetics or certify originality. See the [design guide](references/decorative-business-design.md), [planning sheet](templates/decorative-page-plan.md), and [37-page refinement case](references/cases/decorative-business-refinement.md) (Chinese). The case documents design practice in a separate authoring environment, not an end-to-end certification of that PPTX by this engine.
 
+The [two-round business report case](references/cases/business-deck-diversity-coherence.md) (Chinese) addresses a different failure: greater layout variety can weaken visual order, while a deck can still lack chapter transitions and a real ending. Keep stable deck conventions separate from variable body structures, and review variety, coherence and narrative completeness independently. `composition-check` also exposes native body-claim positions/fonts and the declared contents/section/closing sequence as inspection aids. It does not judge aesthetics or require every short brief to add navigation pages. Existing entry points and task fields remain compatible; old tasks need no migration.
+
 ## Design previews without an image-generation model
 
 The default original-design workflow is:
