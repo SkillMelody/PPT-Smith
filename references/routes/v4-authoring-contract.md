@@ -6,9 +6,10 @@ Read for Bespoke or Template authoring only. The current default create workflow
 
 ### 1. Establish the production request
 
-Confirm or infer the audience, decision, language, route, page-range contract,
+Confirm or infer the audience, communication purpose, language, route, page-range contract,
 template-use mode, delivery format, and editability requirements. A source-page
 count is not an output-slide count.
+Use [user task and content boundaries](../user-task-intent.md) to distinguish explicit preservation requirements from permission to summarize, analyze or revise. Record relevant decisions in the existing request/content contracts, without a new mandatory intake form.
 
 ### 2. Read and structure the entire source
 
@@ -29,13 +30,13 @@ Before choosing geometry, produce:
 - Content & Evidence Map;
 - Narrative Contract and page budget;
 - source-backed Presentation IR;
-- per-slide assertion, evidence, topology, visible-content, and speaker-notes
+- per-slide core-message/assertion, evidence, topology, visible-content, and speaker-notes
   contracts;
 - chart/table/diagram payloads for every reconstructable quantitative exhibit;
 - Exhibit Interpretation Contract for every retained illustration.
 
-Visible copy should contain one assertion and a small number of complete,
-high-value labels. Detailed reasoning belongs in speaker notes. Planner-created
+Visible copy should communicate the page's purpose with complete, relevant content.
+Use supported assertions for analytical findings and appropriate topic or instructional titles elsewhere; preserve titles explicitly fixed by the user. The separate IR `title` and `message` fields do not require rewriting an approved title. Detailed reasoning belongs in speaker notes, but required slide-visible copy must not be moved there merely to fit a concise layout. Planner-created
 ellipsis, OCR fragments, generic labels, and tiny source prose are forbidden.
 
 Final visible copy must also reject unresolved generator values such as
@@ -143,7 +144,7 @@ A final deck requires all applicable gates:
 
 - source and numeric provenance pass;
 - important-evidence coverage pass;
-- every body slide has a complete assertion;
+- every body slide satisfies the route's core-message/assertion contract and allowed content changes;
 - every body slide has speaker notes with evidence and source anchors;
 - every reconstructable chart/table is native and editable;
 - every feasible reviewed template component is reused or has a documented
@@ -156,3 +157,5 @@ A final deck requires all applicable gates:
 
 If any gate fails, return a candidate/revision state and the exact blocker. Do
 not call it final.
+
+Keep the existing runtime gates: Template final includes message-length and visible-content-density checks, and Bespoke retains narrative and visible-message-binding requirements. These may conflict with strictly fixed copy. Explain the specific restriction and permitted alternatives rather than adding filler, changing page roles or disabling a check. Task guidance does not itself add automatic preservation enforcement.

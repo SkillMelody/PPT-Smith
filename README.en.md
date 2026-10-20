@@ -10,6 +10,16 @@ Turn source documents, slide design images, or native PPTX templates into editab
 
 **Current version: `5.2.1`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
 
+## In development: content boundaries from the user's task
+
+This iteration updates onboarding and authoring guidance: identify what must be preserved and what may be analyzed or changed, asking only about consequential gaps. See [user tasks and content boundaries](references/user-task-intent.md). It builds on 5.2.1 and is not a new release; task formats and runtime gates remain unchanged.
+
+The [graphic semantics guidance](references/decorative-business-design.md#3-从内容关系到页面构图) (Chinese) also checks signed changes, item correspondence and parallel work, and distinguishes editable shapes from data-linked charts. This does not change the usage flow or establish improvements across all tasks.
+
+**Colour relationships and visual language:** choose background contrast, base/supporting/emphasis roles, type-to-graphic scale and information-bearing decoration for the current brand, content and authorized references. Reuse those relationships while varying body structures with the content; no fixed palette, banned hue list or universal body frame is prescribed. Benchmark reviews must record concrete page regressions; technical checks do not establish that a visual target was met. See the [design guidance](references/decorative-business-design.md#色彩关系与视觉语言) and [page plan](templates/decorative-page-plan.md) (Chinese).
+
+This development increment keeps version `5.2.1` and updates authoring/review guidance only; engine, schema and entry points are unchanged. This round performs static checks only. A post-change presentation trial has not started and remains the user's decision.
+
 ## What is new in v5.2.1
 
 - **Three separate review dimensions:** vary body compositions with the content while keeping titles, navigation, type hierarchy and graphic weight consistent. Review variety, coherence and narrative completeness separately.
@@ -19,9 +29,46 @@ Turn source documents, slide design images, or native PPTX templates into editab
 
 Entry points, task formats and existing warning rules remain compatible; old tasks need no migration. This update improves planning, diagnostics and review. It does not add an automated business-analysis engine or new native chart types. Historical previews and validation records retain their original version labels. A repository version change does not mean installation platforms have published it.
 
-## Start with a business report
+## Start with your actual task
 
-Load the Skill in an agent with the required runtime already configured, attach your material, and describe the outcome:
+Load the Skill in an agent with the required runtime already configured, attach your material, and describe the outcome. Choose a request close to your situation; no configuration form is needed.
+
+**Make a presentation from approved material:**
+
+```text
+Use PPT Smith to turn this approved material into a presentation.
+Keep the existing conclusions, figures and metric definitions. You may reorder
+the information and shorten repeated wording; preserve marked quotes verbatim.
+Follow the attached visual reference. Deliver editable PPTX and actual previews.
+```
+
+**Help analyze the material and prepare a presentation:**
+
+```text
+Use PPT Smith to prepare a project review from these materials so reviewers
+can discuss the next phase. You may organize findings, compare options and
+offer supported recommendations. Distinguish source facts from added judgments.
+Identify gaps that affect conclusions; do not invent causes, figures or owners.
+Deliver editable PPTX and actual previews.
+```
+
+**Revise an existing PPT Smith task:**
+
+```text
+Continue this PPT Smith task: update slide 4 with the new data and replace
+the conclusion on slide 7 with the attached wording. Keep other content and
+design unchanged. Check related charts, summaries and pagination; explain
+impacts beyond this revision's scope. Deliver the revised PPTX and previews.
+```
+
+The revision example requires the original task materials and state; it does not promise lossless editing of arbitrary third-party PPTX files. Uploading material alone does not require every word to remain unchanged. State any required verbatim text, fixed page order or prohibition on additions and deletions so the agent can honor those constraints.
+
+Include any known audience, purpose, duration or slide budget, template and target-software requirements with your material. Language, reporting periods and business definitions are extracted or clarified when relevant, not required for every deck. The agent reads the material first, asks only about gaps that affect correctness or delivery, and handles routing, object descriptions, rendering and checks. Users do not need to author JSON or memorize commands. See [user tasks and content boundaries](references/user-task-intent.md).
+
+First use requires a local-tool-capable agent, Python dependencies, an office renderer and fonts; see [Installation](#installation-and-local-checks) and [more usage examples](#how-to-use-it-with-an-agent).
+
+<details>
+<summary>Example: a management presentation from operating data</summary>
 
 ```text
 Use PPT Smith to create about 15 slides for a monthly business review
@@ -34,9 +81,9 @@ and distinguish possible causes from established facts.
 Check material gaps before authoring. Deliver editable PPTX and actual previews.
 ```
 
-Provide the **audience, question to answer, reporting period and approximate duration or slide budget**. Include any company template or target-software requirement. Metric definitions, data gaps and business judgments need confirmation against the material. The agent handles routing, object descriptions, rendering and checks; users do not need to author JSON or memorize commands.
+Business analysis is one possible use case; consulting-style communication organizes conclusions and evidence; data visualization expresses comparisons, trends, composition and contribution. The existing workflow can produce such reports, but quality depends on source material, the model and actual review. “Consulting-style” does not imply an official consulting-firm template or quality certification.
 
-Business analysis is the reporting use case; consulting-style communication organizes conclusions and evidence; data visualization expresses comparisons, trends, composition and contribution. The existing workflow can produce such reports, but quality depends on source material, the model and actual review. “Consulting-style” does not imply an official consulting-firm template or quality certification. First use requires a local-tool-capable agent, Python dependencies, an office renderer and fonts; see [Installation](#installation-and-local-checks) and [more usage examples](#how-to-use-it-with-an-agent).
+</details>
 
 <details>
 <summary>v5.2.0 recap: decorative business design and whole-deck refinement</summary>

@@ -46,8 +46,10 @@ excluded from the public source tree and registry bundle. Local files are
 preserved for development. Exclusion does not rewrite earlier published history.
 
 The public source tree intentionally includes `tests/test_composition_diagnostics.py`
-as a regression for the added diagnostics. Development tests, including that
-regression, remain excluded from registry/runtime archives.
+and the synthetic prompts and result record in `tests/fixtures/scenario-intent/`
+for targeted regression and reproducibility. They contain no customer material.
+Development tests, including these selected checks, remain excluded from
+registry/runtime archives.
 
 `.gitignore` prevents normal staging of local-only files. `.clawhubignore`
 filters registry packaging, `.gitattributes` filters source exports, and
