@@ -16,6 +16,10 @@ This iteration updates onboarding and authoring guidance: identify what must be 
 
 The [graphic semantics guidance](references/decorative-business-design.md#3-从内容关系到页面构图) (Chinese) also checks signed changes, item correspondence and parallel work, and distinguishes editable shapes from data-linked charts. This does not change the usage flow or establish improvements across all tasks.
 
+**Colour relationships and visual language:** choose background contrast, base/supporting/emphasis roles, type-to-graphic scale and information-bearing decoration for the current brand, content and authorized references. Reuse those relationships while varying body structures with the content; no fixed palette, banned hue list or universal body frame is prescribed. Benchmark reviews must record concrete page regressions; technical checks do not establish that a visual target was met. See the [design guidance](references/decorative-business-design.md#色彩关系与视觉语言) and [page plan](templates/decorative-page-plan.md) (Chinese).
+
+This development increment keeps version `5.2.1` and updates authoring/review guidance only; engine, schema and entry points are unchanged. This round performs static checks only. A post-change presentation trial has not started and remains the user's decision.
+
 ## What is new in v5.2.1
 
 - **Three separate review dimensions:** vary body compositions with the content while keeping titles, navigation, type hierarchy and graphic weight consistent. Review variety, coherence and narrative completeness separately.
