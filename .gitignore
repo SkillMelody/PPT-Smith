@@ -18,6 +18,8 @@ private-pmo-pack/
 # Keep the public diagnostics regression in Git; registry packages still exclude tests/.
 tests/*
 !tests/test_composition_diagnostics.py
+!tests/test_native_template*.py
+!tests/native_template_fixture.py
 # Other local development material; excluded from all public platforms.
 .github/
 docs/

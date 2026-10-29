@@ -83,6 +83,9 @@ def _emit(payload: dict, json_out: str | None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "template":
+        from .native_template.cli import main as template_main
+        return template_main(argv[1:])
     if argv and argv[0] == "design":
         from .design_scene.cli import main as design_main
         return design_main(argv[1:])

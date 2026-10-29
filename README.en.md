@@ -10,6 +10,17 @@ Turn source documents, slide design images, or native PPTX templates into editab
 
 **Current version: `5.2.1`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
 
+## In development: original-page template tools
+
+The Skill gains the website's original-page cloning, native editing, source-style inheritance and local-revision approach. The host agent plans and authors; fixed Python tools execute, without a website account, a second model loop or new Node dependencies.
+
+- Output pages bind real source slides and retain native layout/master/theme relationships instead of merely copying a palette.
+- The single `template` route selects the [original-page workflow](references/native-template-workflow.md) for page editing; existing Atlas/component and `strict-template` tasks keep their original contract.
+- The website's advisory visual-review policy is **not** imported. Actual rendering and independent hash-bound page review remain required for final delivery. Unverified PowerPoint/WPS edit-save-reopen compatibility stays explicitly untested.
+- Revision-checked fixed operations do not execute model-authored scripts. Failed transactions preserve valid work; modifications invalidate old approval. Images, native shapes and data-backed native charts remain distinct editing capabilities.
+
+This describes the development branch, not an installation-platform release, an update to installed skills or certification of arbitrary enterprise templates. The existing version remains `5.2.1` pending a separately verified release.
+
 ## What is new in v5.2.1
 
 - **Three separate review dimensions:** vary body compositions with the content while keeping titles, navigation, type hierarchy and graphic weight consistent. Review variety, coherence and narrative completeness separately.
