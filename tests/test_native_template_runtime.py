@@ -643,3 +643,30 @@ def test_xml_parser_rejects_active_object_marker_without_package(local):
     from engine.native_template.safety import xml
     data=('<p:%s xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>'%local).encode()
     with pytest.raises(ValueError,match='ACTIVE_OBJECT_XML_REFUSED'):xml(data)
+
+
+@pytest.mark.parametrize('missing',['fcntl','O_NOFOLLOW'])
+def test_workspace_platform_probe_fails_before_input_read_or_creation(tmp_path,monkeypatch,missing):
+    from engine.native_template import safety
+    from engine.native_template.cli import capabilities,main
+    if missing=='fcntl':monkeypatch.setattr(safety,'fcntl',None)
+    else:monkeypatch.delattr(safety.os,'O_NOFOLLOW')
+    caps=capabilities()
+    assert caps['workspaceSupported'] is False
+    assert caps['limits']=={'maxSourcePages':100,'maxOutputPages':100}
+    source=tmp_path/'nonexistent-source.pptx';work=tmp_path/'must-not-exist'
+    with pytest.raises(ValueError,match='PLATFORM_UNSUPPORTED'):rt.init(source,work)
+    with pytest.raises(ValueError,match='PLATFORM_UNSUPPORTED'):safety.read_file(source)
+    with pytest.raises(ValueError,match='PLATFORM_UNSUPPORTED'):
+        with safety.locked(work,create=True):pass
+    assert not work.exists()
+    assert main(['init','--template',str(source),'--workspace',str(work)])==1
+    assert not work.exists()
+
+
+def test_workspace_supported_capability_matches_host_primitives():
+    import os
+    from engine.native_template import safety
+    from engine.native_template.cli import capabilities
+    assert capabilities()['workspaceSupported']==(safety.fcntl is not None and callable(getattr(safety.fcntl,'flock',None)) and hasattr(os,'O_NOFOLLOW'))
+    assert capabilities()['limits']=={'maxSourcePages':100,'maxOutputPages':100}

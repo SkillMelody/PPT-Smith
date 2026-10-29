@@ -30,12 +30,15 @@ def target(part, value):
     return result
 
 
+SOURCE_PAGE_LIMIT = 100
+
+
 def slide_inventory(parts):
     pres = xml(parts['ppt/presentation.xml'])
     rels = {r.get('Id'): target('ppt/presentation.xml', r.get('Target')) for r in xml(parts[relname('ppt/presentation.xml')])}
     ids = pres.find('{%s}sldIdLst' % P)
     result = [(s.get('id'), rels[s.get('{%s}id' % R)]) for s in ids] if ids is not None else []
-    require(len(result) <= 100 and len({s[0] for s in result}) == len(result), 'SOURCE_PAGE_LIMIT_OR_DUPLICATE_ID')
+    require(len(result) <= SOURCE_PAGE_LIMIT and len({s[0] for s in result}) == len(result), 'SOURCE_PAGE_LIMIT_OR_DUPLICATE_ID')
     return result
 
 

@@ -6,9 +6,11 @@ import re
 from pathlib import Path
 from pptx import Presentation
 from .safety import (require, fields, strict_json, encode, sha, read_file, atomic,
-                     locked, package, safe_path)
+                     locked, package, safe_path, require_workspace_platform)
 from .package import slide_inventory
 from .objects import build, inspect_slide
+
+OUTPUT_PAGE_LIMIT = 100
 
 OPERATIONS = {
     'add_page': {'op', 'id', 'sourceSlideId', 'topicIds', 'notes'},
@@ -30,12 +32,12 @@ def constraints(value):
     fields(value, {'mode', 'count'}, {'mode'})
     require(value['mode'] in {'auto', 'target', 'exact', 'maximum'}, 'INVALID_PAGE_CONSTRAINT_MODE')
     if value['mode'] == 'auto': require('count' not in value, 'AUTO_HAS_NO_COUNT')
-    else: require(type(value.get('count')) is int and 1 <= value['count'] <= 100, 'INVALID_PAGE_CONSTRAINT_COUNT')
+    else: require(type(value.get('count')) is int and 1 <= value['count'] <= OUTPUT_PAGE_LIMIT, 'INVALID_PAGE_CONSTRAINT_COUNT')
 
 
 def page_count(state):
     n = len(state['pages']); c = state['pageConstraints']
-    require(0 < n <= 100, 'EXPORT_REQUIRES_1_TO_100_PAGES')
+    require(0 < n <= OUTPUT_PAGE_LIMIT, 'EXPORT_REQUIRES_1_TO_100_PAGES')
     if c['mode'] == 'exact': require(n == c['count'], 'EXACT_PAGE_COUNT_NOT_MET')
     if c['mode'] == 'maximum': require(n <= c['count'], 'MAXIMUM_PAGE_COUNT_EXCEEDED')
 
@@ -52,11 +54,12 @@ def load(root):
     require(sha(template) == state['templateHash'], 'FROZEN_TEMPLATE_HASH_MISMATCH')
     # templatePath is provenance only; workspace/template.pptx is the frozen source.
     constraints(state['pageConstraints'])
-    require(isinstance(state['pages'], list) and len(state['pages']) <= 100, 'PAGE_LIMIT')
+    require(isinstance(state['pages'], list) and len(state['pages']) <= OUTPUT_PAGE_LIMIT, 'PAGE_LIMIT')
     return state, template
 
 
 def init(template_path, workspace, page_constraints=None):
+    require_workspace_platform()
     data = read_file(template_path)
     parts = package(data)
     inv = slide_inventory(parts)
@@ -148,7 +151,7 @@ def apply(workspace, request):
                     for k in ('notes', 'topicIds'):
                         if k in op: page[k] = deepcopy(op[k])
                 else: page['edits'].append(deepcopy(op))
-            require(len(state['pages']) <= 100, 'PAGE_LIMIT')
+            require(len(state['pages']) <= OUTPUT_PAGE_LIMIT, 'PAGE_LIMIT')
             if state['pageConstraints']['mode'] == 'maximum': require(len(state['pages']) <= state['pageConstraints']['count'], 'MAXIMUM_PAGE_COUNT_EXCEEDED')
         require(sum(len(p['edits']) for p in state['pages']) <= 10000, 'ACCUMULATED_EDIT_LIMIT')
         require(len(encode(state)) <= 8 * 1024 * 1024, 'STATE_SIZE_LIMIT')

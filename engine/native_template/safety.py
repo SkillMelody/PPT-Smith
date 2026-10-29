@@ -25,6 +25,14 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def workspace_supported():
+    return fcntl is not None and callable(getattr(fcntl, 'flock', None)) and hasattr(os, 'O_NOFOLLOW')
+
+
+def require_workspace_platform():
+    require(workspace_supported(), 'PLATFORM_UNSUPPORTED_REQUIRES_POSIX_FCNTL_AND_O_NOFOLLOW')
+
+
 def sha(data):
     return 'sha256:' + hashlib.sha256(data).hexdigest()
 
@@ -72,6 +80,7 @@ def safe_path(value):
 
 
 def read_file(value, limit=MAX_BYTES):
+    require_workspace_platform()
     path = safe_path(value)
     require(path.is_file(), 'FILE_REQUIRED: ' + str(path))
     require(path.stat().st_size <= limit, 'FILE_SIZE_LIMIT')
@@ -199,7 +208,7 @@ def scan_workspace(root):
 
 @contextlib.contextmanager
 def locked(workspace, create=False):
-    require(fcntl is not None, 'PLATFORM_UNSUPPORTED_REQUIRES_POSIX_FCNTL')
+    require_workspace_platform()
     root = safe_path(workspace)
     if create: root.mkdir(parents=True, exist_ok=True)
     require(root.is_dir(), 'WORKSPACE_REQUIRED')

@@ -5,13 +5,16 @@ import json
 import sys
 from . import runtime
 from . import review as review_module
-from .safety import strict_json, read_file
+from .safety import strict_json, read_file, workspace_supported
+from .package import SOURCE_PAGE_LIMIT
 from .fidelity import RETENTION_MIN, HEADING_SIZE_MIN, SMALLEST_SIZE_MIN, BOX_TOLERANCE_PT
 
 
 def capabilities():
     return {'ok': True, 'workflow': 'template', 'version': 1,
-            'platform': {'supported': 'POSIX with fcntl', 'windows': 'unsupported', 'tested': ['macOS']},
+            'platform': {'supported': 'POSIX with fcntl and O_NOFOLLOW', 'windows': 'unsupported', 'tested': ['macOS']},
+            'workspaceSupported': workspace_supported(),
+            'limits': {'maxSourcePages': SOURCE_PAGE_LIMIT, 'maxOutputPages': runtime.OUTPUT_PAGE_LIMIT},
             'scope': 'native_template_toolchain_only',
             'templateFidelityThresholds': {'retentionMinimum': RETENTION_MIN, 'headingSizeMinimumRatio': HEADING_SIZE_MIN, 'smallestSizeMinimumRatio': SMALLEST_SIZE_MIN, 'geometryTolerancePt': BOX_TOLERANCE_PT},
             'finalRequirements': ['current real renders and external observations', 'source preservation floor passed', 'recomputed source-retention/type-scale fidelity floor passed', 'explicit nonblank output-page notes (presence only; truth not verified)'],
