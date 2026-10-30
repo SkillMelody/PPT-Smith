@@ -2,10 +2,10 @@
 
 ## Identity
 
-- Display name: MeowClaw PPT Smith
+- Display name: PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.2.1`
+- Version: `5.3.0`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` define the release identity.
@@ -37,6 +37,21 @@ guidance and read-only composition observations. The case's original 5.2.0 runs
 are not relabelled as 5.2.1 tests; no additional customer source files or decks
 are included.
 
+## Version 5.3.0: native template workflow and current showcase
+
+Original-page template tools now run inside the host agent's existing Python
+workflow: clone source-bound pages, edit native objects, inherit source styles,
+apply revision-checked patches, export, render and ingest hash-bound external
+review. Existing component/Atlas tasks remain compatible. Deterministic source
+retention/type-scale checks do not replace visual, factual or business review.
+The new executor requires POSIX fcntl/O_NOFOLLOW; Windows is unsupported.
+
+The user-provided 36-slide Xiaomi Q2/H1 2025 template-route result is displayed
+through actual office-rendered previews. Only the overview, three selected page
+images and concise public evidence are included. The original PPTX, full-size
+render output, source material and logs remain local. Inspection of the supplied
+file is not relabelled as a newly repeated end-to-end generation run.
+
 ## Local-only material
 
 Development fixtures, CI, benchmark harnesses, development notes,
@@ -45,9 +60,8 @@ worktrees, caches, credentials and private customer/commercial materials are
 excluded from the public source tree and registry bundle. Local files are
 preserved for development. Exclusion does not rewrite earlier published history.
 
-The public source tree intentionally includes `tests/test_composition_diagnostics.py`
-as a regression for the added diagnostics. Development tests, including that
-regression, remain excluded from registry/runtime archives.
+The public source tree intentionally includes focused composition and native-template
+regression tests. All development tests remain excluded from registry/runtime archives.
 
 `.gitignore` prevents normal staging of local-only files. `.clawhubignore`
 filters registry packaging, `.gitattributes` filters source exports, and

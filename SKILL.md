@@ -1,15 +1,16 @@
 ---
 name: "article-html-to-ppt"
+license: "Apache-2.0"
 description: "Create PPTX, reconstruct slides, or reuse PPTX templates; produce editable native objects, real previews and hash-bound review. Use for revisions too."
 metadata:
-  display_name: "MeowClaw PPT Smith"
-  english_alias: "MeowClaw PPT Smith"
+  display_name: "PPT Smith"
+  english_alias: "PPT Smith"
   public_slug: "meowclaw-pptsmith"
-  version: "5.2.1"
+  version: "5.3.0"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
-# MeowClaw PPT Smith
+# PPT Smith
 
 ## 1. Select the user's intent
 

@@ -1,86 +1,48 @@
-## Public Name: <br>
-MeowClaw PPT Smith <br>
+# PPT Smith
 
-## Technical Slug: <br>
-meowclaw-pptsmith <br>
+- **版本**：5.3.0
+- **安装标识**：`article-html-to-ppt`
+- **公开标识**：`meowclaw-pptsmith`
+- **兼容别名**：`article-html-to-ppt`、`meowclaw-decksmith`
+- **作者**：SkillMelody / MeowClaw Lab
+- **许可证**：Apache-2.0
 
-## Compatibility Alias(es): <br>
-article-html-to-ppt, meowclaw-decksmith <br>
+## 用途
 
-## Description: <br>
-MeowClaw PPTSmith converts articles, Markdown drafts, HTML pages, WeChat drafts, PRDs, automation plans, knowledge posts, and review-approved manuscripts into low-rework, persona-fit slide decks with direct PPTX, native dynamic PPTX, and Feishu Slides export routing. <br>
+把源文档、完整幻灯片设计图或原生 PPTX 模板，转为有来源、可修改并具有真实预览的演示文稿。宿主 Agent 负责内容理解、叙事和逐页设计；固定工具执行原生对象操作、渲染与证据核验。普通用户不必手写 JSON。
 
-Version 5.2.1 separates layout variety, visual coherence and narrative completeness in whole-deck review, adds native body-claim and page-role observations to composition diagnostics, and documents two rounds of business report refinement. It retains the optional `decorative_business` review profile with page composition plans and independent whole-deck review. The three user intents remain create from sources, reconstruct supplied designs and preserve native templates. Tasks that do not enable the profile retain their existing contract; short briefs do not have to add navigation pages. Composition diagnostics do not score aesthetics or certify originality; final review remains bound to the actual candidate and its evidence. Compact author input, guarded object patches, real-office font preflight, verified page-review inheritance, real rendering, source checks and target-software editing checks remain part of the workflow. Public slug: `meowclaw-pptsmith`. <br>
+## 三种入口
 
-## Owner
-SkillMelody <br>
+| 需求 | 路线 | 结果 |
+| --- | --- | --- |
+| 从报告、政策、PRD、文章或数据制作新演示 | `create` | 原生文字、形状及支持的数据图表，配合真实预览与独立审核 |
+| 根据批准的完整页面设计图重建 | `recreate` | 可编辑对象，以及目标与实际页面的差异说明 |
+| 保留 PPTX 原页、母版、布局及原生组件 | `template` | 原页克隆与原生编辑；已有 Atlas/组件任务保持原合同 |
 
-### License/Terms of Use: <br>
-Apache-2.0 <br>
+## 5.3.0 更新
 
-## Use Case: <br>
-Product owners, product reporters, Agent engineers, automation developers, self-media authors, knowledge bloggers, editors, educators, and content teams who need to turn source material into structured presentation decks without losing source boundaries, audience fit, editability, or verification discipline. <br>
+- 新增 `python3 -m engine template` 固定工具链：检查实际源页与对象、克隆原页、编辑文字/原生图表/表格、同源样式继承、增删排序与备注。
+- 修订使用稳定页 ID 和 revision 事务；失败不提交部分结果，冻结模板支持后续继续编辑。
+- 导出后进行真实渲染、源资产保留检查、装饰/字号底线核验，以及与当前文件和逐页图片哈希绑定的外部审核。
+- 不将网站的建议性视觉审核策略用于 Skill 正式交付；没有实际渲染或有效审核就不冒称终稿。
+- README 新增用户提供的 36 页小米经营复盘模板路线成稿展示；总览来自真实 PPTX 渲染，不是重新绘制的宣传示意图。
 
-### Deployment Geography for Use: <br>
-Global <br>
+## 能力边界
 
-## Known Risks and Mitigations: <br>
-Risk: External articles or third-party images may not be licensed for public redistribution. <br>
-Mitigation: The skill requires source-rights classification and preserves attribution before export. <br>
+新原页执行器要求 POSIX `fcntl` 和 `O_NOFOLLOW`，本机 macOS 验证，Windows 不支持；源模板和输出各最多 100 页。原生图表编辑限单 plot 类别图，表格不改变行列或合并结构；图片新增仅复制同源嵌入图片。复杂效果及不支持的对象操作须明确报告，不能静默栅格化冒充原生编辑。
 
-Risk: Slide creation can be mistaken for final delivery even when platform readback or rendering was not verified. <br>
-Mitigation: The skill separates Created, Rendered, Read back, and Final states in the handoff. <br>
+可编辑对象存在不等于目标办公软件兼容；LibreOffice 渲染不等于 PowerPoint/WPS GUI 编辑、保存和重开通过。模型能力、字体、渲染器与源资料会影响实际结果。工具不自动核实经营或科研事实，不认证审核者身份，也不自动继承新候选的旧审核。
 
-Risk: Users may ask for dynamic PPT and receive only an HTML presentation. <br>
-Mitigation: The skill now defaults dynamic PPT requests to native PPTX progressive-build slides, with HTML only as an optional companion. <br>
+## 交付与隐私
 
-Risk: Article-specific visual metaphors can fragment a deck and weaken brand trust. <br>
-Mitigation: The skill defaults to formal brand-consistent design and uses motifs only inside a stable visual system. <br>
+正式交付需包含可编辑 PPTX、实际预览、来源/缺项、审核结论及编辑限制。来源不明的数字保持待核实，推断与原文事实分开，不用整页截图伪装可编辑重建。渲染与文件操作在本地完成；资料如何进入模型由宿主配置决定。云端创建、上传与分享须有相应授权。
 
-Risk: A single consulting-style template may not fit product reporting, technical architecture, and knowledge creator decks equally well. <br>
-Mitigation: The skill now selects persona-specific deck defaults for product owners/reporters, Agent engineers/automation developers, and self-media authors/knowledge bloggers. <br>
+## 文档
 
-Risk: Premium profile can be overused for ordinary decks, increasing cost and blocking delivery on missing renderers. <br>
-Mitigation: The skill resolves fast/standard/premium from explicit request, audience risk, brand demand, delivery value, and diagram complexity; Premium is reserved for public, high-value, template, complex, or explicitly full-validation work. <br>
-
-Risk: Feishu/Lark Slides export sends source content, generated slide text, and related metadata to a cloud service. <br>
-Mitigation: The skill defaults sensitive work to local PPTX output and requires explicit user intent plus a pre-upload summary before Feishu/Lark cloud delivery. <br>
-
-## Reference(s): <br>
-- [Visual Design Archetypes](references/visual-design-archetypes.md) <br>
-- [Visual Systems Reference](references/visual-systems.md) <br>
-- [Export Pipelines Reference](references/export-pipelines.md) <br>
-- [Declarative Design Workflow](references/declarative-design.md) <br>
-- [Decorative Business Design](references/decorative-business-design.md) <br>
-- [Page Composition Planning Sheet](templates/decorative-page-plan.md) <br>
-- [Two-round Business Report Case](references/cases/business-deck-diversity-coherence.md) <br>
-- [V4 Route Architecture](references/routes/v4-three-route-architecture.md) <br>
-- [Bespoke Route](references/routes/v4-bespoke-route.md) <br>
-- [Template Route](references/routes/v4-template-route.md) <br>
-- [Storyboard Template](templates/storyboard-template.md) <br>
-- [Content Lock Template](templates/content-lock-template.md) <br>
-- [Slide Manifest Template](templates/slide-manifest-template.json) <br>
-- [Visual QA Gate Template](templates/visual-qa-gate-template.json) <br>
-
-## Skill Output: <br>
-**Output Type(s):** [Storyboard, HTML preview, static PPTX, native dynamic PPTX, Feishu Slides, Verification report] <br>
-**Output Format:** [Markdown plans, HTML previews, .pptx files, Feishu Slides links, structured handoff] <br>
-**Output Parameters:** [source rights, export target, dynamic mode, audience/persona, brand system, verification state] <br>
-**Other Properties Related to Output:** [Supports low-rework persona-fit decks, consulting-style baselines, technical blueprint decks, editorial knowledge decks, SVG/HTML preview policy, direct PPTX export, and progressive-build dynamic PPTX for MeowClawLab-style work] <br>
-
-## Evaluation Metrics Used: <br>
-- Security: Checks that private paths, account names, tokens, and raw review trails are not included in public decks. <br>
-- Rights discipline: Checks whether external sources and reconstructed visuals are labeled correctly. <br>
-- Brand consistency: Checks whether the deck feels like one professional product from one owner. <br>
-- Persona fit: Checks whether product/reporting, technical/automation, or knowledge-creator decks use the right structure, proof style, and visual language. <br>
-- Readability: Checks title hierarchy, slide density, and text overflow risks. <br>
-- Dynamic PPT behavior: Checks logical slide count, build-step slide count, transitions, and rendered preview when possible. <br>
-- Verification honesty: Checks whether the final handoff clearly distinguishes generated, rendered, read-back, and final states. <br>
-
-## Skill Version(s): <br>
-5.2.1 <br>
-
-Readiness scope: historical examples include macOS + LibreOffice application checks; the 22-slide decorative-business development example verifies sampled text and table edits on Linux + LibreOffice. Validation remains run-specific, and the latter does not establish in-application chart-data editing or PowerPoint/WPS compatibility. Bespoke and Template final readiness also remains run-specific. <br>
-
-## Ethical Considerations: <br>
-This skill should not be used to repackage copyrighted third-party articles or images as owned public content without permission. It is designed to make transformation boundaries explicit and to prevent synthetic or reconstructed visuals from being presented as factual historical screenshots. <br>
+- [Skill 执行规范](SKILL.md)
+- [原页编辑式模板流程](references/native-template-workflow.md)
+- [已有模板组件流程](references/routes/v4-template-route.md)
+- [声明式设计与验收](references/declarative-design.md)
+- [紧凑输入与局部修订](references/declarative-authoring.md)
+- [装饰商务设计](references/decorative-business-design.md)
+- [版本与分发范围](references/BUNDLE-MANIFEST.md)

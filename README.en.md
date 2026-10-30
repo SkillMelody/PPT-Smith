@@ -1,281 +1,106 @@
-# MeowClaw PPT Smith
+# PPT Smith
 
-<p align="center">
-  <img src="assets/branding/pptsmith-github-en.png" alt="MeowClaw PPT Smith icon" width="836">
-</p>
+[简体中文](README.md) · [Skill entry](SKILL.md) · [Native-template workflow](references/native-template-workflow.md) · [Installation](#installation-and-local-checks)
 
-> [中文](README.md) · [Skill entry point](SKILL.md) · [Workflow](references/declarative-design.md) · [Editable sample](assets/samples/v5.1-no-image-policy-native.pptx)
+Turn source documents, approved slide designs or native PPTX templates into presentations with traceable content, editable objects and real previews. The model authors; fixed tools execute and verify.
 
-Turn source documents, slide design images, or native PPTX templates into editable presentations with source evidence and real rendered previews. The model develops the narrative and design; a fixed backend creates native objects and checks delivery evidence.
+**Current version: `5.3.0` · Apache-2.0.** Install as `article-html-to-ppt`; public slug `meowclaw-pptsmith`; compatibility alias `meowclaw-decksmith`.
 
-**Current version: `5.2.1`.** Public slug: `meowclaw-pptsmith`. Compatible installation names: `article-html-to-ppt` and `meowclaw-decksmith`. License: Apache-2.0.
+## Showcase
 
-## In development: original-page template tools
+### Template-route result · Xiaomi Group Q2/H1 2025 business review · 36 slides
 
-The Skill gains the website's original-page cloning, native editing, source-style inheritance and local-revision approach. The host agent plans and authors; fixed Python tools execute, without a website account, a second model loop or new Node dependencies.
+From the executive summary and operating drivers to validation questions, action planning and management decisions, the deck retains a coherent template language. The overview below comes from the user-supplied PPTX rendered by an actual office engine, not a redrawn promotional image. Click to enlarge.
 
-- Output pages bind real source slides and retain native layout/master/theme relationships instead of merely copying a palette.
-- The single `template` route selects the [original-page workflow](references/native-template-workflow.md) for page editing; existing Atlas/component and `strict-template` tasks keep their original contract.
-- The website's advisory visual-review policy is **not** imported. Actual rendering and independent hash-bound page review remain required for final delivery. Unverified PowerPoint/WPS edit-save-reopen compatibility stays explicitly untested.
-- Revision-checked fixed operations do not execute model-authored scripts. Failed transactions preserve valid work; modifications invalidate old approval. Images, native shapes and data-backed native charts remain distinct editing capabilities.
+[![Xiaomi Q2/H1 2025: actual rendered overview of the 36-slide template-route result](assets/samples/v5.3-xiaomi-2025-q2-h1-template-36page-overview.jpg)](assets/samples/v5.3-xiaomi-2025-q2-h1-template-36page-overview.jpg)
 
-This describes the development branch, not an installation-platform release, an update to installed skills or certification of arbitrary enterprise templates. The existing version remains `5.2.1` pending a separately verified release.
-
-## What is new in v5.2.1
-
-- **Three separate review dimensions:** vary body compositions with the content while keeping titles, navigation, type hierarchy and graphic weight consistent. Review variety, coherence and narrative completeness separately.
-- **Plan chapters and the ending:** choose contents, section, summary, decision and closing pages for the reporting context, then update pagination and navigation after reordering. Short briefs do not have to add section or thank-you pages.
-- **More useful composition diagnostics:** `composition-check` now exposes native body-claim positions/fonts and the declared page-role sequence to locate pages for visual inspection. These observations are not aesthetic scores or semantic acceptance.
-- **Lessons from two real revisions:** a new [business report case](references/cases/business-deck-diversity-coherence.md) (Chinese) informs the design guide, page plan and complete-object review guidance. Suspected collisions in thumbnails must be checked on actual pages.
-
-Entry points, task formats and existing warning rules remain compatible; old tasks need no migration. This update improves planning, diagnostics and review. It does not add an automated business-analysis engine or new native chart types. Historical previews and validation records retain their original version labels. A repository version change does not mean installation platforms have published it.
-
-## Start with a business report
-
-Load the Skill in an agent with the required runtime already configured, attach your material, and describe the outcome:
-
-```text
-Use PPT Smith to create about 15 slides for a monthly business review
-from the attached operating data and business notes.
-Audience: management. Explain target gaps, sources of change and decisions needed.
-Use restrained, orderly consulting-style communication: conclusions first,
-with body layouts chosen for the content.
-Preserve metric definitions and sources, identify missing information,
-and distinguish possible causes from established facts.
-Check material gaps before authoring. Deliver editable PPTX and actual previews.
-```
-
-Provide the **audience, question to answer, reporting period and approximate duration or slide budget**. Include any company template or target-software requirement. Metric definitions, data gaps and business judgments need confirmation against the material. The agent handles routing, object descriptions, rendering and checks; users do not need to author JSON or memorize commands.
-
-Business analysis is the reporting use case; consulting-style communication organizes conclusions and evidence; data visualization expresses comparisons, trends, composition and contribution. The existing workflow can produce such reports, but quality depends on source material, the model and actual review. “Consulting-style” does not imply an official consulting-firm template or quality certification. First use requires a local-tool-capable agent, Python dependencies, an office renderer and fonts; see [Installation](#installation-and-local-checks) and [more usage examples](#how-to-use-it-with-an-agent).
+<table>
+  <tr>
+    <td width="33%"><a href="assets/samples/v5.3-xiaomi-template-page-02.jpg"><img src="assets/samples/v5.3-xiaomi-template-page-02.jpg" alt="Slide 2: executive summary and key metrics" width="100%"></a><br><strong>Executive summary</strong><br>Metrics and conclusions in distinct layers</td>
+    <td width="33%"><a href="assets/samples/v5.3-xiaomi-template-page-15.jpg"><img src="assets/samples/v5.3-xiaomi-template-page-15.jpg" alt="Slide 15: expenses and two-period comparison" width="100%"></a><br><strong>Expense comparison</strong><br>Data grouped with its interpretation</td>
+    <td width="33%"><a href="assets/samples/v5.3-xiaomi-template-page-30.jpg"><img src="assets/samples/v5.3-xiaomi-template-page-30.jpg" alt="Slide 30: action schedule and acceptance gates" width="100%"></a><br><strong>Action schedule</strong><br>From conclusions to execution</td>
+  </tr>
+</table>
 
 <details>
-<summary>v5.2.0 recap: decorative business design and whole-deck refinement</summary>
+<summary>Object inventory and validation scope</summary>
 
-## What is new in v5.2.0
-
-- **Optional `decorative_business` review profile:** plan each page's content relationship, reading path, information-bearing graphics, and layers for the main claim, supporting evidence, and detail.
-- **Composition diagnostics:** `composition-check` summarizes declared layouts and flags repeated sequences or a dominant structure for inspection. It does not score aesthetics or certify originality.
-- **Independent whole-deck review:** when the profile is enabled, inspect the final assembled deck for rhythm, content-to-graphic relationships, and visual hierarchy as well as reviewing individual pages. Review evidence is bound to the candidate build and content/design hashes; inheriting unchanged-page evidence never inherits the whole-deck verdict.
-- **Design and refinement guidance:** practical steps address recolouring without redesign, dense decks reduced to tables, and large decorative shapes with disconnected text.
-
-**The three entry points remain `create`, `recreate`, and `template`.** Add `--review-profile decorative_business` when initializing a decorative business task. Existing tasks that do not enable the profile retain their original contract and do not need new composition fields. Users can describe the desired style to their agent; they do not need to author JSON. Historical examples retain their original version labels and object counts.
+- **36 actual 16:9 slides**, with nonempty speaker-note bodies on all 36; LibreOffice rendered **36/36 successfully**.
+- 1,398 top-level objects: 1,383 native shapes, including 772 nonempty text frames, plus 4 native tables and 11 picture objects. Text frames are a subset, not an additional count.
+- This deck has **no data-backed native charts or embedded chart workbooks**. Visible bars and rings are native drawing shapes, not chart-data editing capability.
+- This is a user-supplied finished template-route result. This release checked the file, rendered it and inspected representative pages; it **did not repeat the complete generation run** or certify it as an end-to-end v5.3.0 run.
+- Original local line-break and annotation-spacing imperfections remain. Financial facts were not re-audited; PowerPoint/WPS GUI edit-save-reopen was not tested.
+- Only this overview, three representative images and [concise evidence](assets/samples/v5.3-xiaomi-template-evidence.json) are public. The original PPTX, inputs and complete logs are excluded.
 
 </details>
 
-## Gallery: 22-slide Xiaomi business review
+### More real examples
 
-**2026-10-18 · Decorative business design.** The user-supplied Xiaomi Q2/H1 2025 report and data sheet became a 22-slide presentation through real rendering, revisions, and independent agent review. Click the image for the full preview.
+<table>
+  <tr>
+    <td width="33%"><a href="assets/samples/v5.2-xiaomi-q2-h1-22page-overview.png"><img src="assets/samples/v5.2-xiaomi-q2-h1-22page-overview.png" alt="22-slide decorative business review" width="100%"></a><br><strong>22-slide business review</strong><br>Body-layout variety and deck coherence</td>
+    <td width="33%"><a href="assets/samples/v5.1-template-native-4page-2col-overview.png"><img src="assets/samples/v5.1-template-native-4page-2col-overview.png" alt="Four-slide native template comparison" width="100%"></a><br><strong>Native component reuse</strong><br>Four-slide same-source comparison</td>
+    <td width="33%"><a href="assets/samples/v5.1-no-image-policy-page-01.png"><img src="assets/samples/v5.1-no-image-policy-page-01.png" alt="Cover from the six-slide policy example" width="100%"></a><br><strong>No-image-generation design</strong><br>Six Chinese policy slides with actual previews</td>
+  </tr>
+</table>
 
-[![Xiaomi Q2/H1 2025 business review: actual rendered overview of 22 slides](assets/samples/v5.2-xiaomi-q2-h1-22page-overview.png)](assets/samples/v5.2-xiaomi-q2-h1-22page-overview.png)
+Earlier examples retain their original versions and evidence limits; see the [historical gallery](references/cases/legacy-showcase.en.md). Counts and version labels are not aesthetic scores or general compatibility certification.
 
-<details>
-<summary>Version and validation scope</summary>
+## What is new in 5.3.0
 
-The experiment used development commit `af23320`, whose version file still read `5.1.1`. Those changes are now included in `5.2.0`; the historical run has not been relabelled as a test of the final release. The PPTX contains 370 text objects, 139 shapes/paths, 6 native charts and 4 native tables: 519 native objects and no images.
+- **Clone original pages, then edit content.** Output pages bind real source slides and retain native layout/master/theme relationships instead of merely copying a palette onto blank pages.
+- **Fixed Python tools.** Edit supported text, chart/table data, same-source styled objects, page order and notes. The host agent owns narrative and orchestration, without a website account, second model runtime or new Node dependency.
+- **Recoverable local revisions.** Stable page IDs, revision checks, frozen template bytes and atomic transactions preserve valid work on failure; unselected source slides cannot be smuggled into the output.
+- **Evidence belongs to the current file.** Source preservation, decoration/type-scale floors, real rendering and independent page observations are separate checks. Missing or stale evidence does not become final acceptance.
+- **Existing tasks stay compatible.** The three user intents remain `create / recreate / template`; Atlas/component tasks retain their original contract.
 
-On Linux + LibreOffice, sampled text and table edits persisted after saving and reopening. In-application chart-data editing was not successfully validated, and PowerPoint/WPS was not tested. Alibaba PuHuiTi fonts are not embedded. Only the overview image is distributed here; raw inputs, full logs and evidence packages remain outside the public repository.
-
-</details>
+Runtime limits are listed below. Inspection of the showcased finished deck is separate from the synthetic tool regressions and render validations; they are not presented as the same acceptance run.
 
 ## Three ways to use it
 
-| Your task | Input | Route and result |
+| Task | Input | Route |
 | --- | --- | --- |
-| Turn a report, policy document, PRD, or article into a presentation | Source material; optional brand or style references | **create**: design for the content and audience, then produce native PPTX and real previews |
-| Reconstruct a designer's complete slide images | Full slide designs; source documents for checking text and numbers | **recreate**: rebuild editable objects and review against the approved target |
-| Use a company or client template | Native PPTX template and source material | **template**: reuse native components and fill gaps using the template's visual rules |
+| Make a presentation from a report, policy, PRD, article or data | Source material; optional brand/style references | **create**: design native pages, then render and review |
+| Rebuild an approved complete slide design | Full-page designs and checked source text/data | **recreate**: native reconstruction against a frozen target |
+| Preserve a company/client PPTX template | Native template and current content | **template**: original-page editing; retain Atlas for existing component tasks |
 
-A style reference usually belongs to create; faithful reconstruction of complete pages belongs to recreate. Native templates use the separate Template workflow. Source page count does not determine slide count.
+A template used only as a style reference belongs to create. Native asset preservation belongs to template. Source page count does not set slide count; the current audience, content and brand determine typography, composition and rhythm.
 
-**The visual style is not fixed.** Typography, palette, composition, charts, and page rhythm follow the current content, audience, and brand constraints. Reusable styles, source references, and decorative symbols reduce repetition without imposing one page layout.
-
-**Decorative business reports.** The optional `decorative_business` review profile records each page's content relationship, reading order, information-bearing graphics and visual layers, then requires an independent whole-deck composition review. Diagnostics flag declared repetition for inspection; they do not score aesthetics or certify originality. See the [design guide](references/decorative-business-design.md), [planning sheet](templates/decorative-page-plan.md), and [37-page refinement case](references/cases/decorative-business-refinement.md) (Chinese). The case documents design practice in a separate authoring environment, not an end-to-end certification of that PPTX by this engine.
-
-The [two-round business report case](references/cases/business-deck-diversity-coherence.md) (Chinese) addresses a different failure: greater layout variety can weaken visual order, while a deck can still lack chapter transitions and a real ending. Keep stable deck conventions separate from variable body structures, and review variety, coherence and narrative completeness independently. `composition-check` also exposes native body-claim positions/fonts and the declared contents/section/closing sequence as inspection aids. It does not judge aesthetics or require every short brief to add navigation pages. Existing entry points and task fields remain compatible; old tasks need no migration.
-
-## Design previews without an image-generation model
-
-The default original-design workflow is:
-
-```text
-Full source → content and evidence → structured design
-→ native editable PPTX → LibreOffice PDF → PNG previews
-→ independent visual review and revisions → edit/save/reopen checks → delivery
-```
-
-A model that understands images and writes text can describe layouts and inspect programmatic renders. It does not need to generate bitmap images itself. This workflow creates an internal native candidate before producing its design preview. Image generation remains optional for illustrations or an explicitly requested external design target.
-
-| Available capability | Supported workflow |
-| --- | --- |
-| Vision, no image generation | Create original slides, reconstruct supplied designs, inspect actual previews |
-| Vision and image generation | Add independent image assets when needed |
-| Text-only model | Author structured designs; use another visual reviewer or a human for image understanding and independent visual acceptance |
-| No office renderer | Prepare content and design, then install rendering tools before final delivery |
-
-Photography and complex illustration still require suitable assets. The declarative entry point does not accept arbitrary HTML/CSS, SVG, or model-authored scripts, and does not promise lossless reconstruction of every reference. Recoverable chart/table data stays native; a replaceable image does not make its internal elements editable.
-
-## v5.1 example: six Chinese slides, no image generation
-
-An independent author used the current Skill and a seven-page user-provided PDF, *AI SME Entrepreneurship Support Plan (2026–2028)*, to create a six-slide Chinese overview without image-generation calls. Every slide includes speaker notes and source references. The 90-day action sequence is explicitly labeled as an author recommendation.
-
-Download the same [editable PPTX](assets/samples/v5.1-no-image-policy-native.pptx), or inspect the [object counts and acceptance evidence](assets/samples/v5.1-no-image-policy-evidence.json). These images are unmodified previews rendered from that PPTX.
-
-### Cover: 13 text objects and 6 native shapes
-
-![v5.1 original cover rendered without image generation](assets/samples/v5.1-no-image-policy-page-01.png)
-
-### Targets: 16 text objects and 3 native shapes
-
-![v5.1 policy targets with original numeric qualifiers preserved](assets/samples/v5.1-no-image-policy-page-02.png)
-
-### Actions: 18 text objects and 5 native shapes
-
-![v5.1 native timeline labeled as author advice, not an official application process](assets/samples/v5.1-no-image-policy-page-06.png)
-
-Counts come directly from the delivered PPTX. Each text box or shape is counted once:
-
-| Slide | Native text | Native shapes | Editable objects |
-| --- | ---: | ---: | ---: |
-| 1 · Policy overview | 13 | 6 | 19 |
-| 2 · Three-year targets | 16 | 3 | 19 |
-| 3 · Resource supply | 15 | 4 | 19 |
-| 4 · Enterprise development | 12 | 3 | 15 |
-| 5 · Open source and support | 20 | 5 | 25 |
-| 6 · Author recommendations | 18 | 5 | 23 |
-| **Total** | **94** | **26** | **120** |
-
-This example contains **0 images, 0 native charts, 0 native tables, and 0 groups**, with notes on all six slides. Numbers are editable text; they are not counted as charts. Decorative lines and dots count as shapes. Characters and notes placeholders are not counted again. Object count describes editability, not design quality.
-
-The candidate passed independent review of all pages and source content, reaching `final_delivery_ready`. On **macOS with LibreOffice 26.2.4.2**, Basic/UNO changed text, numeric text, and a shape fill on a disposable copy. Saving, closing, and reopening preserved the edits and all six notes; the original candidate stayed unchanged. This is an actual application-object edit test, not GUI clicking, and does not establish Windows/Linux or PowerPoint/WPS compatibility. The sample uses Arial Unicode MS without font embedding; verify fonts and layout on another device.
-
-## Retained v5.0 example: a 20-slide Chinese research overview
-
-A 67-page report, *Agents, robots, and us: How AI reshapes work and skills in Latin America*, became a 20-slide Chinese overview covering automation potential, economic value, jobs and skills, country comparisons, and business cases. All 20 slides have sources and speaker notes. This is the original v5.0-era output, counted separately from the v5.1 example above.
-
-The workflow was source document → complete slide design images → multimodal interpretation and declarative reconstruction → native PPTX → real rendering and acceptance. The original contact sheet is preserved below. [Download the original editable PPTX](assets/samples/v5.0-latin-america-ai-zh-native.pptx) or inspect [per-slide object data](assets/samples/v5.0-latin-america-ai-zh-evidence.json).
-
-![v5.0 Agents, robots, and us: actual rendered overview of 20 Chinese slides](assets/samples/v5.0-latin-america-ai-zh-overview.png)
-
-| Object type | Count | Editing scope |
-| --- | ---: | --- |
-| Native text boxes | 274 | Text, font, size and colour |
-| Native shapes and paths | 164 | Position, size and colour |
-| Native charts | 7 | Editable data series with 7 embedded workbooks |
-| Native tables | 2 | Cells, rows, columns and styling |
-| **Native editable objects** | **447** | **274 + 164 + 7 + 2** |
-| Separate cover image | 1 | Replace as a whole; illustration elements are not individually editable |
-| **Total slide objects** | **448** | **447 native objects + 1 image** |
-
-Counts are read directly from the original PPTX. Each object is counted once; chart points, table cells, embedded workbooks and notes are not counted again.
-
-<details>
-<summary>Show all 20 slides' object counts</summary>
-
-| Slide | Text | Shapes/paths | Charts | Tables | Native editable | Replaceable images |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 7 | 2 | 0 | 0 | 9 | 1 |
-| 2 | 15 | 18 | 0 | 0 | 33 | 0 |
-| 3 | 19 | 6 | 0 | 0 | 25 | 0 |
-| 4 | 13 | 5 | 1 | 0 | 19 | 0 |
-| 5 | 14 | 7 | 1 | 0 | 22 | 0 |
-| 6 | 9 | 3 | 1 | 0 | 13 | 0 |
-| 7 | 9 | 3 | 1 | 0 | 13 | 0 |
-| 8 | 16 | 10 | 0 | 0 | 26 | 0 |
-| 9 | 11 | 5 | 0 | 1 | 17 | 0 |
-| 10 | 13 | 8 | 1 | 0 | 22 | 0 |
-| 11 | 9 | 3 | 1 | 0 | 13 | 0 |
-| 12 | 12 | 5 | 1 | 0 | 18 | 0 |
-| 13 | 15 | 9 | 0 | 0 | 24 | 0 |
-| 14 | 7 | 3 | 0 | 1 | 11 | 0 |
-| 15 | 20 | 9 | 0 | 0 | 29 | 0 |
-| 16 | 15 | 6 | 0 | 0 | 21 | 0 |
-| 17 | 16 | 13 | 0 | 0 | 29 | 0 |
-| 18 | 20 | 9 | 0 | 0 | 29 | 0 |
-| 19 | 17 | 28 | 0 | 0 | 45 | 0 |
-| 20 | 17 | 12 | 0 | 0 | 29 | 0 |
-| **Total** | **274** | **164** | **7** | **2** | **447** | **1** |
-
-</details>
-
-Historical acceptance used macOS + LibreOffice 26.2.4.2 through Basic/UNO to edit text, chart data, table data and the cover image on a copy. Changes persisted after saving, closing and reopening. Reconstruction retains differences in fonts, icons, gradients and chart styling; pixel-perfect 1:1 fidelity is not claimed. PowerPoint/WPS was not tested. Hiragino Sans GB and Arial are not embedded; recheck fonts and layout on another device.
+**Image generation is optional.** A vision-capable model can author native objects and inspect real renders. Generated illustrations or an explicitly approved external design target are optional; a text-only model still needs a human or vision reviewer for visual acceptance.
 
 ## How to use it with an agent
 
-Load this directory's [SKILL.md](SKILL.md) in a host that can read Skills and execute local tools. Supply the source and intended outcome. Users do not need to write object JSON themselves.
+Load [SKILL.md](SKILL.md), attach material and state the audience, purpose, language, slide budget and target software. Users do not need to write object JSON.
 
-**From a document, without image generation:**
-
-```text
-Use PPT Smith to turn this PDF into about 10 editable Chinese slides.
-Audience: SME leaders. Goal: understand the policy and identify useful actions.
-The model has vision but no image-generation tool.
-Choose a visual style for the content. Preserve numeric qualifiers,
-page-level sources and speaker notes. Label author advice separately.
-Deliver after real rendering, independent review, and target-software edit/save/reopen checks.
-```
-
-**For a decorative business report:**
+**Reuse a native template:**
 
 ```text
-Use PPT Smith to turn this business report into about 20 editable Chinese slides.
-Enable the decorative_business review profile. Plan each page's main claim,
-content relationship and reading path before choosing its visual structure.
-Use suitable expressions for target attainment, progress, issues and actions,
-and major results. Review representative pages before expanding the deck.
-Deliver after real rendering, independent page and whole-deck review,
-and target-software edit/save/reopen checks.
+Use PPT Smith to create about 20 Chinese slides from this company PPTX template
+and the attached business material. Audience: management.
+Lead with conclusions, then explain changes and decisions.
+Retain the original-page visual language, master and layouts; select, copy and
+adapt pages to the content rather than copying the template's sample text.
+Preserve important numbers, definitions, sources and notes.
+Check representative pages before expanding the deck, render actual PPTX pages,
+obtain independent review and disclose chart/image/application editing limits.
 ```
 
-**From complete design images:**
+**Design from sources:**
 
 ```text
-Use these complete slide designs as reconstruction targets and the PDF
-as evidence for text and numbers. Preserve the approved layout.
-Identify conflicts that need correction. Keep text and recoverable chart/table data native.
-Explain image and effect limitations and provide target/actual preview comparisons.
+Use PPT Smith to make about 12 editable Chinese slides from this material.
+Audience: business owners. Conclusions first; vary the body with the information
+while keeping the deck coherent. Do not invent missing numbers.
+Separate source facts, calculations and advice; retain page sources and notes.
+Image generation is not required. Deliver actual PPTX, previews, review results
+and material editing limitations.
 ```
 
-**From a native template:**
-
-```text
-Use this company PPTX template for a 15-slide Chinese report.
-Reuse native components, preserve brand fonts and colours, and include sources and notes.
-Adapt page structure where content does not fit, explain the changes,
-and verify editing and saving in the target software.
-```
-
-**For a small revision:**
-
-```text
-Use the previous task. Change only the title on slide 6 and the notes on slide 7.
-Apply object patches and review affected pages again.
-Reuse unchanged-page review only through the verified inheritance mechanism.
-```
-
-Specify audience, purpose, language, slide budget, target software, and whether reference images express style or exact reconstruction. For revisions, retain the task directory and identify the affected pages/objects so the agent can load only the relevant context.
-
-## Less repeated input and rework
-
-- **Load instructions as needed:** the Skill entry keeps shared rules; route details load when selected.
-- **Compact authoring:** reusable styles, sources, colour values, and symbols expand into strict native objects.
-- **Short feedback:** build summaries point to complete evidence; content and objects can be inspected by page.
-- **Real font preflight:** test office-rendered fonts and characters before expanding a large deck, with environment-bound caching.
-- **Guarded patches and review inheritance:** revise objects without rewriting the task. Notes or data changes invalidate relevant review even when pixels stay the same.
-
-Measurements for the same six-slide task, with exact semantic round-trip validation:
-
-| Measurement | Original/full bytes | New/compact bytes | Reduction |
-| --- | ---: | ---: | ---: |
-| Skill entry at v5.1 development acceptance, compared with v5.0.1 | 14,384 | 6,278 | 56.4% |
-| Author input for the same task | 69,702 | 42,808 | 38.6% |
-| CLI feedback for the same build | 24,550 | 631 | 97.4% |
-
-These are UTF-8 byte counts, using identical canonical JSON encoding for task input. The [sample evidence](assets/samples/v5.1-no-image-policy-evidence.json) records the scope. **They are not measured token, billing, or runtime savings.** Full source, object, build, and review evidence remains on disk. Revisions still build and render the whole deck; inheritance reduces repeated review, not rendering work.
+For reconstruction, identify approved full-page targets. For a small revision, retain the task directory and identify affected pages/objects. Review reuse follows each route's dependency checks; the new original-page tools do not automatically inherit old candidate approval.
 
 ## Installation and local checks
 
-Install Python dependencies from the Skill root. Bash example for macOS/Linux:
+From the Skill root, using Bash on macOS/Linux:
 
 ```bash
 python3 -m venv .venv
@@ -284,68 +109,40 @@ python -m pip install -r requirements.txt
 python scripts/check_identity.py
 python scripts/quick_validate_skill.py
 python -m engine design capabilities
+python -m engine template capabilities
 ```
 
-Real previews and font probes also require **LibreOffice, Poppler (pdftoppm, pdffonts, pdftotext), Fontconfig (fc-match), and the selected fonts**. Tools must be discoverable through PATH. On Windows use the corresponding virtual-environment Python executable; see [platform requirements](references/declarative-design.md#跨平台运行条件). `capabilities` checks local tools, not the host model's vision or image-generation capabilities.
+Real previews require **LibreOffice, Poppler, Fontconfig and the actual fonts**. Capability discovery checks local tools, not the host model's vision or image-generation abilities.
 
-The following illustrates the agent workflow. The model writes `author.json` from the source into the task directory; `init` does not parse a PDF or design slides by itself:
+- The new original-page executor requires **POSIX `fcntl` and `O_NOFOLLOW`**. It was tested on macOS; Windows is unsupported. Source and output decks are each limited to 100 slides.
+- See the [declarative workflow](references/declarative-design.md) for create/recreate requirements; do not apply the new executor's restrictions to every legacy route or claim all platforms were tested.
+- Only PptxGenJS compatibility builders require Node/npm and `python scripts/bootstrap_pptxgenjs_runtime.py`; the new executor adds no Node dependency.
 
-```bash
-PPTSMITH_TASK="./ppt-work/demo"
-python -m engine design init --task-dir "$PPTSMITH_TASK" --task-id demo --mode create --pages 6
-python -m engine design author --task-dir "$PPTSMITH_TASK" --file author.json
-python -m engine design preflight --task-dir "$PPTSMITH_TASK" --isolation auto
-python -m engine design build --task-dir "$PPTSMITH_TASK" --isolation auto
-```
-
-A successful build is a candidate. Use its build ID to prepare the review, complete independent review and actual editing checks, then run `review` and `deliver`. `state.json` records continuation details; the task, build manifest, and original review retain full evidence. See [the workflow](references/declarative-design.md) and [compact authoring/revisions](references/declarative-authoring.md).
-
-Only compatibility builders using PptxGenJS require Node/npm plus:
-
-```bash
-python scripts/bootstrap_pptxgenjs_runtime.py
-```
-
-The script runs lockfile-pinned `npm ci` inside `runtime/pptxgenjs`.
+Tool sequence: `capabilities → init → inspect → apply → export → render → review → verify`. Exact JSON and rejection/review contracts are in the [native-template guide](references/native-template-workflow.md), not duplicated here.
 
 ## Delivery and compatibility boundaries
 
-Final delivery includes editable PPTX, actual PDF/PNG previews, task and asset records, object inventory, review decisions, and editing limitations. Text, shapes, and recoverable data remain native wherever supported. An unapproved whole-slide screenshot cannot stand in for an editable deck.
+| Area | Current boundary |
+| --- | --- |
+| New chart editing | Single-plot category charts with real data/workbooks, not arbitrary chart types |
+| Tables | Existing unmerged rectangular cells; no row/column or merge restructuring |
+| Pictures | Additions clone embedded same-source pictures; no arbitrary external photo replacement; image internals are not native objects |
+| Preservation | Conservative exact-source checks plus decoration/type-scale floors; unresolved evidence may block and is not an aesthetic score |
+| Review | Bound to current candidate, template and actual page images; reviewer identity declared, not authenticated |
+| Office applications | Native objects and LibreOffice rendering do not prove PowerPoint/WPS GUI edit-save-reopen compatibility |
 
-Quality acceptance and OS isolation are separate. `--isolation auto` selects macOS isolation where available and host execution elsewhere. Host execution can deliver after quality checks, with OS isolation recorded as unverified. Explicit `--require-os-isolation` still blocks when isolation is unavailable. Runtime adapters do not establish actual application parity across operating systems.
+Final delivery includes editable PPTX, real previews, source/gap records, review decisions and editing limitations. An unapproved whole-page screenshot cannot substitute for editable reconstruction. Business/scientific facts still require checking. Model-side source handling depends on the host; local tools do not mean model calls are necessarily offline. Cloud creation, uploading and sharing require the corresponding authorization.
 
-Native template preservation continues through [Template](references/routes/v4-template-route.md). Bespoke is an advanced compatibility route; Standard/Engineering serves explicit engineering drafts and diagnostics. New `new_design` and `style_transfer` initializations map to create, while saved legacy tasks retain their original target requirements. A restricted browser design board, template-index cache, and measured model-cost dashboard are not included in this version.
-
-## Historical examples
-
-These are real renders from earlier versions and are not part of the v5.1 object counts above.
-
-<details>
-<summary>Show V4 Template and Bespoke examples</summary>
-
-**Template: a 31-slide research presentation**, with notes on 29 body slides, using a source report and native template components.
-
-![V4 Template 31-slide rendered contact sheet](assets/samples/mgi-template-v4-31-page-contact-sheet.png)
-
-**Bespoke: a 23-slide independent presentation**, with 12 native charts and notes on all 23 slides. These examples use different reports and are not a controlled quality comparison. They do not imply partnership, authorization, or endorsement by report publishers or template brands.
-
-![V4 Bespoke 23-slide rendered contact sheet](assets/samples/state-ai-2025-independent-bespoke-23-page-contact-sheet.png)
-
-More historical assets are in the [sample directory](assets/samples/).
-
-</details>
+Quality and OS isolation are separate. Explicit isolation requirements remain binding. Bespoke is an advanced compatibility route; Standard/Engineering is only for explicit engineering drafts and diagnostics.
 
 ## Documentation and distribution
 
-- [Skill execution contract](SKILL.md)
-- [Declarative workflow, native objects, and acceptance](references/declarative-design.md)
-- [Compact authoring, object patches, and review inheritance](references/declarative-authoring.md)
-- [Template reuse](references/routes/v4-template-route.md) · [Bespoke compatibility](references/routes/v4-bespoke-route.md)
-- [V4 route architecture](references/routes/v4-three-route-architecture.md) · [Historical export capabilities](references/export-pipelines.md)
-- [Sample evidence](assets/samples/v5.1-no-image-policy-evidence.json)
+- [Skill contract](SKILL.md) · [Original-page template workflow](references/native-template-workflow.md)
+- [Declarative design and acceptance](references/declarative-design.md) · [Compact authoring/revisions](references/declarative-authoring.md)
+- [Existing template component workflow](references/routes/v4-template-route.md) · [Template-inspired design](references/template-visual-design.md)
+- [Decorative business design](references/decorative-business-design.md) · [Page planning sheet](templates/decorative-page-plan.md)
+- [Historical examples and evidence limits](references/cases/legacy-showcase.en.md) · [Public bundle scope](references/BUNDLE-MANIFEST.md)
 
-Public distributions on GitHub, ClawHub and similar platforms contain Skill runtime code, dependency declarations, usage documentation, templates/schemas, and the referenced examples with supporting data. Development tests, CI, development notes, promotional articles, raw inputs, full acceptance logs, temporary outputs and local worktrees remain outside the public version.
+GitHub retains source and focused regressions. ClawHub/SkillHub runtime packages exclude tests, raw inputs, full logs, worktrees and private material. Platform limits and adaptation/review status are checked separately; a version label alone does not mean a platform has listed it.
 
-Local building and rendering do not publish files. Source handling by the model depends on the host configuration. Feishu/Lark creation, upload, or sharing requires user authorization for that delivery.
-
-The core engine, general components, editable objects, and QA are open source under Apache-2.0. Enterprise brand adaptations, dedicated masters, industry packages, custom components, and managed generation/deployment services are separate commercial deliverables, excluded from the public repository and Skill bundle.
+Maintained by **MeowClaw Lab / SkillMelody**. The core engine, general components and QA use **Apache-2.0**. Brands and examples imply no company partnership or endorsement. Enterprise brand adaptations, dedicated masters and managed generation are separate commercial deliveries, not part of the public bundle.
