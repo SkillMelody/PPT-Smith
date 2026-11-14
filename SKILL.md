@@ -1,7 +1,7 @@
 ---
 name: "article-html-to-ppt"
 license: "Apache-2.0"
-description: "Create PPTX, reconstruct slides, or reuse PPTX templates; produce editable native objects, real previews and hash-bound review. Use for revisions too."
+description: "Create editable PPTX from documents or pasted outlines and per-slide content with optional style directions. Reconstruct slide designs, reuse native PPTX templates, and revise decks with real previews and hash-bound review."
 metadata:
   display_name: "PPT Smith"
   english_alias: "PPT Smith"
@@ -17,25 +17,26 @@ metadata:
 | User wants | Route | Read when selected |
 | --- | --- | --- |
 | Make a presentation from a document, optionally with brand/style references | `create` (default) | [Declarative workflow](references/declarative-design.md) |
+| Make a presentation from a pasted outline and per-slide content, with optional layout/style instructions and no uploaded file | `create` | [Outline-to-deck authoring](references/outline-to-deck.md), then [Declarative workflow](references/declarative-design.md) |
 | Reconstruct supplied complete slide designs as editable objects | `recreate` | [Declarative workflow](references/declarative-design.md) |
 | Edit or duplicate original PPTX template pages | `template` | [Native template workflow](references/native-template-workflow.md) |
 | Continue an Atlas/component-plan template task | `template` | [Component workflow](references/routes/v4-template-route.md) |
 
-Infer intent, audience, language and page budget from the request. Ask only about material conflicts, such as exact image reconstruction versus native template preservation. A style image does not imply exact reconstruction. A PPTX supplied only as a style reference uses create; preserve masters/native layouts only when requested. For template-inspired redesign, read [template visual design](references/template-visual-design.md). A source page count does not prescribe slide count.
+Infer intent, audience, language and page budget from the request. Ask only about material conflicts, such as exact image reconstruction versus native template preservation. A style image does not imply exact reconstruction. A PPTX supplied only as a style reference uses create; preserve masters/native layouts only when requested. For template-inspired redesign, read [template visual design](references/template-visual-design.md). A source document page count does not prescribe slide count. An explicitly supplied slide sequence/count is a user constraint: preserve it unless the user permits restructuring.
 
 Complete when the route, native-preservation requirement and existing task format are clear.
 
 ## 2. Establish content and design
 
-Read the full source once, preserve page/evidence anchors, then use the relevant evidence for each slide. The model owns narrative, assertion titles, visual encoding and page-specific design. The backend executes those decisions; it does not replace them with generic extractive layouts. Insufficient authoring capability returns `MODEL_AUTHORING_REQUIRED`.
+Read the full source once, preserve page/evidence anchors, then use the relevant evidence for each slide. Pasted user text is a valid source: retain stable page/block anchors and record `provenance.kind: user`; do not demand or fabricate an uploaded document. For per-slide manuscripts, separate content from design instructions and analyze hierarchy, groups, relationships and direction before selecting layouts, even when the text is already extracted. Default to complete on-slide coverage of each page’s supplied content, including tables, data and qualifications. Summarize, omit, or move content to speaker notes only with user permission. Plan what the viewer should see first and choose a visual structure that expresses the primary relationship. Group the complete supporting detail around that structure. Review information coverage and visual design independently on actual previews. Follow the [outline-to-deck contract](references/outline-to-deck.md), including per-page composition records and user-constraint checks. The model owns narrative, assertion titles, visual encoding and page-specific design. The backend executes those decisions; it does not replace them with generic extractive layouts. Insufficient authoring capability returns `MODEL_AUTHORING_REQUIRED`.
 
 Choose typography, palette, composition and visual rhythm for the current content, audience and references. Do not copy the last task's colours, card layout, footer or brand. Reusable components are primitives, not mandatory page styles.
 
-For decorative business reports, original template design, or revisions about repetitive layouts, sparse pages, inconsistent visual order or missing chapter/ending pages, read [decorative business design](references/decorative-business-design.md). Plan each page's content relationship, reading path and information-bearing graphic before drawing. Separate stable deck conventions (title/navigation regions, type hierarchy, margins and graphic weight) from variable body compositions. Plan the narrative roles and ending before fixing the page budget; a summary is not automatically a closing page.
+For decorative business reports, original template design, or revisions about repetitive layouts, sparse pages, inconsistent visual order or missing chapter/ending pages, read [decorative business design](references/decorative-business-design.md). Plan each page's content relationship, reading path and information-bearing graphic before drawing. Separate stable deck conventions (title/navigation regions, type hierarchy, margins and graphic weight) from variable body compositions. Plan narrative roles and the ending within any user-specified page sequence/count; when that budget is open, plan these before fixing it; a summary is not automatically a closing page.
 
 Use the optional `decorative_business` review profile to bind page composition plans and require an independent whole-deck review. It extends create, not the number of routes. A different silhouette does not prove a different layout; deliberate series repetition must still satisfy the user's requested degree of variation. Use the [page planning sheet](templates/decorative-page-plan.md); consult the [original refinement case](references/cases/decorative-business-refinement.md) for density/craft and the [two-round business report case](references/cases/business-deck-diversity-coherence.md) for variety, coherence and narrative completeness. These are transferable design lessons, not fixed palettes, page counts or layout menus.
 
-Keep checked text/data in content records, geometry in scene records, and detailed reasoning, sources and qualifications in speaker notes. Unknown chart data stays unknown. Reconstructable charts/tables use native data; isolated pictures are replaceable assets, not editable internal objects. Do not insert a whole-page screenshot to claim editable reconstruction. Disclose deliberate simplifications and accepted raster exceptions.
+Keep checked text/data in content records, geometry in scene records, and supplementary reasoning, sources and qualifications in speaker notes. Qualifications and sources supplied as slide content remain on the slide in a per-slide manuscript. Unknown chart data stays unknown. Reconstructable charts/tables use native data; isolated pictures are replaceable assets, not editable internal objects. Do not insert a whole-page screenshot to claim editable reconstruction. Disclose deliberate simplifications and accepted raster exceptions.
 
 Complete when checked content, source anchors, visual intent and unresolved decisions are recorded separately from execution geometry.
 

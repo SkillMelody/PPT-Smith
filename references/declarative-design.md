@@ -25,6 +25,8 @@ python-pptx 1.0.2、Pillow 11.3.0、jsonschema 4.25.1、lxml 6.1.1。
 `route --template --template-use style` 表示已允许参考模板重新设计，返回 create；
 原生模板保留仍使用 template。详细流程见[模板风格设计](template-visual-design.md)。
 
+仅提供大纲与逐页文稿（可含布局/样式要求）时，先读[无附件逐页稿制作](outline-to-deck.md)。用户文本是来源，沿用 `create`；不要求上传文件或登记虚构素材。先分离内容与设计指令，分析每页关系与结构，再确定布局。逐页稿默认完整上屏，除非用户明确授权摘要或移至备注。此场景逐页填写 `composition`，并在实际渲染上核验原稿到屏显的覆盖。
+
 用户意图已经明确时直接执行。只有显著影响结果的冲突才澄清。品牌规则仅在
 本次请求要求时采用。多图分别声明用途、页映射、采用特征与优先级；不自动混合。
 同一 PPTX 的画布一致，不同比例只能明确留白适配或拆分交付，禁止静默拉伸。
@@ -40,7 +42,7 @@ python3 -m engine design init --task-dir "$TASK" --task-id example \
   --author author-model --audience 产品团队 --target-software LibreOffice
 ```
 
-默认 create 不需要参考图片。用户提供完整设计图时改用 recreate，再登记图像：
+默认 create 不需要参考图片，也不要求文稿必须来自文件；粘贴内容使用 `provenance.kind: user` 并定位到原始页/内容块。用户提供完整设计图时改用 recreate，再登记图像：
 
 ```bash
 python3 -m engine design ingest --task-dir "$TASK" --file reference.png \

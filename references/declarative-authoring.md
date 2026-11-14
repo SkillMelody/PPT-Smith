@@ -32,6 +32,14 @@ task 填入 init 产生的信封、设计 brief、逐页 content/notes/scene 与
  "required_edit":"native","source_ref":"source-p1"}
 ```
 
+无附件逐页文稿先按[逐页稿制作](outline-to-deck.md)保留原文与设计要求。`sources` 可使用用户来源（下例仅为条目片段，放入 `sources`，核对后再填写 `checked: true`）：
+
+```json
+{"input-p1-b1":{"kind":"user","source":"user-input.md / page-1 / block-1","checked":false,"uncertainties":[]}}
+```
+
+内容条目通过 `source_ref: "input-p1-b1"` 引用；`checked` 只表示与本次输入核对，不表示已做外部事实核查。逐页分析摘要写入既有 `design.pages[].composition`；详细内容定位、关系依据、硬约束/偏好及处理结果留在任务内的 `page-plan.md`，不要向严格 Schema 塞入自定义字段。
+
 节点可省略 page_id、role 和按数组顺序的 z；文字默认左对齐、顶部对齐、允许换行。
 引用样式后可局部覆盖字号等属性：
 
