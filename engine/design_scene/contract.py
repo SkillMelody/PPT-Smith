@@ -33,10 +33,21 @@ SHA = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
 COLOR = {"type": "string", "pattern": "^[0-9A-Fa-f]{6}$"}
 BOOL = {"type": "boolean"}
 BOX = obj({"x": num(), "y": num(), "width": num(0.1), "height": num(0.1)})
+# ``ea_family`` sets the East Asian face when the Latin face differs (for example Inter + Noto Sans CJK SC).
 FONT = obj({"family": SHORT, "size": num(6, 200), "color": COLOR,
-            "bold": BOOL, "italic": BOOL}, ["family", "size", "color"])
+            "bold": BOOL, "italic": BOOL, "ea_family": SHORT}, ["family", "size", "color"])
+ALPHA = num(0, 1)
 STYLE = obj({"fill": {"anyOf": [COLOR, {"type": "null"}]},
-             "stroke": {"anyOf": [COLOR, {"type": "null"}]}, "stroke_width": num(0, 20)}, [])
+             "stroke": {"anyOf": [COLOR, {"type": "null"}]}, "stroke_width": num(0, 20),
+             "fill_alpha": ALPHA, "stroke_alpha": ALPHA, "radius": num(0, 500)}, [])
+BORDER = obj({"color": COLOR, "width": num(0.1, 20), "alpha": ALPHA}, ["color", "width"])
+CELL_STYLE = obj({"fill": {"anyOf": [COLOR, {"type": "null"}]}, "fill_alpha": ALPHA, "font": FONT,
+                  "align": enum("left", "center", "right"), "valign": enum("top", "middle", "bottom"),
+                  "margin": arr(num(0, 50), 4, 4), "line_height": num(1, 400),
+                  "border_bottom": {"anyOf": [BORDER, {"type": "null"}]}}, [])
+AXIS = obj({"min": num(-1e12, 1e12), "max": num(-1e12, 1e12), "major": num(1e-9, 1e12),
+            "gridline_color": COLOR, "line_color": COLOR, "label_color": COLOR, "label_size": num(5, 40),
+            "category_padding": BOOL}, [])
 PROVENANCE = obj({"kind": enum("user", "visible_transcription", "document", "unknown"),
                   "source": SHORT, "checked": BOOL, "uncertainties": arr(SHORT, 30)})
 SERIES = obj({"name": SHORT, "values": arr(num(-1e12, 1e12), 200, 1)})
@@ -65,11 +76,11 @@ NODE = {"oneOf": [
     variant(BASE, "text", {"role": {"const": "native_text"}, "content_id": ID, "font": FONT,
                            "align": enum("left", "center", "right"),
                            "valign": enum("top", "middle", "bottom"), "wrap": BOOL,
-                           "line_spacing": num(0.8, 3), "margin": num(0, 50),
-                           "letter_spacing": num(0, 20),
+                           "line_spacing": num(0.8, 3), "line_height": num(1, 400), "margin": num(0, 50),
+                           "letter_spacing": num(-10, 20),
                            "spans": arr(obj({"start": {"type": "integer", "minimum": 0},
                                              "end": {"type": "integer", "minimum": 1}, "font": FONT}), 100)},
-            ("line_spacing", "margin", "spans", "letter_spacing")),
+            ("line_spacing", "line_height", "margin", "spans", "letter_spacing")),
     variant(BASE, "shape", {"role": {"const": "native_shape"},
                             "shape": enum("rect", "rounded_rect", "ellipse", "line", "arrow", "diamond", "triangle"),
                             "style": STYLE}),
@@ -78,11 +89,17 @@ NODE = {"oneOf": [
                             "chart_type": enum("bar", "column", "line", "pie", "doughnut"),
                             "font": FONT, "colors": arr(COLOR, 20, 1), "legend": BOOL, "labels": BOOL,
                             "label_colors": arr(COLOR, 200, 1), "label_number_format": SHORT,
-                            "legend_position": enum("bottom", "right"), "hole_size": num(10, 90)},
-            ("label_colors", "label_number_format", "legend_position", "hole_size")),
+                            "legend_position": enum("bottom", "right"), "hole_size": num(10, 90),
+                            "axis": AXIS, "markers": BOOL, "area_series": arr({"type": "integer", "minimum": 0}, 20),
+                            "gap_width": {"type": "integer", "minimum": 0, "maximum": 500},
+                            "label_position": enum("above", "below", "center", "outside_end", "inside_end", "best_fit")},
+            ("label_colors", "label_number_format", "legend_position", "hole_size", "axis", "markers",
+             "area_series", "gap_width", "label_position")),
     variant(BASE, "table", {"role": {"const": "native_table"}, "content_id": ID, "font": FONT,
                             "fill": COLOR, "header_fill": COLOR, "header_color": COLOR,
-                            "column_widths": arr(num(0.1), 50, 1)}, ("column_widths",)),
+                            "column_widths": arr(num(0.1), 50, 1), "row_heights": arr(num(0.1), 200, 1),
+                            "cell_styles": arr(arr(CELL_STYLE, 50, 1), 200, 1)},
+            ("column_widths", "row_heights", "cell_styles")),
     variant(BASE, "image", {"role": {"const": "replaceable_image"}, "asset_id": ID,
                             "fit": enum("contain", "cover"), "content_id": ID}, ("content_id",)),
     variant(BASE, "group", {"role": {"const": "group"}, "children": arr({"$ref": "#/$defs/node"}, 500, 1)}),
@@ -306,12 +323,23 @@ def validate(task: dict, *, complete=False):
                         raise DesignError("CHART_DATA_LENGTH_MISMATCH")
                     if node["chart_type"] in {"pie", "doughnut"} and (len(c["series"]) != 1 or any(v < 0 for v in c["series"][0]["values"]) or sum(c["series"][0]["values"]) <= 0):
                         raise DesignError("INVALID_SECTOR_DATA")
+                    if node.get("area_series") and (node["chart_type"] != "line" or
+                                                    any(i >= len(c["series"]) for i in node["area_series"])):
+                        raise DesignError("CHART_AREA_SERIES_INVALID")
+                    axis = node.get("axis", {})
+                    if "min" in axis and "max" in axis and axis["min"] >= axis["max"]:
+                        raise DesignError("CHART_AXIS_RANGE_INVALID")
                 if node["type"] == "table":
                     cols = len(c["cells"][0])
                     if any(len(row) != cols for row in c["cells"]):
                         raise DesignError("RAGGED_TABLE")
                     if "column_widths" in node and (len(node["column_widths"]) != cols or abs(sum(node["column_widths"]) - b["width"]) > .01):
                         raise DesignError("TABLE_COLUMN_WIDTH_MISMATCH")
+                    if "row_heights" in node and len(node["row_heights"]) != len(c["cells"]):
+                        raise DesignError("TABLE_ROW_HEIGHT_MISMATCH")
+                    if "cell_styles" in node and (len(node["cell_styles"]) != len(c["cells"]) or
+                                                  any(len(row) != cols for row in node["cell_styles"])):
+                        raise DesignError("TABLE_CELL_STYLE_SHAPE_MISMATCH")
     if complete and any(bindings[cid] != 1 for cid in content):
         raise DesignError("CONTENT_COVERAGE_MISMATCH: each item needs exactly one editable object or accepted raster")
     from .composition import composition_diagnostics

@@ -6,7 +6,7 @@ metadata:
   display_name: "PPT Smith"
   english_alias: "PPT Smith"
   public_slug: "meowclaw-pptsmith"
-  version: "5.3.0"
+  version: "5.4.0"
   compatibility_aliases: ["article-html-to-ppt", "meowclaw-decksmith"]
 ---
 
@@ -45,6 +45,8 @@ Complete when checked content, source anchors, visual intent and unresolved deci
 For create/recreate run `python3 -m engine design capabilities`. The host supplies model capabilities; local code cannot infer whether the current model sees or generates images.
 
 For **create**, author structured design, render a native candidate to PNG, inspect and revise it. Image generation is optional for independent illustrations or an explicitly requested external design target. No image tool is needed for ordinary native design. Do not convert your own preview into a fake external reference or claim self-comparison proves design quality.
+
+For per-slide manuscripts and dense pages, prefer designing each page in the constrained [HTML design surface](references/html-design-authoring.md): write the page as restricted HTML/CSS (real grid/flex layout and text measurement), then compile it with `python3 -m engine design html-import`. The fixed tool renders it in a headless browser, rejects scripts and external resources, and writes ordinary scene nodes and content records with source tracing and coverage reports; all build, review and delivery gates still apply. The HTML preview is your own draft, never an external target.
 
 For **recreate**, visually read the supplied complete target, verify its content against the source, and preserve approved geometry. Do not invent source numbers from chart pixel heights. Keep original targets, approved changes and actual PPTX previews distinct.
 

@@ -68,7 +68,12 @@
 
 ## 映射到现有作者合同
 
-用[紧凑作者输入](declarative-authoring.md)复用用户来源；原生节点绑定 `content_id`。
+密集逐页稿推荐先用 [HTML 设计面](html-design-authoring.md) 设计每页，再以
+`html-import --source-file user-input.md --source-heading <页标题>` 编译为原生节点：
+工具自动生成内容记录与来源，逐项追溯上屏文字/数据是否来自原文，并报告原文中未上屏的数字与短语。
+模型撰写的标题、标签等用 `data-authored` 声明，依据写入 `page-plan.md`；`composition` 引用导入后的内容 ID。
+
+也可直接用[紧凑作者输入](declarative-authoring.md)复用用户来源；原生节点绑定 `content_id`。
 所有本场景页面填写 `design.pages[].composition`，包括非装饰商务风格；正文页的 `claim_content_id` 指向该页已有的主要文字内容，主题标题也可以，不必编造结论。
 
 - `content_relation`：主次关系的简要描述，保留方向和关键限定。
@@ -104,7 +109,8 @@
 
 ## 制作和验收
 
-按声明式工作流执行 `author`、`validate --complete`、字体预检、构建、实际渲染与审核。
+按声明式工作流执行 `html-import` 或 `author`、`validate --complete`、字体预检、构建、实际渲染与审核。
+`html-import` 的覆盖报告只定位遗漏线索，不替代逐块对照原稿的独立审核。
 `composition-check` 用于核对页 ID、关系、布局与阅读顺序的规划覆盖和重复风险；不能据此自动批准视觉效果。
 读取其完整结果，确认 `unplanned_page_ids` 为空；存在缺页时先补齐规划再构建。
 

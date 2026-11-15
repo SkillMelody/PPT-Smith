@@ -5,7 +5,7 @@
 - Display name: PPT Smith
 - Installed route: `article-html-to-ppt`
 - Public slug: `meowclaw-pptsmith`
-- Version: `5.3.0`
+- Version: `5.4.0`
 - License: Apache-2.0
 
 `VERSION` and `packaging/identity.json` define the release identity.
@@ -36,6 +36,13 @@ Version 5.2.1 adds the written two-round business report case, planning/review
 guidance and read-only composition observations. The case's original 5.2.0 runs
 are not relabelled as 5.2.1 tests; no additional customer source files or decks
 are included.
+
+## Version 5.4.0: HTML design surface
+
+Adds `engine/design_scene/html_import.py`, the fixed layout extractor
+`engine/design_scene/html_extract.js`, the guide `references/html-design-authoring.md`
+and one fictional example page under `examples/html-design/`. No customer source,
+deck or rendering from the 5.4.0 development runs is included.
 
 ## Version 5.3.0: native template workflow and current showcase
 

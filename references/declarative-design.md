@@ -50,6 +50,15 @@ python3 -m engine design ingest --task-dir "$TASK" --file reference.png \
 python3 -m engine design schema
 ```
 
+逐页稿与信息密集页优先用 [HTML 设计面](html-design-authoring.md) 设计，再导入为原生场景：
+
+```bash
+python3 -m engine design html-import --task-dir "$TASK" --page page-1 --file pages/p1.html \
+  --source-file user-input.md --source-heading 第01页
+```
+
+需要 Chrome/Chromium/Edge（或 `PPTSMITH_BROWSER` 指定）；导入只写场景与内容记录，后续门禁不变。
+
 优先用 [紧凑作者输入与局部修订](declarative-authoring.md) 中的样式/来源/图标引用减少
 重复模型输出。`context --page page-1 --section content` 按页读取，`--section scene`
 用于修改几何；`schema --section node --type text` 仅查询一种节点，完整 Schema 只在必要时读取。

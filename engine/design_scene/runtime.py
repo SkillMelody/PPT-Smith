@@ -153,9 +153,12 @@ def fonts_for(task):
     families = set()
     for page in task["scene"]["pages"]:
         for n, *_ in walk(page["nodes"]):
-            if "font" in n:
-                families.add(n["font"]["family"])
-            families.update(s["font"]["family"] for s in n.get("spans", []))
+            fonts = ([n["font"]] if "font" in n else []) + [s["font"] for s in n.get("spans", [])]
+            fonts += [c["font"] for row in n.get("cell_styles", []) for c in row if "font" in c]
+            for font in fonts:
+                families.add(font["family"])
+                if font.get("ea_family"):
+                    families.add(font["ea_family"])
     result = []
     matcher = find_tool("fc-match")
     for family in sorted(families):
