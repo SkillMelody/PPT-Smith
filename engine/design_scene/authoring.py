@@ -13,8 +13,9 @@ from .store import DesignError, canonical, digest
 FORMAT = "pptsmith-author/1"
 ROLES = {"text": "native_text", "shape": "native_shape", "path": "native_shape",
          "chart": "native_chart", "table": "native_table", "image": "replaceable_image", "group": "group"}
-STYLE_KEYS = {"font", "style", "align", "valign", "wrap", "line_spacing", "margin",
-              "letter_spacing", "colors", "legend", "labels", "fill", "header_fill", "header_color"}
+STYLE_KEYS = {"font", "style", "align", "valign", "wrap", "line_spacing", "line_height", "margin",
+              "letter_spacing", "colors", "legend", "labels", "fill", "header_fill", "header_color",
+              "axis", "markers", "area_series", "gap_width", "label_position", "row_heights", "cell_styles"}
 AUTHOR_SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["format", "task"],
     "properties": {

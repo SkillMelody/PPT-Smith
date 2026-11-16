@@ -4,7 +4,7 @@
 
 Turn source documents, approved slide designs or native PPTX templates into presentations with traceable content, editable objects and real previews. The model authors; fixed tools execute and verify.
 
-**Current version: `5.3.0` · Apache-2.0.** Install as `article-html-to-ppt`; public slug `meowclaw-pptsmith`; compatibility alias `meowclaw-decksmith`.
+**Current version: `5.4.0` · Apache-2.0.** Install as `article-html-to-ppt`; public slug `meowclaw-pptsmith`; compatibility alias `meowclaw-decksmith`.
 
 ## Showcase
 
@@ -45,6 +45,16 @@ From the executive summary and operating drivers to validation questions, action
 </table>
 
 Earlier examples retain their original versions and evidence limits; see the [historical gallery](references/cases/legacy-showcase.en.md). Counts and version labels are not aesthetic scores or general compatibility certification.
+
+## What is new in 5.4.0
+
+- **Design in a browser, deliver native objects.** For `create`, the model can write each page as restricted HTML/CSS and use real grid/flex layout and text measurement. `engine design html-import` reads the computed geometry with a fixed extractor and compiles it into editable text, shapes, freeform paths, tables and native charts. HTML never enters the PPTX; page scripts and external resources are rejected.
+- **Content is traced, not assumed.** Import creates content records with provenance, checks that on-slide text and data come from the source, requires model-written wording to be declared, and reports source numbers and phrases that are not on the slide.
+- **Same gates.** Imported pages still go through `validate --complete`, font preflight, real rendering, independent review and delivery. The browser screenshot is an iteration aid, not delivery evidence or a reconstruction target.
+- **Backend additions.** Transparency, corner radius, separate Latin/East Asian fonts, exact line height, per-cell table styles, chart axes/markers/area layers. All fields are optional; existing tasks render as before.
+- **Font preflight fix.** Faces are judged by the fonts each page actually uses, so multi-font decks are no longer flagged wholesale.
+- **Default for content-only create.** Reports and documents, per-slide manuscripts and pasted text all use the HTML surface by default, with no image-generation model. Registered user images (logos, product photos) are placed with `data-asset`, shown in the preview and imported as replaceable native pictures.
+- **Layout defects caught at import.** Text overlap, overflow beyond cards or fixed boxes, out-of-slide objects, Chinese text without a Chinese font, small text and flat hierarchy are reported. Numbers in model-written titles and takeaways must occur in the source; derived values and navigation labels are declared separately. Chart previews are drawn by the tool, and decorative shapes that bleed off the slide are clipped to it.
 
 ## What is new in 5.3.0
 

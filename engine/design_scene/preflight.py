@@ -10,13 +10,41 @@ from .runtime import CODE_ROOT, find_tool, fonts_for, launch_worker, renderer_id
 from .store import DesignError, Store, canonical, digest
 
 
+def _east_asian(c):
+    o = ord(c)
+    return (0x2E80 <= o <= 0x9FFF or 0xAC00 <= o <= 0xD7AF or 0xF900 <= o <= 0xFAFF or
+            0xFE30 <= o <= 0xFE4F or 0xFF00 <= o <= 0xFFEF or 0x20000 <= o <= 0x2FA1F)
+
+
+def _page_fonts(pdf, page, stage):
+    """Fonts actually used by text on one page.
+
+    LibreOffice shares font resources across pages, so ``pdffonts -f/-l`` lists every font of the document.
+    ``pdftohtml -xml`` attributes each text run to a subset prefix (e.g. ``BAAAAA+``); keep only those.
+    """
+    listing = run_process([find_tool("pdffonts"), "-f", str(page), "-l", str(page), str(pdf)], cwd=stage, timeout=15)
+    names = [line.split()[0] for line in listing.splitlines()[2:] if line.strip()]
+    tool = find_tool("pdftohtml")
+    if tool:
+        xml = run_process([tool, "-xml", "-i", "-stdout", "-q", "-f", str(page), "-l", str(page), str(pdf)], cwd=stage, timeout=30)
+        used = set(re.findall(r'family="([A-Z]{6})\+', xml))
+        if used:
+            names = [n for n in names if n.split("+", 1)[0] in used or "+" not in n]
+    return names
+
+
 def font_samples(task):
     content = {c["id"]: c for c in task["content"]["items"]}
     faces = {}
 
     def add(font, text):
-        key = (font["family"], bool(font.get("bold")), bool(font.get("italic")))
-        faces.setdefault(key, set()).update(c for c in text if not c.isspace())
+        # Office draws East Asian characters with the run's ea typeface; probe them with that face.
+        ea = font.get("ea_family")
+        for c in text:
+            if c.isspace():
+                continue
+            family = ea if ea and _east_asian(c) else font["family"]
+            faces.setdefault((family, bool(font.get("bold")), bool(font.get("italic"))), set()).add(c)
 
     for page in task["scene"]["pages"]:
         for node, *_ in walk(page["nodes"]):
@@ -31,6 +59,10 @@ def font_samples(task):
                     add(s["font"], text[s["start"]:s["end"]])
                     covered.update(range(s["start"], s["end"]))
                 add(node["font"], "".join(c for i, c in enumerate(text) if i not in covered))
+            elif item.get("type") == "table" and "cell_styles" in node:
+                for row, styles in zip(item["cells"], node["cell_styles"]):
+                    for value, style in zip(row, styles):
+                        add(style.get("font", node["font"]), value)
             elif item.get("type") == "table":
                 add(node["font"], " ".join(x for row in item["cells"] for x in row))
                 add({**node["font"], "bold": True}, " ".join(item["cells"][0]))
@@ -104,8 +136,7 @@ def preflight(root, *, isolation="auto"):
             matched = run_process([find_tool("fc-match"), "-f", "%{postscriptname}\\n%{family}", sample["family"] + ":style=" + style],
                                   cwd=CODE_ROOT, timeout=15)
             expected, _, family_names = matched.partition("\n")
-            listing = run_process([find_tool("pdffonts"), "-f", str(i), "-l", str(i), str(stage / "deck.pdf")], cwd=stage, timeout=15)
-            actual = [line.split()[0] for line in listing.splitlines()[2:] if line.strip()]
+            actual = _page_fonts(stage / "deck.pdf", i, stage)
             text = run_process([find_tool("pdftotext"), "-f", str(i), "-l", str(i), str(stage / "deck.pdf"), "-"], cwd=stage, timeout=15)
             wanted = {_font_key(s) for s in expected.split(",") if s}
             fallback = [s for s in actual if _font_key(s) not in wanted]
