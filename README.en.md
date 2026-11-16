@@ -53,6 +53,8 @@ Earlier examples retain their original versions and evidence limits; see the [hi
 - **Same gates.** Imported pages still go through `validate --complete`, font preflight, real rendering, independent review and delivery. The browser screenshot is an iteration aid, not delivery evidence or a reconstruction target.
 - **Backend additions.** Transparency, corner radius, separate Latin/East Asian fonts, exact line height, per-cell table styles, chart axes/markers/area layers. All fields are optional; existing tasks render as before.
 - **Font preflight fix.** Faces are judged by the fonts each page actually uses, so multi-font decks are no longer flagged wholesale.
+- **Default for content-only create.** Reports and documents, per-slide manuscripts and pasted text all use the HTML surface by default, with no image-generation model. Registered user images (logos, product photos) are placed with `data-asset`, shown in the preview and imported as replaceable native pictures.
+- **Layout defects caught at import.** Text overlap, overflow beyond cards or fixed boxes, out-of-slide objects, Chinese text without a Chinese font, small text and flat hierarchy are reported. Numbers in model-written titles and takeaways must occur in the source; derived values and navigation labels are declared separately. Chart previews are drawn by the tool, and decorative shapes that bleed off the slide are clipped to it.
 
 ## What is new in 5.3.0
 

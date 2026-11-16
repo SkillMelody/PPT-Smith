@@ -184,8 +184,11 @@ def main(argv=None):
         if command == "html-import":
             p.add_argument("--page", required=True, help="scene page ID to replace")
             p.add_argument("--file", required=True, help="task-relative constrained HTML page")
-            p.add_argument("--source-file", help="task-relative manuscript (for example user-input.md)")
-            p.add_argument("--source-heading", help="line prefix that starts this page in the manuscript, e.g. 第06页")
+            p.add_argument("--source-file", action="append",
+                           help="task-relative source text (manuscript, extracted report); repeat for several files")
+            p.add_argument("--source-heading", help="line prefix that starts this page in a single manuscript, e.g. 第06页")
+            p.add_argument("--source-kind", choices=("user", "document"), default="user",
+                           help="provenance kind: user (pasted/manuscript) or document (extracted file)")
             p.add_argument("--default-source", help="provenance source for records without data-src")
             p.add_argument("--assume-checked", action="store_true",
                            help="author asserts every record was checked; only without --source-file")
@@ -322,12 +325,19 @@ def main(argv=None):
                         raise DesignError("ASSUME_CHECKED_CONFLICTS_WITH_SOURCE_FILE")
                     text = store.read(args.file).decode("utf-8")
                     source_text = None
-                    if args.source_file:
-                        source_text = source_segment(store.read(args.source_file).decode("utf-8"), args.source_heading)
+                    files = args.source_file or []
+                    if args.source_heading and len(files) != 1:
+                        raise DesignError("SOURCE_HEADING_NEEDS_ONE_SOURCE_FILE")
+                    if files:
+                        source_text = "\n".join(source_segment(store.read(f).decode("utf-8"), args.source_heading) for f in files)
                     default_source = args.default_source or (
-                        f"{args.source_file} / {args.source_heading or args.page}" if args.source_file else f"{args.file} / {args.page}")
+                        f"{files[0]} / {args.source_heading or args.page}" if len(files) == 1 else
+                        f"{', '.join(files)} / {args.page}" if files else f"{args.file} / {args.page}")
+                    asset_bytes = read_assets(store, task) if "data-asset" in text else {}
                     candidate, report, layout, png = import_html(task, args.page, text, default_source=default_source,
-                                                                 source_text=source_text, assume_checked=args.assume_checked)
+                                                                 source_text=source_text, assume_checked=args.assume_checked,
+                                                                 source_kind=args.source_kind, asset_bytes=asset_bytes,
+                                                                 page_scoped=bool(args.source_heading))
                     base = f"html-import/{args.page}/{report['html_sha256'][:12]}/"
                     store.write(base + "page.html", text.encode("utf-8"))
                     store.put_json(base + "layout.json", layout)
@@ -344,14 +354,20 @@ def main(argv=None):
                                           "then author composition/notes, validate --complete and build.")
                     result = report if args.full else {
                         k: report[k] for k in ("status", "page_id", "content_items", "nodes", "objects", "unchecked_count",
-                                               "composition_reset", "preview", "evidence", "task_sha256", "next") if k in report}
+                                               "authored", "composition_reset", "assets_attached_to_page", "preview",
+                                               "evidence", "task_sha256", "next") if k in report}
+                    if not args.full:
+                        lint_ = report["design_lint"]
+                        result["design_lint"] = {"errors": lint_["errors"], "warnings": lint_["warnings"],
+                                                 "findings": lint_["findings"][:10]}
                     if not args.full:
                         result["browser_warning_count"] = len(report["browser_warnings"])
                         result["browser_warnings"] = report["browser_warnings"][:5]
                         if "untraced" in report:
                             result["untraced"] = report["untraced"][:8]
                         if "coverage" in report:
-                            result["coverage"] = {"missing_numbers": report["coverage"]["missing_numbers"][:30],
+                            result["coverage"] = {"scope": report["coverage"]["scope"],
+                                                  "missing_numbers": report["coverage"]["missing_numbers"][:30],
                                                   "missing_phrase_count": report["coverage"]["missing_phrase_count"],
                                                   "missing_phrases": report["coverage"]["missing_phrases"][:12]}
                 elif args.command == "context":

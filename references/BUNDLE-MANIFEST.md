@@ -41,7 +41,9 @@ are included.
 
 Adds `engine/design_scene/html_import.py`, the fixed layout extractor
 `engine/design_scene/html_extract.js`, the guide `references/html-design-authoring.md`
-and one fictional example page under `examples/html-design/`. No customer source,
+and one fictional example page under `examples/html-design/`. The surface is the default for
+content-only create (documents, per-slide manuscripts, pasted text); it places registered image
+assets via `data-asset` and reports layout defects at import. No customer source,
 deck or rendering from the 5.4.0 development runs is included.
 
 ## Version 5.3.0: native template workflow and current showcase

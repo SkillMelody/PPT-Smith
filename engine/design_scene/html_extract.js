@@ -43,7 +43,7 @@
     return runs.filter(r => r.text.length);
   }
   function meta(el) {
-    return { cid: el.getAttribute('data-cid'), src: attrUp(el, 'data-src'), authored: attrUp(el, 'data-authored') !== null };
+    return { cid: el.getAttribute('data-cid'), src: attrUp(el, 'data-src'), authored: attrUp(el, 'data-authored') };
   }
   function textItem(el) {
     const cs = getComputedStyle(el);
@@ -57,8 +57,18 @@
     const runs = trimRuns(runsOf(el));
     if (!runs.length) return null;
     if (cs.writingMode && !cs.writingMode.startsWith('horizontal')) warn('VERTICAL_WRITING_MODE_UNSUPPORTED', el);
-    return { kind: 'text', ...R(u), lines: lines.length, align: (cs.textAlign === 'start' || cs.textAlign === 'justify') ? 'left' : cs.textAlign === 'end' ? 'right' : cs.textAlign,
+    return { kind: 'text', ...R(u), lines: lines.length, container: container(el),
+      overflow: { x: el.scrollWidth - el.clientWidth, y: el.scrollHeight - el.clientHeight }, align: (cs.textAlign === 'start' || cs.textAlign === 'justify') ? 'left' : cs.textAlign === 'end' ? 'right' : cs.textAlign,
       content: { x: er.left + pl - S.left, w: er.width - pl - pr }, runs, lineHeight: lh, ...meta(el) };
+  }
+  // Nearest painted ancestor (card, panel, chip): text should stay inside it.
+  function container(el) {
+    for (let e = el.parentElement; e && e !== slide; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      const bordered = ['Top', 'Right', 'Bottom', 'Left'].some(s => cs['border' + s + 'Style'] !== 'none' && parseFloat(cs['border' + s + 'Width']) > 0);
+      if (visible(cs.backgroundColor) || bordered) return R(e.getBoundingClientRect());
+    }
+    return null;
   }
   function checkStyle(el, cs) {
     if (cs.backgroundImage && cs.backgroundImage !== 'none') warn('CSS_BACKGROUND_IMAGE_UNSUPPORTED', el);
@@ -109,6 +119,12 @@
     const tag = el.tagName.toLowerCase();
     if (tag === 'script' || tag === 'style') return;
     if (getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden') return;
+    if (el.hasAttribute('data-asset')) {
+      const cs = getComputedStyle(el);
+      out.items.push({ kind: 'image', ...R(el.getBoundingClientRect()), asset: el.getAttribute('data-asset'),
+        fit: el.getAttribute('data-fit') || 'contain', radius: parseFloat(cs.borderTopLeftRadius) || 0, ...meta(el) });
+      return;
+    }
     if (el.hasAttribute('data-chart')) {
       let spec = null;
       try { spec = JSON.parse(el.getAttribute('data-chart')); } catch (e) { warn('CHART_SPEC_INVALID_JSON', el); return; }
@@ -125,5 +141,52 @@
     const pre = document.createElement('pre'); pre.id = '__pptsmith_layout'; pre.style.display = 'none';
     pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
   }
+  // Tool-owned preview of native charts: authors only write the data-chart spec.
+  function drawChartPreviews() {
+    for (const el of slide.querySelectorAll('[data-chart]')) {
+      if (el.children.length) continue;
+      let spec; try { spec = JSON.parse(el.getAttribute('data-chart')); } catch (e) { continue; }
+      const W = el.clientWidth, H = el.clientHeight, cats = spec.categories || [], ser = spec.series || [];
+      if (!W || !H || !cats.length || !ser.length) continue;
+      const all = ser.flatMap(s => s.values || []);
+      const lo = spec.min !== undefined ? spec.min : Math.min(0, ...all), hi = spec.max !== undefined ? spec.max : Math.max(...all) * 1.15 || 1;
+      const step = spec.major || (hi - lo) / 4, horiz = spec.type === 'bar';
+      const pl = horiz ? 64 : 34, pr = 12, pt = 16, pb = 24, iw = W - pl - pr, ih = H - pt - pb;
+      const font = "font-family:" + getComputedStyle(slide).fontFamily.replace(/"/g, "'");
+      const col = (s) => '#' + String(s.color || '4B4FD6').replace('#', '');
+      const V = (v) => (v - lo) / (hi - lo);
+      let g = '';
+      for (let t = lo; t <= hi + 1e-9; t += step) {
+        if (horiz) { const x = pl + V(t) * iw; g += `<line x1="${x}" x2="${x}" y1="${pt}" y2="${pt + ih}" stroke="#EDEFF5"/><text x="${x}" y="${H - 6}" text-anchor="middle" font-size="9" fill="#A0A4B8" style="${font}">${+t.toFixed(4)}</text>`; }
+        else { const y = pt + (1 - V(t)) * ih; g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="#EDEFF5"/><text x="${pl - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#A0A4B8" style="${font}">${+t.toFixed(4)}</text>`; }
+      }
+      const n = cats.length, slot = (horiz ? ih : iw) / n, k = ser.length;
+      cats.forEach((c, i) => {
+        const m = (horiz ? pt : pl) + slot * (i + 0.5);
+        g += horiz ? `<text x="${pl - 6}" y="${m + 3}" text-anchor="end" font-size="9" fill="#6B7084" style="${font}">${c}</text>`
+                   : `<text x="${m}" y="${H - 6}" text-anchor="middle" font-size="9" fill="#6B7084" style="${font}">${c}</text>`;
+      });
+      ser.forEach((s, si) => {
+        const pts = s.values.map((v, i) => [pl + slot * (i + 0.5), pt + (1 - V(v)) * ih, v]);
+        if (spec.type === 'line') {
+          if (s.area) g += `<path d="M${pts.map(p => p[0] + ',' + p[1]).join(' L')} L${pts[n - 1][0]},${pt + ih} L${pts[0][0]},${pt + ih} Z" fill="${col(s)}" fill-opacity="0.12"/>`;
+          g += `<path d="M${pts.map(p => p[0] + ',' + p[1]).join(' L')}" fill="none" stroke="${col(s)}" stroke-width="2"/>`;
+          pts.forEach(p => { g += `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="#fff" stroke="${col(s)}" stroke-width="1.6"/>`;
+            if (spec.labels !== false) g += `<text x="${p[0]}" y="${p[1] - 6}" text-anchor="middle" font-size="9" font-weight="700" fill="${col(s)}" style="${font}">${p[2]}</text>`; });
+        } else {
+          const bw = slot * 0.6 / k;
+          s.values.forEach((v, i) => {
+            const off = slot * 0.2 + bw * si, len = V(v) * (horiz ? iw : ih);
+            if (horiz) { const y = pt + slot * i + off; g += `<rect x="${pl}" y="${y}" width="${len}" height="${bw}" fill="${col(s)}"/>`;
+              if (spec.labels !== false) g += `<text x="${pl + len + 4}" y="${y + bw / 2 + 3}" font-size="9" font-weight="700" fill="${col(s)}" style="${font}">${v}</text>`; }
+            else { const x = pl + slot * i + off, y = pt + ih - len; g += `<rect x="${x}" y="${y}" width="${bw}" height="${len}" fill="${col(s)}"/>`;
+              if (spec.labels !== false) g += `<text x="${x + bw / 2}" y="${y - 4}" text-anchor="middle" font-size="9" font-weight="700" fill="${col(s)}" style="${font}">${v}</text>`; }
+          });
+        }
+      });
+      el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${g}</svg>`;
+    }
+  }
+  try { drawChartPreviews(); } catch (e) { out.warnings.push({ code: 'CHART_PREVIEW_FAILED', at: String(e) }); }
   document.fonts.ready.then(() => { try { walk(slide); } catch (e) { out.error = 'EXTRACT_FAILED: ' + e; } finish(); });
 })();
