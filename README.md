@@ -142,6 +142,8 @@ python -m engine template capabilities
 
 ## 文档与分发
 
+浏览器插件 0.1.4 修复了侧栏无法收集微信公众号文章的问题。升级时将解压后的文件覆盖到原插件目录，再在扩展管理页点击「重新加载」，即可保留本机资料篮。 [下载 Chrome / Edge 插件 0.1.4](pptsmith-browser-extension-0.1.4.zip)
+
 - [Skill 执行规范](SKILL.md) · [原页编辑式模板流程](references/native-template-workflow.md)
 - [声明式设计与验收](references/declarative-design.md) · [紧凑输入与局部修订](references/declarative-authoring.md)
 - [已有模板组件流程](references/routes/v4-template-route.md) · [模板风格参考](references/template-visual-design.md)

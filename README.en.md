@@ -147,6 +147,8 @@ Quality and OS isolation are separate. Explicit isolation requirements remain bi
 
 ## Documentation and distribution
 
+Browser extension 0.1.4 fixes WeChat article collection from the side panel. To retain your local source basket, extract the ZIP over the existing extension folder and select Reload in the browser’s extension manager. [Download the Chrome / Edge extension 0.1.4](pptsmith-browser-extension-0.1.4.zip)
+
 - [Skill contract](SKILL.md) · [Original-page template workflow](references/native-template-workflow.md)
 - [Declarative design and acceptance](references/declarative-design.md) · [Compact authoring/revisions](references/declarative-authoring.md)
 - [Existing template component workflow](references/routes/v4-template-route.md) · [Template-inspired design](references/template-visual-design.md)
