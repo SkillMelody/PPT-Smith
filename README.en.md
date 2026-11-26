@@ -1,10 +1,46 @@
 # PPT Smith
 
-[简体中文](README.md) · [Skill entry](SKILL.md) · [Native-template workflow](references/native-template-workflow.md) · [Installation](#installation-and-local-checks)
+<p>
+  <a href="https://ppt.skillmelody.com"><img src="https://img.shields.io/badge/Web_App-ppt.skillmelody.com-2251FF?style=flat-square" alt="PPT Smith Web App"></a>
+  <a href="https://chromewebstore.google.com/detail/ppt-smith-%C2%B7-source-basket/ndmjfdmpgghcgpbidcloljomlmkfngab"><img src="https://img.shields.io/badge/Chrome_Extension-Source_Basket-0F766E?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store"></a>
+  <a href="https://www.youtube.com/watch?v=_I2oauMIwnM"><img src="https://img.shields.io/badge/Demo_Video-YouTube_(0:37)-DC2626?style=flat-square&logo=youtube&logoColor=white" alt="YouTube Demo Video"></a>
+  <a href="SKILL.md"><img src="https://img.shields.io/badge/Agent_Skill-v5.4.0-051C2C?style=flat-square" alt="Version 5.4.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-475569?style=flat-square" alt="Apache-2.0"></a>
+</p>
 
-Turn source documents, approved slide designs or native PPTX templates into presentations with traceable content, editable objects and real previews. The model authors; fixed tools execute and verify.
+[简体中文](README.md) · [Web App](https://ppt.skillmelody.com) · [Chrome Extension](https://chromewebstore.google.com/detail/ppt-smith-%C2%B7-source-basket/ndmjfdmpgghcgpbidcloljomlmkfngab) · [Demo Video](https://www.youtube.com/watch?v=_I2oauMIwnM) · [Skill Entry](SKILL.md) · [Installation](#installation-and-local-checks) · [Contact](#contact--feedback)
 
-**Current version: `5.4.0` · Apache-2.0.** Install as `article-html-to-ppt`; public slug `meowclaw-pptsmith`; compatibility alias `meowclaw-decksmith`.
+**Turn source documents, web clippings, approved slide designs or native PPTX templates into presentations with traceable content, editable objects and real previews.**  
+The model owns narrative and design; fixed tools execute, compile and verify.
+
+> **Current version: `5.4.0` · Apache-2.0.** Install as `article-html-to-ppt`; public slug `meowclaw-pptsmith`; compatibility alias `meowclaw-decksmith`.
+
+---
+
+## Three Ways to Use PPT Smith
+
+| Surface | Best for | What it does | Link |
+| :--- | :--- | :--- | :--- |
+| **🌐 Web App** | Zero-setup slide creation in the browser | No local Python/LibreOffice setup needed; upload materials or send clips from the browser extension, pick curated templates or upload your own PPTX, review the outline and export editable slides | [ppt.skillmelody.com](https://ppt.skillmelody.com) |
+| **🧩 Chrome Extension (Source Basket)** | Collecting research snippets and visuals while browsing | Capture full pages (including WeChat articles), right-click text clippings and drag-select poster/chart screenshots; **local-first storage** with one-click ZIP export or direct handoff to the web app | [Chrome Web Store](https://chromewebstore.google.com/detail/ppt-smith-%C2%B7-source-basket/ndmjfdmpgghcgpbidcloljomlmkfngab) · [Offline ZIP 0.1.5](pptsmith-browser-extension-0.1.5.zip) |
+| **⚙️ Open-Source Agent Skill (This Repo)** | Power users & teams running Claude Code, Codex, OpenClaw or Cursor | Fully auditable local pipeline: HTML-to-native PPTX compilation, industry/brand visual grounding, original-page template editing, whole-deck structural diagnostics and real LibreOffice rendering | [SKILL.md](SKILL.md) · [Installation](#installation-and-local-checks) |
+
+---
+
+## Extension & Web App Demo (PPT Smith · Source Basket)
+
+Click the thumbnail below to watch the **37-second demo on YouTube** — clipping text and posters from a web page, exporting a local ZIP source pack, or sending materials straight into `ppt.skillmelody.com` to build slides with a template:
+
+[![PPT Smith · Source Basket 37-second walkthrough on YouTube](assets/branding/source-basket-video-cover.jpg)](https://www.youtube.com/watch?v=_I2oauMIwnM)
+
+- **Three capture modes**: one-click full-page capture (including WeChat articles from the side panel), right-click text clipping, and drag-box region screenshots for posters/charts.
+- **Local-first privacy**: all clipping and ZIP exports run locally; collected materials stay on your machine until you explicitly choose **Send to Website**.
+- **Two seamless outputs**:
+  - **Export Source Pack (ZIP)**: bundles structured Markdown clippings and screenshots ready for your local Agent + PPT Smith Skill.
+  - **Send to Website**: hands off clippings and screenshots directly to [ppt.skillmelody.com](https://ppt.skillmelody.com) for either **Template Mode** (curated library or your own PPTX) or **Content Generation** (outline review before slide creation).
+- **Install & upgrade**: install directly from the [Chrome Web Store](https://chromewebstore.google.com/detail/ppt-smith-%C2%B7-source-basket/ndmjfdmpgghcgpbidcloljomlmkfngab). For Edge or offline installation, download [pptsmith-browser-extension-0.1.5.zip](pptsmith-browser-extension-0.1.5.zip) (to upgrade while keeping your local basket, extract over the previous folder and click **Reload** in your browser's extensions page).
+
+---
 
 ## Showcase
 
@@ -46,46 +82,54 @@ From the executive summary and operating drivers to validation questions, action
 
 Earlier examples retain their original versions and evidence limits; see the [historical gallery](references/cases/legacy-showcase.en.md). Counts and version labels are not aesthetic scores or general compatibility certification.
 
-## What is new in 5.4.0
+---
 
-- **Design in a browser, deliver native objects.** For `create`, the model can write each page as restricted HTML/CSS and use real grid/flex layout and text measurement. `engine design html-import` reads the computed geometry with a fixed extractor and compiles it into editable text, shapes, freeform paths, tables and native charts. HTML never enters the PPTX; page scripts and external resources are rejected.
-- **Content is traced, not assumed.** Import creates content records with provenance, checks that on-slide text and data come from the source, requires model-written wording to be declared, and reports source numbers and phrases that are not on the slide.
-- **Same gates.** Imported pages still go through `validate --complete`, font preflight, real rendering, independent review and delivery. The browser screenshot is an iteration aid, not delivery evidence or a reconstruction target.
-- **Backend additions.** Transparency, corner radius, separate Latin/East Asian fonts, exact line height, per-cell table styles, chart axes/markers/area layers. All fields are optional; existing tasks render as before.
-- **Font preflight fix.** Faces are judged by the fonts each page actually uses, so multi-font decks are no longer flagged wholesale.
-- **Default for content-only create.** Reports and documents, per-slide manuscripts and pasted text all use the HTML surface by default, with no image-generation model. Registered user images (logos, product photos) are placed with `data-asset`, shown in the preview and imported as replaceable native pictures.
-- **Layout defects caught at import.** Text overlap, overflow beyond cards or fixed boxes, out-of-slide objects, Chinese text without a Chinese font, small text and flat hierarchy are reported. Numbers in model-written titles and takeaways must occur in the source; derived values and navigation labels are declared separately. Chart previews are drawn by the tool, and decorative shapes that bleed off the slide are clipped to it.
+## Key Capabilities: 5.4.0 HTML Design Surface & Deck Guardrails
 
-## What is new in 5.3.0
+- **Design in a browser, deliver 100% native objects.** `create` defaults to a restricted HTML/CSS surface so the model leverages real Flex/Grid layout and text measurement. `engine design html-import` extracts computed geometry and compiles editable text, shapes, freeform paths, native tables, native charts and replaceable `data-asset` pictures. HTML and scripts never enter the PPTX.
+- **Industry & brand-grounded visual system.** Typography, palette, density and layout language adapt to the deck's industry and audience instead of a one-size-fits-all template. When sources carry an explicit brand (e.g., consulting reports, company earnings, product launches), the workflow extracts brand visual traits from the source material first — never fabricating unprovided logos.
+- **Traced content, not wishful thinking.** Import creates provenance-bound records, verifies that on-slide text, table cells and raw chart numbers come from the source, separates authored wording/derived values/navigation labels, and reports missing source numbers.
+- **Import-time lint & whole-deck structural diagnostics:**
+  - `design_lint` blocks text overlap, container/box overflow, out-of-slide elements and **mixed incompatible units on single-axis charts (`CHART_MIXED_UNITS`, e.g., GW and % on one axis)**, while flagging missing CJK fonts, small text and flat hierarchy.
+  - `composition-check` flags whole-deck narrative defects: **inconsistent section divider themes, missing Chapter 1 lead-in dividers, TOC-vs-divider count mismatches and divider-vs-eyebrow numbering conflicts**.
+  - Lightweight metadata/page maintenance (`set-meta`, `set-page`, `add-page`, `remove-page`, `reorder-pages`) plus page-scoped LibreOffice font preflight.
+- **5.3.0 original-page template workflow.** Clones real source slides with masters, themes and native relationships intact; edits text, supported chart/table data, order and notes through atomic Python transactions without smuggling unselected slides.
 
-- **Clone original pages, then edit content.** Output pages bind real source slides and retain native layout/master/theme relationships instead of merely copying a palette onto blank pages.
-- **Fixed Python tools.** Edit supported text, chart/table data, same-source styled objects, page order and notes. The host agent owns narrative and orchestration, without a website account, second model runtime or new Node dependency.
-- **Recoverable local revisions.** Stable page IDs, revision checks, frozen template bytes and atomic transactions preserve valid work on failure; unselected source slides cannot be smuggled into the output.
-- **Evidence belongs to the current file.** Source preservation, decoration/type-scale floors, real rendering and independent page observations are separate checks. Missing or stale evidence does not become final acceptance.
-- **Existing tasks stay compatible.** The three user intents remain `create / recreate / template`; Atlas/component tasks retain their original contract.
+---
 
-Runtime limits are listed below. Inspection of the showcased finished deck is separate from the synthetic tool regressions and render validations; they are not presented as the same acceptance run.
-
-## Three ways to use it
+## Three Agent Skill Routes
 
 | Task | Input | Route |
-| --- | --- | --- |
-| Make a presentation from a report, policy, PRD, article or data | Source material; optional brand/style references | **create**: design native pages, then render and review |
+| :--- | :--- | :--- |
+| Make a presentation from a report, policy, PRD, article, basket ZIP or data | Source material; optional brand/style references | **create**: HTML design surface compiled to native pages, then rendered and reviewed |
 | Rebuild an approved complete slide design | Full-page designs and checked source text/data | **recreate**: native reconstruction against a frozen target |
 | Preserve a company/client PPTX template | Native template and current content | **template**: original-page editing; retain Atlas for existing component tasks |
 
-A template used only as a style reference belongs to create. Native asset preservation belongs to template. Source page count does not set slide count; the current audience, content and brand determine typography, composition and rhythm.
+A template used only as a style reference belongs to `create`. Native asset preservation belongs to `template`. Source page count does not prescribe slide count; long multi-chapter reports should budget enough slides so chapters stay balanced.
 
 **Image generation is optional.** A vision-capable model can author native objects and inspect real renders. Generated illustrations or an explicitly approved external design target are optional; a text-only model still needs a human or vision reviewer for visual acceptance.
 
-## How to use it with an agent
+---
 
-Load [SKILL.md](SKILL.md), attach material and state the audience, purpose, language, slide budget and target software. Users do not need to write object JSON.
+## How to Use the Skill with an Agent
 
-**Reuse a native template:**
+Load [SKILL.md](SKILL.md), attach your material (document, outline or exported Source Basket ZIP) and specify the audience, goal, language, slide budget and target software. Users never need to hand-write JSON or HTML.
+
+**Design from sources (default HTML surface):**
 
 ```text
-Use PPT Smith to create about 20 Chinese slides from this company PPTX template
+Use PPT Smith to create an editable executive presentation from this material.
+Lead with conclusions, ground the visual system in the source's industry and brand traits,
+vary body layouts to fit information relationships, and keep chapter numbering consistent.
+Do not invent missing numbers; separate facts, derived values and recommendations;
+retain page sources and notes. Image generation is not required.
+Deliver the editable PPTX, actual previews, review results and material editing limits.
+```
+
+**Reuse a native company template:**
+
+```text
+Use PPT Smith to create about 20 slides from this company PPTX template
 and the attached business material. Audience: management.
 Lead with conclusions, then explain changes and decisions.
 Retain the original-page visual language, master and layouts; select, copy and
@@ -95,20 +139,11 @@ Check representative pages before expanding the deck, render actual PPTX pages,
 obtain independent review and disclose chart/image/application editing limits.
 ```
 
-**Design from sources:**
+For reconstruction, supply approved full-page targets. For targeted revisions, keep the task directory and specify affected pages/objects. Both routes inherit unchanged, previously passing page observations only via explicit `review-template --inherit-from`; modified pages and whole-deck rhythm are always reviewed afresh.
 
-```text
-Use PPT Smith to make about 12 editable Chinese slides from this material.
-Audience: business owners. Conclusions first; vary the body with the information
-while keeping the deck coherent. Do not invent missing numbers.
-Separate source facts, calculations and advice; retain page sources and notes.
-Image generation is not required. Deliver actual PPTX, previews, review results
-and material editing limitations.
-```
+---
 
-For reconstruction, identify approved full-page targets. For a small revision, retain the task directory and identify affected pages/objects. Review reuse follows each route's dependency checks: both routes inherit only unchanged, previously passing page observations through an explicit `review-template --inherit-from`; changed pages and whole-deck rhythm are always reviewed afresh, and old candidate approval is never carried over automatically.
-
-## Installation and local checks
+## Installation and Local Checks
 
 From the Skill root, using Bash on macOS/Linux:
 
@@ -122,39 +157,52 @@ python -m engine design capabilities
 python -m engine template capabilities
 ```
 
-Real previews require **LibreOffice, Poppler, Fontconfig and the actual fonts**. Capability discovery checks local tools, not the host model's vision or image-generation abilities.
+Real previews and the HTML design surface require **LibreOffice, Poppler, Fontconfig, actual fonts and Chrome / Chromium Headless Shell** (override with `PPTSMITH_BROWSER` if needed). Capability discovery checks local tools, not the host model's vision or image-generation abilities.
 
-- The new original-page executor requires **POSIX `fcntl` and `O_NOFOLLOW`**. It was tested on macOS; Windows is unsupported. Source and output decks are each limited to 100 slides.
-- See the [declarative workflow](references/declarative-design.md) for create/recreate requirements; do not apply the new executor's restrictions to every legacy route or claim all platforms were tested.
-- Only PptxGenJS compatibility builders require Node/npm and `python scripts/bootstrap_pptxgenjs_runtime.py`; the new executor adds no Node dependency.
+- The original-page template executor requires **POSIX `fcntl` and `O_NOFOLLOW`** (verified on macOS; Windows unsupported). Source and output decks are each limited to 100 slides.
+- See the [declarative workflow](references/declarative-design.md) for cross-platform `create`/`recreate` requirements.
+- Only PptxGenJS compatibility builders require Node/npm and `python scripts/bootstrap_pptxgenjs_runtime.py`; both the default HTML surface and the original-page template workflow add no Node dependency.
 
-Tool sequence: `capabilities → init → inspect → apply → export → render → review → verify`. Exact JSON and rejection/review contracts are in the [native-template guide](references/native-template-workflow.md), not duplicated here.
+---
 
-## Delivery and compatibility boundaries
+## Delivery and Compatibility Boundaries
 
 | Area | Current boundary |
-| --- | --- |
-| New chart editing | Single-plot category charts with real data/workbooks, not arbitrary chart types |
-| Tables | Existing unmerged rectangular cells; no row/column or merge restructuring |
-| Pictures | Additions clone embedded same-source pictures; no arbitrary external photo replacement; image internals are not native objects |
-| Preservation | Conservative exact-source checks plus decoration/type-scale floors; unresolved evidence may block and is not an aesthetic score |
-| Review | Bound to current candidate, template and actual page images; reviewer identity declared, not authenticated |
+| :--- | :--- |
+| New chart editing | Single-plot category charts with real data/workbooks; single-axis charts forbid mixed units |
+| Tables | HTML surface supports merged cells and per-cell styles; original-page template edits existing unmerged rectangular cells |
+| Pictures | HTML surface embeds replaceable registered assets (`data-asset`); original-page template clones embedded same-source pictures |
+| Preservation & lint | Source preservation, structural diagnostics and type-scale floors assist review; they are not aesthetic scores |
+| Review | Bound to current candidate, template and actual page images; reviewer identity is declared, not authenticated |
 | Office applications | Native objects and LibreOffice rendering do not prove PowerPoint/WPS GUI edit-save-reopen compatibility |
 
-Final delivery includes editable PPTX, real previews, source/gap records, review decisions and editing limitations. An unapproved whole-page screenshot cannot substitute for editable reconstruction. Business/scientific facts still require checking. Model-side source handling depends on the host; local tools do not mean model calls are necessarily offline. Cloud creation, uploading and sharing require the corresponding authorization.
+Final delivery includes editable PPTX, real previews, source/gap records, review decisions and editing limitations. An unapproved whole-page screenshot cannot substitute for editable reconstruction. Business/scientific facts still require checking. Model-side source handling depends on the host; local tools do not mean model calls are necessarily offline.
 
-Quality and OS isolation are separate. Explicit isolation requirements remain binding. Bespoke is an advanced compatibility route; Standard/Engineering is only for explicit engineering drafts and diagnostics.
+Quality and OS isolation are verified separately; explicit isolation requirements remain binding. Bespoke is an advanced compatibility route; Standard/Engineering is only for explicit engineering drafts and diagnostics.
 
-## Documentation and distribution
+---
 
-Browser extension 0.1.4 fixes WeChat article collection from the side panel. To retain your local source basket, extract the ZIP over the existing extension folder and select Reload in the browser’s extension manager. [Download the Chrome / Edge extension 0.1.4 (GitHub repository)](pptsmith-browser-extension-0.1.4.zip) (lightweight registry runtime bundles exclude this archive and `assets/samples/` previews via `.clawhubignore`).
+## Documentation and Distribution
 
-- [Skill contract](SKILL.md) · [Original-page template workflow](references/native-template-workflow.md)
-- [Declarative design and acceptance](references/declarative-design.md) · [Compact authoring/revisions](references/declarative-authoring.md)
-- [Existing template component workflow](references/routes/v4-template-route.md) · [Template-inspired design](references/template-visual-design.md)
-- [Decorative business design](references/decorative-business-design.md) · [Page planning sheet](templates/decorative-page-plan.md)
-- [Historical examples and evidence limits](references/cases/legacy-showcase.en.md) · [Public bundle scope](references/BUNDLE-MANIFEST.md)
+- **Core contracts**: [Skill entry](SKILL.md) · [HTML design surface](references/html-design-authoring.md) · [Original-page template workflow](references/native-template-workflow.md)
+- **Authoring & inputs**: [Declarative design & acceptance](references/declarative-design.md) · [Compact authoring & revisions](references/declarative-authoring.md) · [Outline-to-deck authoring](references/outline-to-deck.md)
+- **Advanced layouts & templates**: [Decorative business design](references/decorative-business-design.md) · [Page planning sheet](templates/decorative-page-plan.md) · [Template-inspired design](references/template-visual-design.md) · [Existing template component workflow](references/routes/v4-template-route.md)
+- **Evidence & packaging**: [Historical examples & evidence limits](references/cases/legacy-showcase.en.md) · [Public bundle scope](references/BUNDLE-MANIFEST.md)
 
-GitHub retains source and focused regressions. ClawHub/SkillHub runtime packages exclude tests, raw inputs, full logs, worktrees and private material. Platform limits and adaptation/review status are checked separately; a version label alone does not mean a platform has listed it.
+The GitHub repository ([SkillMelody/PPT-Smith](https://github.com/SkillMelody/PPT-Smith)) retains source code, showcase previews, offline extension archives and focused regressions. Lightweight ClawHub/SkillHub runtime packages exclude tests, extension ZIPs, `assets/samples/`, `assets/branding/` and private material via `.clawhubignore`.
+
+---
+
+## Contact & Feedback
+
+If a generated deck looks off or a workflow feels stuck across the web app, browser extension, or Agent Skill, it is often a case of **"使用姿势不对"** (*our house phrase for usage/prompt/workflow issues*).
+
+Reach out anytime to troubleshoot usage issues, report bugs, suggest features, or discuss enterprise template work:
+
+- **Email**: [melody@skillmelody.com](mailto:melody@skillmelody.com)
+- **GitHub Issues**: [SkillMelody/PPT-Smith/issues](https://github.com/SkillMelody/PPT-Smith/issues) (best for reproducible logs and usage troubleshooting)
+- **WeChat Official Account (公众号)**: Search `夜猫子弦月`
+- **Zhihu (知乎)**: Official articles, Q&A, and usage discussions
+- **X (Twitter)**: Release updates and community discussion
 
 Maintained by **MeowClaw Lab / SkillMelody**. The core engine, general components and QA use **Apache-2.0**. Brands and examples imply no company partnership or endorsement. Enterprise brand adaptations, dedicated masters and managed generation are separate commercial deliveries, not part of the public bundle.
