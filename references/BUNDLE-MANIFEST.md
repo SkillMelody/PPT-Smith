@@ -19,8 +19,12 @@ install, use, inspect and package the Skill:
 - runtime engine, native builders, rendering and delivery QA tools;
 - dependency declarations and the pinned PptxGenJS runtime source;
 - schemas, reusable styles, templates and valid authoring examples;
-- branding and selected sample previews, editable PPTX files and concise object data;
 - identity and distribution checks that keep the package self-contained.
+
+The GitHub source tree additionally retains `assets/branding/`, `assets/samples/`
+(selected sample previews, editable PPTX files and concise object data), archived
+`references/legacy/` guides, and unreferenced legacy v1–v4 helper scripts under `scripts/`;
+ClawHub/registry runtime bundles exclude those heavy or archived paths via `.clawhubignore`.
 
 The v5.0 20-slide research example, v5.1 six-slide policy example and two
 four-slide template comparison examples retain separate counts and original
@@ -39,8 +43,8 @@ are included.
 
 ## Version 5.4.0: HTML design surface
 
-Adds `engine/design_scene/html_import.py`, the fixed layout extractor
-`engine/design_scene/html_extract.js`, the guide `references/html-design-authoring.md`
+Adds `engine/design_scene/html_import.py`, `engine/design_scene/html_chart.py`, the fixed layout
+extractor `engine/design_scene/html_extract.js`, the guide `references/html-design-authoring.md`
 and one fictional example page under `examples/html-design/`. The surface is the default for
 content-only create (documents, per-slide manuscripts, pasted text); it places registered image
 assets via `data-asset` and reports layout defects at import. No customer source,

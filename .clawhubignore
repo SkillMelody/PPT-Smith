@@ -12,6 +12,50 @@ runtime/pptxgenjs/node_modules/
 __pycache__/
 .DS_Store
 
+# Local workspace private files, outputs and browser extension archives.
+AGENTS.md
+IDENTITY.md
+SOUL.md
+USER.md
+memory/
+.work/
+output/
+runs/
+releases/
+data/
+author.json
+build_xiaomi.py
+pptsmith-browser-extension-*.zip
+
+# Heavy showcase images and archived legacy docs stay in GitHub source, excluded from runtime skill bundles.
+assets/samples/
+assets/branding/
+references/legacy/
+
+# Unreferenced legacy v1-v4 CLI/migration scripts stay in GitHub source, excluded from lightweight runtime bundles.
+scripts/analyze_diagram_complexity.py
+scripts/bind_golden_anchor.py
+scripts/build_deck.py
+scripts/capability_probe.py
+scripts/compile_visual_plan.py
+scripts/extract_design_evidence.py
+scripts/inspect_pptx.py
+scripts/ir_enrichment.py
+scripts/ir_quality_floor.py
+scripts/migrate_style_contract_v1_to_v2.py
+scripts/migrate_style_v3_to_v4.py
+scripts/normalize_diagram_ir.py
+scripts/plan_visual_narrative.py
+scripts/recommend_diagram_layout.py
+scripts/render_pptx.py
+scripts/repair_deck.py
+scripts/resolve_component_delivery.py
+scripts/resolve_production_profile.py
+scripts/route_audience.py
+scripts/route_task.py
+scripts/run_pipeline.py
+scripts/score_v4.py
+
 # Local development material; excluded from all public platforms.
 docs/
 .worktree/

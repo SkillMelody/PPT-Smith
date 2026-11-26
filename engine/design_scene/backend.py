@@ -23,6 +23,7 @@ SHAPES = {"rect": MSO_SHAPE.RECTANGLE, "rounded_rect": MSO_SHAPE.ROUNDED_RECTANG
           "ellipse": MSO_SHAPE.OVAL, "arrow": MSO_SHAPE.RIGHT_ARROW,
           "diamond": MSO_SHAPE.DIAMOND, "triangle": MSO_SHAPE.ISOSCELES_TRIANGLE}
 CHARTS = {"bar": XL_CHART_TYPE.BAR_CLUSTERED, "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
+          "stacked_bar": XL_CHART_TYPE.BAR_STACKED, "stacked_column": XL_CHART_TYPE.COLUMN_STACKED,
           "line": XL_CHART_TYPE.LINE, "pie": XL_CHART_TYPE.PIE, "doughnut": XL_CHART_TYPE.DOUGHNUT}
 
 
@@ -145,7 +146,7 @@ def _path(shape, node):
 
 
 def _styled_table(table, cells, n):
-    """Per-cell fills, fonts, alignment, padding and bottom rules; no theme table style."""
+    """Write editable merged regions, styled paragraphs and cell borders."""
     tbl_pr = table._tbl.tblPr
     style_id = tbl_pr.find(A + "tableStyleId")
     if style_id is None:
@@ -155,24 +156,28 @@ def _styled_table(table, cells, n):
     for r, row in enumerate(cells):
         for col, value in enumerate(row):
             cell, st = table.cell(r, col), n["cell_styles"][r][col]
+            if cell.is_spanned:
+                continue
+            height, width = st.get("row_span", 1), st.get("col_span", 1)
+            if height > 1 or width > 1:
+                cell.merge(table.cell(r + height - 1, col + width - 1))
             font = st.get("font", n["font"])
             _text(cell.text_frame, value, {"font": font, "margin": 0, "align": st.get("align", "left"),
                                            "valign": st.get("valign", "middle"),
+                                           "spans": st.get("spans", []),
                                            "line_height": st.get("line_height", font["size"] * 1.35)})
             tc_pr = cell._tc.get_or_add_tcPr()
             for child in list(tc_pr):
                 tc_pr.remove(child)
-            for side in ("a:lnL", "a:lnR", "a:lnT"):
-                ln = _xml(side)
-                ln.append(_xml("a:noFill"))
-                tc_pr.append(ln)
-            bottom, border = _xml("a:lnB"), st.get("border_bottom")
-            if border:
-                bottom.set("w", str(round(border["width"] * 12700)))
-                bottom.append(_solid(border["color"], border.get("alpha")))
-            else:
-                bottom.append(_xml("a:noFill"))
-            tc_pr.append(bottom)
+            for tag, side in (("lnL", "left"), ("lnR", "right"), ("lnT", "top"), ("lnB", "bottom")):
+                line = _xml("a:" + tag)
+                border = st.get("border_" + side)
+                if border:
+                    line.set("w", str(round(border["width"] * 12700)))
+                    line.append(_solid(border["color"], border.get("alpha")))
+                else:
+                    line.append(_xml("a:noFill"))
+                tc_pr.append(line)
             tc_pr.append(_solid(st["fill"], st.get("fill_alpha")) if st.get("fill") else _xml("a:noFill"))
             top, right, low, left = st.get("margin", [2, 4, 2, 4])
             cell.margin_top, cell.margin_right, cell.margin_bottom, cell.margin_left = (Pt(v) for v in (top, right, low, left))
@@ -180,12 +185,20 @@ def _styled_table(table, cells, n):
                                     "bottom": MSO_ANCHOR.BOTTOM}[st.get("valign", "middle")]
 
 
+def _contrast_color(hex_color):
+    """Pick readable dark or white text on a solid bar/segment fill using sRGB luminance."""
+    r, g, b = (int(hex_color[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in (r, g, b)]
+    lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    return "1E2235" if lum > 0.36 else "FFFFFF"
+
+
 def _chart_extensions(chart, n):
     """Optional axis, marker, label and area-layer styling; absent fields keep the legacy rendering."""
     if n["chart_type"] in {"pie", "doughnut"}:
         return
     plot = chart.plots[0]
-    if "gap_width" in n and n["chart_type"] in {"bar", "column"}:
+    if "gap_width" in n and n["chart_type"] in {"bar", "column", "stacked_bar", "stacked_column"}:
         plot.gap_width = n["gap_width"]
     colors = n["colors"]
     for i, series in enumerate(plot.series):
@@ -210,7 +223,9 @@ def _chart_extensions(chart, n):
                                "outside_end": XL_DATA_LABEL_POSITION.OUTSIDE_END,
                                "inside_end": XL_DATA_LABEL_POSITION.INSIDE_END,
                                "best_fit": XL_DATA_LABEL_POSITION.BEST_FIT}[n["label_position"]]
-            _font(labels.font, {**n["font"], "color": colors[i % len(colors)], "bold": True})
+            series_hex = colors[i % len(colors)]
+            label_hex = _contrast_color(series_hex) if n["label_position"] in {"center", "inside_end"} else series_hex
+            _font(labels.font, {**n["font"], "color": label_hex, "bold": True})
             labels.number_format = n.get("label_number_format", "General")
             labels.number_format_is_linked = False
     axis = n.get("axis")
@@ -236,7 +251,7 @@ def _chart_extensions(chart, n):
                 ax.tick_labels.font.size = Pt(axis["label_size"])
             if "label_color" in axis:
                 ax.tick_labels.font.color.rgb = RGBColor.from_string(axis["label_color"])
-        value_axis.tick_labels.number_format = "General"
+        value_axis.tick_labels.number_format = axis.get("number_format", "General")
         value_axis.tick_labels.number_format_is_linked = False
         if axis.get("category_padding"):
             val_ax = value_axis._element
@@ -283,6 +298,27 @@ def _area_layer(chart, n):
     line.addprevious(area)
 
 
+def _round_image(im, radius_pt, box_w_pt, box_h_pt):
+    """Apply an antialiased rounded-corner alpha mask to a Pillow image."""
+    from PIL import Image, ImageDraw
+    rgba = im.convert("RGBA")
+    pw, ph = rgba.size
+    if pw <= 0 or ph <= 0:
+        return rgba
+    scale = min(pw / max(0.1, box_w_pt), ph / max(0.1, box_h_pt))
+    r_px = min(radius_pt * scale, pw / 2, ph / 2)
+    if r_px < 0.5:
+        return rgba
+    ss = 2
+    mask = Image.new("L", (pw * ss, ph * ss), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, pw * ss - 1, ph * ss - 1), radius=r_px * ss, fill=255)
+    mask = mask.resize((pw, ph), Image.Resampling.BOX)
+    existing = rgba.getchannel("A")
+    from PIL import ImageChops
+    rgba.putalpha(ImageChops.darker(existing, mask))
+    return rgba
+
+
 def render(task, asset_bytes):
     """Return PPTX bytes. All input bytes have already passed asset ingestion."""
     validate(task, complete=True)
@@ -323,15 +359,24 @@ def render(task, asset_bytes):
                 data = asset_bytes[n["asset_id"]]
                 im = decode_image(data)
                 ratio = im.width / im.height
+                radius_pt = n.get("radius", 0)
                 if n["fit"] == "contain":
                     nw, nh = (w, int(w / ratio)) if ratio > w / h else (int(h * ratio), h)
-                    shape = shapes.add_picture(io.BytesIO(data), x + (w - nw) // 2, y + (h - nh) // 2, nw, nh)
+                    if radius_pt > 0.5:
+                        out = io.BytesIO()
+                        _round_image(im, radius_pt, nw / Pt(1), nh / Pt(1)).save(out, format="PNG")
+                        payload = out.getvalue()
+                    else:
+                        payload = data
+                    shape = shapes.add_picture(io.BytesIO(payload), x + (w - nw) // 2, y + (h - nh) // 2, nw, nh)
                 else:
                     # Encode the actual crop once; never embed the whole reference repeatedly.
                     scale = max(w / im.width, h / im.height)
                     cw, ch = max(1, round(w / scale)), max(1, round(h / scale))
                     left, top = (im.width - cw) // 2, (im.height - ch) // 2
                     cropped = im.crop((left, top, left + cw, top + ch))
+                    if radius_pt > 0.5:
+                        cropped = _round_image(cropped, radius_pt, b["width"], b["height"])
                     out = io.BytesIO()
                     cropped.save(out, format="PNG")
                     shape = shapes.add_picture(io.BytesIO(out.getvalue()), x, y, w, h)
@@ -510,6 +555,13 @@ def inspect_objects(data: bytes, task):
             if kind == "table":
                 if not shape.has_table or [[cell.text for cell in row.cells] for row in shape.table.rows] != c["cells"]:
                     raise DesignError("PPTX_TABLE_MISMATCH")
+                for r, row in enumerate(n.get("cell_styles", [])):
+                    for col, style in enumerate(row):
+                        cell = shape.table.cell(r, col)
+                        expected_merge = (style.get("row_span", 1), style.get("col_span", 1))
+                        actual_merge = (cell.span_height, cell.span_width) if cell.is_merge_origin else (1, 1)
+                        if actual_merge != expected_merge:
+                            raise DesignError("PPTX_TABLE_MERGE_MISMATCH")
             if kind == "chart":
                 if not shape.has_chart:
                     raise DesignError("PPTX_CHART_NOT_NATIVE")

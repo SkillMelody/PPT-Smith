@@ -9,17 +9,24 @@ gates are unchanged: HTML never reaches the PPTX, and task-authored scripts neve
 from __future__ import annotations
 
 import html as html_lib
+import io
 import json
+import math
 import os
 import re
 import shutil
+import sys
 import tempfile
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from lxml import html as lxml_html
+from PIL import Image
 
+from ..source_doc import normalize_text
 from .contract import validate, walk
-from .runtime import run_process
+from .html_chart import native_chart_options, parse_chart, validate_chart
+from .runtime import ProcessFailed, run_process
 from .store import DesignError, canonical, digest
 
 MAX_HTML = 2 * 1024 * 1024
@@ -30,7 +37,8 @@ FORBIDDEN_TAGS = {"script", "iframe", "frame", "frameset", "object", "embed", "a
 FORBIDDEN_ATTRS = {"src", "href", "xlink:href", "srcset", "action", "formaction", "poster", "background", "ping"}
 FORBIDDEN_CSS = re.compile(r"url\s*\(|@import|@font-face|expression\s*\(|javascript:|behavior\s*:|-moz-binding", re.I)
 CJK_HINT = re.compile(r"CJK|SC\b|TC\b|JP\b|KR\b|Han|Hei|Song|Kai|Ming|YaHei|PingFang|Hiragino|微软|雅黑|苹方|黑体|宋体|思源|"
-                      r"Noto Sans SC|Noto Serif SC|Source Han|HarmonyOS|MiSans|Alibaba", re.I)
+                      r"Noto Sans SC|Noto Serif SC|Source Han|HarmonyOS|MiSans|Alibaba|SimSun|DengXian|"
+                      r"WenQuanYi|LXGW|等线|等線|文泉驿|文泉驛|霞鹜|霞鶩", re.I)
 DECOR = re.compile(r"[\s ·•↳→←⇄⟶⚠①②③④⑤⑥⑦⑧⑨⑩▶▸►✓✔✗×|｜]+")
 AUTHORED = {
     "wording": "model-authored wording; basis recorded in page-plan.md (numbers must come from the source)",
@@ -38,11 +46,15 @@ AUTHORED = {
     "nav": "navigation label (section, page number or running header)",
 }
 BROWSER_CANDIDATES = (
+    "chrome-headless-shell", "chromium-headless-shell",
     "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge", "microsoft-edge",
 )
 MAC_BROWSERS = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
                 "/Applications/Chromium.app/Contents/MacOS/Chromium",
                 "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge")
+MAC_SANDBOX_PARAMETER_FAILURE = re.compile(
+    r"FATAL:[^\r\n]*sandbox_parameters_mac\.mm:\d+\][^\r\n]*Input/output error \(5\)", re.I
+)
 
 
 # ---------------------------------------------------------------- policy
@@ -65,6 +77,8 @@ def check_policy(text: str):
             raise DesignError(f"HTML_TAG_FORBIDDEN: <{tag}>")
         if tag == "meta" and el.get("http-equiv"):
             raise DesignError("HTML_META_REFRESH_FORBIDDEN")
+        if "data-chart" in el.attrib:
+            parse_chart(el.get("data-chart"))
         for name, value in el.attrib.items():
             low = name.lower()
             if low.startswith("on") or low in FORBIDDEN_ATTRS or "javascript:" in str(value).lower():
@@ -72,19 +86,45 @@ def check_policy(text: str):
     slides = root.xpath('//*[@id="slide"]')
     if len(slides) != 1:
         raise DesignError("HTML_SLIDE_ROOT_REQUIRED: exactly one element with id=\"slide\"")
-    return {"status": "passed", "sha256": digest(text.encode("utf-8"))}
+    return {"status": "passed", "sha256": digest(text.encode("utf-8")), "assets": _asset_refs(root)}
 
 
 # ---------------------------------------------------------------- browser
 
+def _playwright_headless_shell():
+    """Locate a cached Playwright chrome-headless-shell binary when installed locally."""
+    roots = []
+    if sys.platform == "darwin":
+        roots.append(Path.home() / "Library" / "Caches" / "ms-playwright")
+    elif os.name == "nt":
+        local = os.environ.get("LOCALAPPDATA")
+        if local:
+            roots.append(Path(local) / "ms-playwright")
+    else:
+        roots.append(Path.home() / ".cache" / "ms-playwright")
+    exe = "chrome-headless-shell.exe" if os.name == "nt" else "chrome-headless-shell"
+    for cache in roots:
+        if not cache.is_dir():
+            continue
+        for shell_dir in sorted(cache.glob("chromium_headless_shell-*"), reverse=True):
+            for candidate in sorted(shell_dir.glob(f"*/{exe}")):
+                if candidate.is_file():
+                    return str(candidate.absolute())
+    return None
+
+
 def find_browser():
     explicit = os.environ.get("PPTSMITH_BROWSER")
     if explicit:
-        return explicit if Path(explicit).is_file() else None
+        path = Path(explicit).expanduser()
+        return str(path.absolute()) if path.is_file() else None
     for name in BROWSER_CANDIDATES:
         path = shutil.which(name)
         if path:
-            return path
+            return str(Path(path).absolute())
+    pw_shell = _playwright_headless_shell()
+    if pw_shell:
+        return pw_shell
     for path in MAC_BROWSERS:
         if Path(path).is_file():
             return path
@@ -97,14 +137,66 @@ def find_browser():
     return None
 
 
-def _browser_args(browser, profile, width, height):
+def _browser_args(browser, root, width, height):
     args = [browser, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
             "--no-default-browser-check", "--disable-extensions", "--disable-background-networking",
             "--disable-sync", "--disable-component-update", "--mute-audio", "--host-resolver-rules=MAP * ~NOTFOUND",
-            f"--user-data-dir={profile}", f"--window-size={int(round(width))},{int(round(height))}"]
+            "--disable-crash-reporter", f"--crash-dumps-dir={root / 'crash'}",
+            f"--user-data-dir={root / 'profile'}", f"--window-size={int(round(width))},{int(round(height))}"]
+    if sys.platform == "darwin":
+        # A fresh profile can still query the login keychain during Chrome startup.
+        args.append("--use-mock-keychain")
     if hasattr(os, "geteuid") and os.geteuid() == 0:
         args.append("--no-sandbox")  # Chromium refuses to start as root otherwise (CI containers).
     return args
+
+
+def _browser_environment(root, *, isolate_home=False):
+    env = {k: v for k, v in os.environ.items() if k in {
+        "PATH", "USER", "LANG", "LC_ALL", "SystemRoot", "WINDIR", "FONTCONFIG_PATH", "FONTCONFIG_FILE", "XDG_DATA_DIRS"}}
+    directories = {"XDG_CONFIG_HOME": "config", "XDG_CACHE_HOME": "cache",
+                   "TMPDIR": "tmp", "TMP": "tmp", "TEMP": "tmp"}
+    if sys.platform == "darwin" and not isolate_home:
+        # macOS resolves user services under HOME, including the default keychain.
+        # Keep that identity intact; the browser profile, crash data and caches are private.
+        if "HOME" in os.environ:
+            env["HOME"] = os.environ["HOME"]
+    else:
+        directories["HOME"] = "home"
+    if os.name == "nt":
+        directories.update(USERPROFILE="home", APPDATA="roaming", LOCALAPPDATA="local")
+    for key, name in directories.items():
+        directory = root / name
+        directory.mkdir(exist_ok=True)
+        env[key] = str(directory)
+    (root / "crash").mkdir(exist_ok=True)
+    return env
+
+
+def _run_browser_once(args, root, timeout, env):
+    try:
+        return run_process(args, cwd=root, timeout=timeout, env=env), None
+    except FileNotFoundError as exc:
+        raise DesignError(f"HTML_BROWSER_NOT_FOUND: {exc}") from exc
+    except PermissionError as exc:
+        raise DesignError(f"HTML_BROWSER_PERMISSION_DENIED: {exc}") from exc
+    except ProcessFailed as exc:
+        # Some Chrome builds abort during shutdown after flushing both outputs. Require
+        # that specific diagnostic AND the same DOM and PNG checks used on clean exits.
+        if exc.returncode == 2 and b"Teardown watchdog expired;" in exc.stderr:
+            return (exc.stdout.decode("utf-8", "replace"),
+                    {"exit_code": 2, "detail": "Chrome teardown watchdog expired after rendering"})
+        stderr = exc.stderr.decode("utf-8", "replace")
+        mac_sandbox_error = MAC_SANDBOX_PARAMETER_FAILURE.search(stderr)
+        if mac_sandbox_error:
+            # Preserve this line even when ProcessFailed truncates later stderr.
+            raise DesignError(f"HTML_BROWSER_SANDBOX_BLOCKED: {mac_sandbox_error.group(0)}") from exc
+        if re.search(r"operation not permitted|permission denied|access is denied|no usable sandbox", stderr, re.I):
+            raise DesignError(f"HTML_BROWSER_SANDBOX_BLOCKED: {exc}") from exc
+        raise DesignError(f"HTML_BROWSER_LAUNCH_FAILED: {exc}") from exc
+    except (OSError, DesignError) as exc:
+        code = "HTML_BROWSER_TIMEOUT" if str(exc) == "PROCESS_TIMEOUT" else "HTML_BROWSER_LAUNCH_FAILED"
+        raise DesignError(f"{code}: {exc}") from exc
 
 
 def render_layout(text: str, width: float, height: float, *, browser=None, screenshot_scale=1.5, timeout=90, inject=""):
@@ -114,7 +206,10 @@ def render_layout(text: str, width: float, height: float, *, browser=None, scree
     """
     browser = browser or find_browser()
     if not browser:
-        raise DesignError("HTML_BROWSER_UNAVAILABLE: install Chrome/Chromium/Edge or set PPTSMITH_BROWSER")
+        explicit = os.environ.get("PPTSMITH_BROWSER")
+        if explicit:
+            raise DesignError(f"HTML_BROWSER_OVERRIDE_INVALID: PPTSMITH_BROWSER does not point to an existing file: {explicit}")
+        raise DesignError("HTML_BROWSER_NOT_FOUND: install Chrome/Chromium/Edge or set PPTSMITH_BROWSER")
     with tempfile.TemporaryDirectory(prefix="pptsmith-html-") as tmp:
         root = Path(tmp)
         extractor = "pptsmith-extract-" + digest(EXTRACTOR.read_bytes())[:12] + ".js"
@@ -123,27 +218,89 @@ def render_layout(text: str, width: float, height: float, *, browser=None, scree
         page = re.sub(r"</body\s*>", tag + "</body>", text, count=1, flags=re.I) if re.search(r"</body\s*>", text, re.I) else text + tag
         (root / "page.html").write_text(page, encoding="utf-8")
         url = (root / "page.html").as_uri()
-        env = {k: v for k, v in os.environ.items() if k in {"PATH", "HOME", "USER", "LANG", "LC_ALL", "SystemRoot",
-                                                             "LOCALAPPDATA", "APPDATA", "USERPROFILE", "FONTCONFIG_PATH",
-                                                             "FONTCONFIG_FILE", "XDG_DATA_DIRS"}}
-        env["TMPDIR"] = str(root)
-        dom = run_process(_browser_args(browser, root / "profile", width, height) +
-                          ["--virtual-time-budget=8000", "--dump-dom", url], cwd=root, timeout=timeout, env=env)
         shot = root / "preview.png"
-        run_process(_browser_args(browser, root / "profile-shot", width, height) +
-                    [f"--force-device-scale-factor={screenshot_scale}", "--virtual-time-budget=8000",
-                     f"--screenshot={shot}", url], cwd=root, timeout=timeout, env=env)
-        png = shot.read_bytes() if shot.is_file() else b""
+        args = _browser_args(browser, root, width, height) + [
+            f"--force-device-scale-factor={screenshot_scale}", "--virtual-time-budget=8000", "--dump-dom",
+            f"--screenshot={shot}", url]
+        env = _browser_environment(root)
+        try:
+            dom, teardown_warning = _run_browser_once(args, root, timeout, env)
+        except DesignError as exc:
+            # A private HOME can help with Crashpad setup. It cannot restore
+            # access to the macOS user directories resolved by the OS itself.
+            if (sys.platform == "darwin" and str(exc).startswith("HTML_BROWSER_SANDBOX_BLOCKED:")
+                    and not MAC_SANDBOX_PARAMETER_FAILURE.search(str(exc))):
+                dom, teardown_warning = _run_browser_once(args, root, timeout, _browser_environment(root, isolate_home=True))
+            else:
+                raise
+        try:
+            png = shot.read_bytes()
+            with Image.open(io.BytesIO(png), formats=["PNG"]) as preview:
+                preview.verify()
+        except (OSError, SyntaxError) as exc:
+            raise DesignError("HTML_BROWSER_PREVIEW_FAILED: expected a valid PNG screenshot") from exc
     m = re.search(r'<pre id="__pptsmith_layout"[^>]*>(.*?)</pre>', dom, re.S)
     if not m:
         raise DesignError("HTML_LAYOUT_EXTRACTION_FAILED: extractor produced no output")
-    layout = json.loads(html_lib.unescape(m.group(1)))
+    try:
+        layout = json.loads(html_lib.unescape(m.group(1)))
+    except ValueError as exc:
+        raise DesignError("HTML_LAYOUT_EXTRACTION_FAILED: extractor returned invalid JSON") from exc
+    if not isinstance(layout, dict):
+        raise DesignError("HTML_LAYOUT_EXTRACTION_FAILED: invalid layout record")
     if layout.get("error"):
         raise DesignError("HTML_" + layout["error"])
+    if not isinstance(layout.get("items"), list) or not all(isinstance(layout.get(k), (int, float)) for k in ("width", "height")):
+        raise DesignError("HTML_LAYOUT_EXTRACTION_FAILED: missing layout dimensions or items")
     if abs(layout["width"] - width) > 0.5 or abs(layout["height"] - height) > 0.5:
         raise DesignError(f"HTML_SLIDE_SIZE_MISMATCH: #slide is {layout['width']:.0f}x{layout['height']:.0f}px, "
                           f"canvas is {width:.0f}x{height:.0f}pt (1 CSS px = 1 pt)")
+    if teardown_warning:
+        layout["browser_exit_warning"] = teardown_warning
     return layout, png
+
+
+def browser_capabilities():
+    """Exercise the same layout extractor and screenshot path as a page import."""
+    page = ('<!DOCTYPE html><html><body style="margin:0"><div id="slide" style="width:320px;height:180px">'
+            '<p>pptsmith-probe</p></div></body></html>')
+    browser = find_browser()
+    try:
+        layout, _ = render_layout(page, 320, 180, browser=browser, timeout=20)
+        if not any(run["text"] == "pptsmith-probe" for item in layout["items"] for run in item.get("runs", [])):
+            raise DesignError("HTML_LAYOUT_EXTRACTION_FAILED: probe text was not measured")
+    except DesignError as exc:
+        reason, _, detail = str(exc).partition(": ")
+        result = {"available": False, "reason": reason, "detail": detail}
+        if browser:
+            result["browser"] = browser
+        if reason == "HTML_BROWSER_NOT_FOUND":
+            result["missing"] = "Chrome/Chromium/Edge or PPTSMITH_BROWSER"
+        elif reason == "HTML_BROWSER_OVERRIDE_INVALID":
+            result["next_action"] = "Fix or unset PPTSMITH_BROWSER so it points to a valid Chrome/Chromium/Edge binary."
+        elif reason == "HTML_BROWSER_SANDBOX_BLOCKED":
+            if (MAC_SANDBOX_PARAMETER_FAILURE.search(detail)
+                    or re.search(r"sandbox initialization failed|GPU process isn't usable|no usable sandbox", detail, re.I)):
+                result["cause"] = "nested_browser_sandbox_blocked"
+                result["next_action"] = ("If host policy permits, rerun `engine design capabilities` and "
+                                         "`engine design html-import` using the host's approved execution path "
+                                         "without the outer sandbox. Keep Chromium's own sandbox enabled. "
+                                         "If host execution is unavailable, use `engine design author`.")
+            else:
+                result["cause"] = "browser_permission_blocked"
+                result["next_action"] = "Check browser binary permissions or fall back to `engine design author`."
+        return result
+    except OSError as exc:
+        result = {"available": False, "reason": "HTML_BROWSER_PROBE_IO_FAILED", "detail": str(exc)}
+        if browser:
+            result["browser"] = browser
+        return result
+    result = {"available": True}
+    if browser:
+        result["browser"] = browser
+    if "browser_exit_warning" in layout:
+        result["warning"] = layout["browser_exit_warning"]
+    return result
 
 
 # ---------------------------------------------------------------- conversion helpers
@@ -176,17 +333,60 @@ def _clamp_box(x, y, w, h, cw, ch):
     return {"x": round(x, 2), "y": round(y, 2), "width": round(w, 2), "height": round(h, 2)}
 
 
+def _clamp_radii(w, h, radii):
+    """Normalize CSS corner radii [tl, tr, br, bl] according to the CSS border-radius scaling rule."""
+    tl, tr, br, bl = [max(0.0, float(v)) for v in radii]
+    factors = [1.0]
+    for total, limit in ((tl + tr, w), (bl + br, w), (tl + bl, h), (tr + br, h)):
+        if total > 0:
+            factors.append(limit / total)
+    scale = min(factors)
+    return [v * scale for v in (tl, tr, br, bl)]
+
+
+def _asymmetric_rounded_path(w, h, radii):
+    """Build exact cubic-Bezier path commands inside [0, w] x [0, h] for independent corner radii."""
+    tl, tr, br, bl = _clamp_radii(w, h, radii)
+    k = 4 * (math.sqrt(2) - 1) / 3
+
+    def pt(px, py):
+        return [round(min(w, max(0.0, px)), 3), round(min(h, max(0.0, py)), 3)]
+
+    cmds = [{"op": "M", "points": [pt(tl, 0)]}, {"op": "L", "points": [pt(w - tr, 0)]}]
+    if tr > 0.1:
+        cmds.append({"op": "C", "points": [pt(w - tr * (1 - k), 0), pt(w, tr * (1 - k)), pt(w, tr)]})
+    cmds.append({"op": "L", "points": [pt(w, h - br)]})
+    if br > 0.1:
+        cmds.append({"op": "C", "points": [pt(w, h - br * (1 - k)), pt(w - br * (1 - k), h), pt(w - br, h)]})
+    cmds.append({"op": "L", "points": [pt(bl, h)]})
+    if bl > 0.1:
+        cmds.append({"op": "C", "points": [pt(bl * (1 - k), h), pt(0, h - bl * (1 - k)), pt(0, h - bl)]})
+    cmds.append({"op": "L", "points": [pt(0, tl)]})
+    if tl > 0.1:
+        cmds.append({"op": "C", "points": [pt(0, tl * (1 - k)), pt(tl * (1 - k), 0), pt(tl, 0)]})
+    cmds.append({"op": "Z", "points": []})
+    return cmds
+
+
 def _rounded_polygon(x, y, w, h, r, steps=36):
-    """Outline of a rounded rectangle (r >= half the short side gives a circle/ellipse/stadium)."""
-    import math
-    r = max(0.0, min(r, w / 2, h / 2))
-    if r < 0.5:
+    """Outline of a rounded rectangle; ``r`` may be a uniform scalar or [tl, tr, br, bl]."""
+    tl, tr, br, bl = _clamp_radii(w, h, r if isinstance(r, (list, tuple)) else [r, r, r, r])
+    if max(tl, tr, br, bl) < 0.5:
         return [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
     pts = []
-    for cx, cy, start in ((x + w - r, y + r, -90), (x + w - r, y + h - r, 0), (x + r, y + h - r, 90), (x + r, y + r, 180)):
+    corners = (
+        (x + w - tr, y + tr, tr, -90),
+        (x + w - br, y + h - br, br, 0),
+        (x + bl, y + h - bl, bl, 90),
+        (x + tl, y + tl, tl, 180),
+    )
+    for cx, cy, rad, start in corners:
+        if rad < 0.5:
+            pts.append((cx, cy))
+            continue
         for i in range(steps + 1):
             a = math.radians(start + 90 * i / steps)
-            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+            pts.append((cx + rad * math.cos(a), cy + rad * math.sin(a)))
     return pts
 
 
@@ -222,30 +422,149 @@ def _norm(text):
     return DECOR.sub("", text or "")
 
 
-PATH_TOKENS = re.compile(r"[MLCQZmlcqzHVhvSsTtAa]|-?\d*\.?\d+(?:e-?\d+)?")
+PATH_TOKENS = re.compile(r"[a-zA-Z]|[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
 
 
 def _parse_path(d, sx, sy):
-    tokens = PATH_TOKENS.findall(d or "")
-    cmds, i = [], 0
-    counts = {"M": 1, "L": 1, "Q": 2, "C": 3, "Z": 0}
-    while i < len(tokens):
-        op = tokens[i]
-        i += 1
-        if op not in counts:
-            raise DesignError(f"SVG_PATH_COMMAND_UNSUPPORTED: {op} (use absolute M, L, Q, C, Z)")
-        n = counts[op] * 2
-        vals = [float(v) for v in tokens[i:i + n]]
-        if len(vals) != n:
-            raise DesignError("SVG_PATH_ARITY_INVALID")
-        i += n
-        cmds.append((op, [(vals[k] * sx, vals[k + 1] * sy) for k in range(0, n, 2)]))
-    if not cmds or cmds[0][0] != "M":
+    data = (d or "").strip()
+    tokens, end = [], 0
+    for match in PATH_TOKENS.finditer(data):
+        separator = data[end:match.start()].strip(" \t\r\n")
+        token = match.group()
+        if separator and (separator != "," or not tokens or tokens[-1].isalpha() or token.isalpha()):
+            raise DesignError("SVG_PATH_SYNTAX_INVALID")
+        tokens.append(token)
+        if len(tokens) > 512 * 7:
+            raise DesignError("SVG_PATH_COMMAND_LIMIT")
+        end = match.end()
+    if data[end:].strip():
+        raise DesignError("SVG_PATH_SYNTAX_INVALID")
+    if not tokens or tokens[0] not in ("M", "m"):
         raise DesignError("SVG_PATH_MUST_START_WITH_M")
+    counts = {"M": 2, "L": 2, "H": 1, "V": 1, "Q": 4, "C": 6, "Z": 0}
+    cmds, i, command = [], 0, None
+    x = y = start_x = start_y = 0.0
+    while i < len(tokens):
+        if tokens[i].isalpha():
+            command = tokens[i]
+            i += 1
+        if command is None:
+            raise DesignError("SVG_PATH_COMMAND_REQUIRED")
+        op = command.upper()
+        if op not in counts:
+            raise DesignError(f"SVG_PATH_COMMAND_UNSUPPORTED: {command} (use M/L/H/V/Q/C/Z or their lowercase forms)")
+        n = counts[op]
+        args = tokens[i:i + n]
+        if len(args) != n or any(v.isalpha() for v in args):
+            raise DesignError("SVG_PATH_ARITY_INVALID")
+        vals = [float(v) for v in args]
+        i += n
+        dx, dy = (x, y) if command.islower() else (0, 0)
+        if op == "H":
+            points = [(vals[0] + dx, y)]
+            op = "L"
+        elif op == "V":
+            points = [(x, vals[0] + dy)]
+            op = "L"
+        else:
+            points = [(vx + dx, vy + dy) for vx, vy in zip(vals[::2], vals[1::2])]
+        if points:
+            x, y = points[-1]
+        if op == "M":
+            start_x, start_y = x, y
+            command = "l" if command == "m" else "L"
+        if op == "Z":
+            x, y = start_x, start_y
+            command = None
+        scaled = [(px * sx, py * sy) for px, py in points]
+        if not all(math.isfinite(px) and math.isfinite(py) for px, py in scaled):
+            raise DesignError("SVG_PATH_COORDINATE_INVALID")
+        cmds.append((op, scaled))
+        if len(cmds) > 512:
+            raise DesignError("SVG_PATH_COMMAND_LIMIT")
     return cmds
 
 
 # ---------------------------------------------------------------- layout -> scene
+
+def _font_spans(runs, base):
+    spans, offset = [], 0
+    for run in runs:
+        end = offset + len(run["text"])
+        font = _font(run)
+        if font != base and end > offset:
+            if spans and spans[-1]["end"] == offset and spans[-1]["font"] == font:
+                spans[-1]["end"] = end
+            else:
+                spans.append({"start": offset, "end": end, "font": font})
+        offset = end
+    return spans
+
+
+def _table_grid(rows):
+    """Map HTML cells to the editable PowerPoint grid, keeping covered slots empty."""
+    if not 1 <= len(rows) <= 200:
+        raise DesignError("HTML_TABLE_ROW_COUNT_INVALID")
+    grid = [{} for _ in rows]
+    starts, ends = {}, {}
+    for row_idx, row in enumerate(rows):
+        col = 0
+        for cell in row["cells"]:
+            while col in grid[row_idx]:
+                col += 1
+            nr, nc = cell.get("rowSpan", 1), cell.get("colSpan", 1)
+            if nr < 1 or nc < 1 or row_idx + nr > len(rows) or col + nc > 50:
+                raise DesignError("HTML_TABLE_SPAN_OUT_OF_BOUNDS")
+            for rr in range(row_idx, row_idx + nr):
+                for cc in range(col, col + nc):
+                    if cc in grid[rr]:
+                        raise DesignError("HTML_TABLE_SPAN_OVERLAP")
+                    grid[rr][cc] = None
+            grid[row_idx][col] = cell
+            # New browser measurements include x. Older rectangular layouts only store widths.
+            x = cell.get("x", ends.get(col, 0))
+            starts[col] = x
+            ends[col + nc] = x + cell["w"]
+            col += nc
+    ncols = max((len(row) for row in grid), default=0)
+    if not ncols or any(set(row) != set(range(ncols)) for row in grid):
+        raise DesignError("HTML_TABLE_RAGGED: every logical grid position must be covered")
+    # Some column boundaries lie entirely inside merged cells and never have a visible edge.
+    boundaries = {**ends, **starts}
+    widths = []
+    measured = sorted(boundaries)
+    for left, right in zip(measured, measured[1:]):
+        width = (boundaries[right] - boundaries[left]) / (right - left)
+        if width <= 0:
+            raise DesignError("HTML_TABLE_COLUMN_GEOMETRY_UNSUPPORTED")
+        widths.extend([width] * (right - left))
+    return [[row[col] for col in range(ncols)] for row in grid], widths
+
+
+def _cell_style(cell):
+    font = _font(cell["runs"][0] if cell["runs"] else cell["font"])
+    fill, alpha = _rgba(cell["fill"]) if cell["fill"] else (None, 1.0)
+    top, right, bottom, left = cell["pad"]
+    style = {"fill": fill, "font": font, "align": cell["align"] if cell["align"] in {"left", "center", "right"} else "left",
+             "valign": cell["valign"], "line_height": round(cell["font"]["lineHeight"], 2),
+             "margin": [round(top, 2), round(max(0, right - 2.5), 2), round(bottom, 2), round(left, 2)]}
+    if fill and alpha < 0.999:
+        style["fill_alpha"] = round(alpha, 3)
+    borders = cell.get("borders", {"bottom": cell.get("borderBottom")})
+    for side, border in borders.items():
+        if border:
+            color, alpha = _rgba(border["c"])
+            style["border_" + side] = {"color": color, "width": round(border["w"], 2)}
+            if alpha < 0.999:
+                style["border_" + side]["alpha"] = round(alpha, 3)
+    for key, attr in (("row_span", "rowSpan"), ("col_span", "colSpan")):
+        if cell.get(attr, 1) > 1:
+            style[key] = cell[attr]
+    spans = _font_spans(cell["runs"], font)
+    if spans:
+        style["spans"] = spans
+    return style
+
 
 def to_scene(layout, page_id, canvas, *, default_source, source_kind="user"):
     """Compile extractor output into (content items, nodes, background, conversion notes, authored kinds)."""
@@ -295,14 +614,14 @@ def to_scene(layout, page_id, canvas, *, default_source, source_kind="user"):
             borders = it["borders"]
             uniform = all(borders) and len({(b["w"], b["c"]) for b in borders}) == 1
             radii = it["radius"]
-            radius = radii[0] if len(set(radii)) == 1 else 0
-            if len(set(radii)) > 1:
-                notes.append({"code": "NONUNIFORM_RADIUS_SQUARED", "at": f"{it['x']:.0f},{it['y']:.0f}"})
+            uniform_radius = len(set(radii)) == 1
+            radius = radii[0] if uniform_radius else 0
+            asymmetric_radius = not uniform_radius and max(radii) > 0.5
             box = _clamp_box(it["x"], it["y"], it["w"], it["h"], cw, ch)
             bleeds = it["x"] < -0.5 or it["y"] < -0.5 or it["x"] + it["w"] > cw + 0.5 or it["y"] + it["h"] > ch + 0.5
-            if bleeds and radius > 0.5 and fill:
+            if bleeds and max(radii) > 0.5 and fill:
                 # A rounded shape crossing the slide edge keeps its true curve: clip its outline to the canvas.
-                poly = _clip_polygon(_rounded_polygon(it["x"], it["y"], it["w"], it["h"], radius), 0, 0, cw, ch)
+                poly = _clip_polygon(_rounded_polygon(it["x"], it["y"], it["w"], it["h"], radii), 0, 0, cw, ch)
                 if len(poly) >= 3:
                     xs, ys = [p[0] for p in poly], [p[1] for p in poly]
                     bx, by = min(xs), min(ys)
@@ -327,9 +646,15 @@ def to_scene(layout, page_id, canvas, *, default_source, source_kind="user"):
                         style["stroke_alpha"] = round(sa, 3)
                 else:
                     style["stroke"] = None
-                if radius > 0.5:
-                    style["radius"] = round(radius, 2)
-                shape(box, style, "rounded_rect" if radius > 0.5 else "rect")
+                if asymmetric_radius:
+                    nodes.append({"id": nid(), "page_id": page_id, "type": "path", "role": "native_shape",
+                                  "box": box, "z": len(nodes),
+                                  "commands": _asymmetric_rounded_path(box["width"], box["height"], radii),
+                                  "style": style})
+                else:
+                    if radius > 0.5:
+                        style["radius"] = round(radius, 2)
+                    shape(box, style, "rounded_rect" if radius > 0.5 else "rect")
             if not uniform:
                 for side, b in zip("TRBL", borders):
                     if not b:
@@ -346,12 +671,7 @@ def to_scene(layout, page_id, canvas, *, default_source, source_kind="user"):
             runs = it["runs"]
             text = "".join(r["text"] for r in runs)
             base = _font(runs[0])
-            spans, offset = [], 0
-            for r in runs:
-                f = _font(r)
-                if f != base:
-                    spans.append({"start": offset, "end": offset + len(r["text"]), "font": f})
-                offset += len(r["text"])
+            spans = _font_spans(runs, base)
             fs = max(r["size"] for r in runs)
             lh = it["lineHeight"]
             single = it["lines"] == 1
@@ -377,78 +697,57 @@ def to_scene(layout, page_id, canvas, *, default_source, source_kind="user"):
             nodes.append(node)
         elif k == "table":
             rows = it["rows"]
-            ncols = max(len(r["cells"]) for r in rows)
-            if any(len(r["cells"]) != ncols for r in rows):
-                raise DesignError("HTML_TABLE_RAGGED: every row needs the same number of cells (no colspan/rowspan)")
-            cells, styles = [], []
-            for r in rows:
-                cells.append(["".join(x["text"] for x in c["runs"]) for c in r["cells"]])
-                row_styles = []
-                for c in r["cells"]:
-                    f = _font(c["runs"][0] if c["runs"] else {**c["font"]})
-                    fill, fa = _rgba(c["fill"]) if c["fill"] else (None, 1.0)
-                    st = {"fill": fill, "font": f, "align": c["align"] if c["align"] in {"left", "center", "right"} else "left",
-                          "valign": c["valign"], "line_height": round(c["font"]["lineHeight"], 2),
-                          "margin": [round(c["pad"][0], 2), round(max(0, c["pad"][1] - 2.5), 2), round(c["pad"][2], 2), round(c["pad"][3], 2)],
-                          "border_bottom": None}
-                    if fill and fa < 0.999:
-                        st["fill_alpha"] = round(fa, 3)
-                    if c["borderBottom"]:
-                        bc, ba = _rgba(c["borderBottom"]["c"])
-                        st["border_bottom"] = {"color": bc, "width": round(c["borderBottom"]["w"], 2), **({"alpha": round(ba, 3)} if ba < 0.999 else {})}
-                    row_styles.append(st)
-                styles.append(row_styles)
+            grid, widths = _table_grid(rows)
+            cells = [["".join(x["text"] for x in c["runs"]) if c else "" for c in row] for row in grid]
+            styles = [[_cell_style(c) if c else {} for c in row] for row in grid]
             box = _clamp_box(it["x"], it["y"], it["w"], it["h"], cw, ch)
-            widths = [c["w"] for c in rows[0]["cells"]]
             scale = box["width"] / sum(widths)
             widths = [round(w * scale, 3) for w in widths]
             widths[-1] = round(box["width"] - sum(widths[:-1]), 3)
             content_id = cid(it.get("cid"))
+            prov = provenance(it, content_id)
+            cell_authored = {}
+            for r_idx, row in enumerate(grid):
+                for c_idx, cell in enumerate(row):
+                    if cell and cell.get("authored") is not None:
+                        ck = cell["authored"].strip().lower() or "wording"
+                        if ck not in AUTHORED:
+                            raise DesignError(f"HTML_AUTHORED_KIND_INVALID: {ck} (use wording, derived or nav)")
+                        cell_authored[(r_idx, c_idx)] = ck
+            if cell_authored:
+                table_kind = authored.get(content_id)
+                authored[content_id] = {"table": table_kind, "cells": cell_authored}
+                for ck in sorted(set(cell_authored.values())):
+                    note = f"table cells ({ck}): {AUTHORED[ck]}"
+                    if note not in prov["uncertainties"]:
+                        prov["uncertainties"].append(note)
             items.append({"id": content_id, "page_id": page_id, "type": "table", "cells": cells,
-                          "required_edit": "native", "provenance": provenance(it, content_id)})
-            first = styles[-1][0]["font"]
+                          "required_edit": "native", "provenance": prov})
+            first = next(c["font"] for row in reversed(styles) for c in row if c)
             nodes.append({"id": nid(), "page_id": page_id, "type": "table", "role": "native_table", "content_id": content_id,
                           "box": box, "z": len(nodes), "font": first, "fill": "FFFFFF", "header_fill": "FFFFFF",
                           "header_color": first["color"], "column_widths": widths,
                           "row_heights": [round(max(0.1, r["h"]), 2) for r in rows], "cell_styles": styles})
         elif k == "chart":
-            spec = it["spec"]
-            kind = spec.get("type", "line")
-            if kind not in {"line", "column", "bar"}:
-                raise DesignError(f"HTML_CHART_TYPE_UNSUPPORTED: {kind}")
-            series = spec.get("series") or []
-            cats = [str(c) for c in spec.get("categories", [])]
-            if not cats or not series or any(len(s.get("values", [])) != len(cats) for s in series):
-                raise DesignError("HTML_CHART_DATA_INVALID: categories and equal-length series values are required")
+            spec = validate_chart(it["spec"])
             content_id = cid(it.get("cid"))
-            items.append({"id": content_id, "page_id": page_id, "type": "chart", "categories": cats,
-                          "series": [{"name": str(s["name"]), "values": [float(v) for v in s["values"]]} for s in series],
+            items.append({"id": content_id, "page_id": page_id, "type": "chart", "categories": spec["categories"],
+                          "series": [{"name": s["name"], "values": s["values"]} for s in spec["series"]],
                           "data_basis": "user_data", "required_edit": "native", "provenance": provenance(it, content_id)})
-            axis = {"gridline_color": "EDEFF5", "line_color": "E6E8F0", "label_color": "A0A4B8", "label_size": 8,
-                    "category_padding": True, **{k2: spec[k2] for k2 in ("min", "max", "major") if k2 in spec},
-                    **spec.get("axis", {})}
-            colors = [str(s.get("color", "4B4FD6")).lstrip("#").upper() for s in series]
-            node = {"id": nid(), "page_id": page_id, "type": "chart", "role": "native_chart", "content_id": content_id,
-                    "box": _clamp_box(it["x"], it["y"], it["w"], it["h"], cw, ch), "z": len(nodes), "chart_type": kind,
-                    "font": {"family": spec.get("font", "__page__"), "size": spec.get("font_size", 8.5), "color": axis["label_color"]},
-                    "colors": colors, "legend": bool(spec.get("legend", False)), "labels": bool(spec.get("labels", True)),
-                    "axis": axis, "label_position": "above" if kind == "line" else "outside_end"}
-            if kind == "line":
-                node["markers"] = bool(spec.get("markers", True))
-                area = [i for i, s in enumerate(series) if s.get("area")]
-                if area:
-                    node["area_series"] = area
-            else:
-                node["gap_width"] = int(spec.get("gap_width", 100))
-            nodes.append(node)
+            nodes.append({"id": nid(), "page_id": page_id, "type": "chart", "role": "native_chart", "content_id": content_id,
+                          "box": _clamp_box(it["x"], it["y"], it["w"], it["h"], cw, ch), "z": len(nodes),
+                          **native_chart_options(spec)})
         elif k == "image":
+            node = {"id": nid(), "page_id": page_id, "type": "image", "role": "replaceable_image",
+                    "asset_id": it["asset"], "fit": it["fit"] if it["fit"] in {"contain", "cover"} else "contain",
+                    "box": _clamp_box(it["x"], it["y"], it["w"], it["h"], cw, ch), "z": len(nodes)}
             if it.get("radius", 0) > 0.5:
-                notes.append({"code": "IMAGE_RADIUS_SQUARED", "at": f"{it['x']:.0f},{it['y']:.0f}"})
-            nodes.append({"id": nid(), "page_id": page_id, "type": "image", "role": "replaceable_image",
-                          "asset_id": it["asset"], "fit": it["fit"] if it["fit"] in {"contain", "cover"} else "contain",
-                          "box": _clamp_box(it["x"], it["y"], it["w"], it["h"], cw, ch), "z": len(nodes)})
+                node["radius"] = round(it["radius"], 2)
+            nodes.append(node)
         elif k == "path":
-            cmds = _parse_path(it["d"], it.get("sx", 1), it.get("sy", 1))
+            cmds = _parse_path(it["d"], 1, 1)
+            a, b, c, d = it.get("matrix", [it.get("sx", 1), 0, 0, it.get("sy", 1)])
+            cmds = [(op, [(a * x + c * y, b * x + d * y) for x, y in points]) for op, points in cmds]
             pts = [p for _, ps in cmds for p in ps]
             x0, y0 = min(p[0] for p in pts), min(p[1] for p in pts)
             x1, y1 = max(p[0] for p in pts), max(p[1] for p in pts)
@@ -466,7 +765,10 @@ def to_scene(layout, page_id, canvas, *, default_source, source_kind="user"):
                 style.update(stroke=c, stroke_width=round(min(20, it["strokeWidth"]), 2))
                 if a < 0.999:
                     style["stroke_alpha"] = round(a, 3)
-            commands = [{"op": op, "points": [[round(px - x0, 3), round(py - y0, 3)] for px, py in ps]} for op, ps in cmds]
+            # The box is stored to two decimals; its control points must round inside it.
+            commands = [{"op": op, "points": [[min(round(w, 2), round(px - x0, 3)),
+                                               min(round(h, 2), round(py - y0, 3))] for px, py in ps]}
+                        for op, ps in cmds]
             nodes.append({"id": nid(), "page_id": page_id, "type": "path", "role": "native_shape",
                           "box": _clamp_box(it["ox"] + x0, it["oy"] + y0, w, h, cw, ch), "z": len(nodes),
                           "commands": commands, "style": style})
@@ -498,7 +800,29 @@ def source_segment(text, heading=None):
     return "\n".join(lines[start:end])
 
 
-NUMBER = re.compile(r"\d+(?:\.\d+)?")
+# A dash between digits is also used as a date/range separator, as in 2025-06.
+NUMBER = re.compile(r"(?P<value>(?:(?<!\d)[+-])?(?:(?:\d{1,3}(?:,\d{3})+(?!\d)|\d+)(?:\.\d+)?|\.\d+)"
+                    r"(?:[Ee][+-]?\d+)?)(?P<percent> *%)?")
+
+
+def _numbered_text(text):
+    """Keep numeric tokens indivisible during literal search and index their value and percent unit."""
+    tokens = {}
+
+    def mark(match):
+        token = match["value"]
+        try:
+            value = Decimal(token.replace(",", ""))
+        except InvalidOperation as exc:
+            raise DesignError("SOURCE_NUMBER_OUT_OF_RANGE") from exc
+        percent = bool(match["percent"])
+        tokens.setdefault((value, percent), token)
+        return "\0" + token.lstrip("+") + ("%" if percent else "") + "\0"
+
+    # Strip layout decorations before NFKC changes circled bullets such as ① into digits.
+    normalized = normalize_text(DECOR.sub(" ", text)).replace("\0", "\ufffd")
+    normalized = re.sub(r"− *(?=[.\d])", "-", normalized)
+    return _norm(NUMBER.sub(mark, normalized)), tokens
 
 
 def trace(items, source, authored=None):
@@ -508,37 +832,87 @@ def trace(items, source, authored=None):
     ``derived`` and ``nav`` records are accepted with their uncertainty note.
     """
     authored = authored or {}
-    src = _norm(source)
-    numbers = set(NUMBER.findall(source))
+    src, numbers = _numbered_text(source)
+    chart_values = {value for value, _ in numbers}
     untraced = []
     for c in items:
         prov, kind = c["provenance"], authored.get(c["id"])
+        prov["checked"] = False
+        if c["type"] == "table" and isinstance(kind, dict):
+            table_kind = kind.get("table")
+            cell_kinds = kind.get("cells") or {}
+            missing, reasons = [], []
+            for r_idx, row in enumerate(c["cells"]):
+                for c_idx, cell in enumerate(row):
+                    if not cell.strip():
+                        continue
+                    ck = cell_kinds.get((r_idx, c_idx), table_kind)
+                    if ck in {"derived", "nav"}:
+                        continue
+                    if ck == "wording":
+                        bad = sorted({token for key, token in _numbered_text(cell)[1].items() if key not in numbers})
+                        if bad:
+                            missing.extend(bad)
+                            reasons.append("authored_numbers_not_in_source")
+                    elif _numbered_text(cell)[0] not in src:
+                        missing.append(cell)
+                        reasons.append("not_in_source")
+            if missing:
+                reason = reasons[0] if len(set(reasons)) == 1 else "not_in_source"
+                untraced.append({"content_id": c["id"], "reason": reason, "missing": [m[:80] for m in missing[:8]]})
+            else:
+                prov["checked"] = True
+            continue
+        if kind in {"derived", "nav"}:
+            prov["checked"] = True
+            continue
         if c["type"] == "text":
             values = [c["text"]]
         elif c["type"] == "table":
             values = [cell for row in c["cells"] for cell in row if cell.strip()]
         else:
-            values = c["categories"] + [f"{v:g}" for s_ in c["series"] for v in s_["values"]]
-        if kind in {"derived", "nav"}:
-            prov["checked"] = True
-            continue
+            values = c["categories"]
         if kind == "wording":
-            stray = sorted({n for v in values for n in NUMBER.findall(v) if n not in numbers})
-            if stray:
-                untraced.append({"content_id": c["id"], "reason": "authored_numbers_not_in_source", "missing": stray[:8]})
-            else:
-                prov["checked"] = True
-            continue
-        if c["type"] == "chart":
-            missing = [v for v in values[len(c["categories"]):] if v not in numbers] + \
-                      [x for x in c["categories"] if _norm(x) not in src]
+            reason = "authored_numbers_not_in_source"
+            missing = sorted({token for v in values for key, token in _numbered_text(v)[1].items() if key not in numbers})
         else:
-            missing = [v for v in values if _norm(v) not in src]
+            reason = "not_in_source"
+            missing = [v for v in values if _numbered_text(v)[0] not in src]
+        if c["type"] == "chart":
+            # A native series stores raw numeric values. Its unit may live in the series name.
+            missing.extend(str(v) for series in c["series"] for v in series["values"]
+                           if Decimal(str(v)) not in chart_values)
         if missing:
-            untraced.append({"content_id": c["id"], "reason": "not_in_source", "missing": [m[:80] for m in missing][:6]})
+            untraced.append({"content_id": c["id"], "reason": reason, "missing": [m[:80] for m in missing[:8]]})
         else:
             prov["checked"] = True
     return untraced
+
+
+_CHART_SINGLE_AXIS_TYPES = {"column", "bar", "line", "stacked_column", "stacked_bar"}
+_CHART_UNIT_PATTERNS = {
+    "percent": re.compile(r"(?:[（(]\s*[%％]\s*[)）]|[%％](?:\s|$)|百分比|占比\s*[（(]\s*[%％])"),
+    "power_energy": re.compile(r"(?<![A-Za-z])(?:TWh|GWh|MWh|kWh|GW|MW|kW)(?![A-Za-z])"),
+    "currency": re.compile(r"(?:十亿美元|亿美元|亿元|万元|美元|人民币|(?<![A-Za-z])(?:USD|RMB|CNY|EUR)(?![A-Za-z])|\$[BMK]\b|[（(]\s*[$¥€]\s*[)）])"),
+    "multiple": re.compile(r"(?:[（(]\s*[×xX倍]\s*[)）]|倍数)"),
+}
+
+
+def _unit_families(text):
+    text = str(text or "")
+    return {name for name, pat in _CHART_UNIT_PATTERNS.items() if pat.search(text)}
+
+
+def _mixed_chart_units(spec):
+    if not isinstance(spec, dict) or spec.get("type", "line") not in _CHART_SINGLE_AXIS_TYPES:
+        return []
+    for labels in (spec.get("categories") or [], [s.get("name", "") for s in (spec.get("series") or []) if isinstance(s, dict)]):
+        per_label = [_unit_families(lbl) for lbl in labels]
+        non_empty = [u for u in per_label if u]
+        combined = set().union(*non_empty) if non_empty else set()
+        if len(combined) >= 2 and any(u != non_empty[0] for u in non_empty[1:]):
+            return sorted(combined)
+    return []
 
 
 def lint(layout, canvas):
@@ -557,6 +931,10 @@ def lint(layout, canvas):
     for it in solid:
         if it["x"] < -1 or it["y"] < -1 or it["x"] + it["w"] > cw + 1 or it["y"] + it["h"] > ch + 1:
             add("OUTSIDE_SLIDE", "error", it, label(it))
+        if it["kind"] == "chart":
+            mixed = _mixed_chart_units(it.get("spec"))
+            if mixed:
+                add("CHART_MIXED_UNITS", "error", it, "/".join(mixed))
     texts = [i for i in layout["items"] if i["kind"] == "text"]
     for it in texts:
         ov = it.get("overflow") or {}
@@ -568,12 +946,27 @@ def lint(layout, canvas):
         if box and (it["x"] < box["x"] - 1.5 or it["y"] < box["y"] - 1.5 or
                     it["x"] + it["w"] > box["x"] + box["w"] + 1.5 or it["y"] + it["h"] > box["y"] + box["h"] + 1.5):
             add("TEXT_OUTSIDE_CONTAINER", "error", it, label(it))
-    for i, a in enumerate(texts):
-        for b in texts[i + 1:] + [x for x in solid if x["kind"] != "text"]:
+    def _is_background_image(item, item_index, text_index):
+        if item["kind"] != "image":
+            return False
+        if item.get("layer") == "background":
+            return True
+        # A full/half-bleed cover photo painted before text is an intentional backdrop, not an accidental collision.
+        area_ratio = (item["w"] * item["h"]) / max(1.0, cw * ch)
+        return item.get("fit") == "cover" and area_ratio >= 0.5 and item_index < text_index
+
+    indexed = list(enumerate(layout["items"]))
+    text_entries = [(idx, it) for idx, it in indexed if it["kind"] == "text"]
+    non_text_solid = [(idx, it) for idx, it in indexed if it["kind"] in {"table", "chart", "image"}]
+    for i, (a_idx, a) in enumerate(text_entries):
+        for b_idx, b in text_entries[i + 1:] + non_text_solid:
             dx = min(a["x"] + a["w"], b["x"] + b["w"]) - max(a["x"], b["x"])
             dy = min(a["y"] + a["h"], b["y"] + b["h"]) - max(a["y"], b["y"])
             if dx > 1.5 and dy > 1.5:
-                add("TEXT_OVERLAP", "error", a, label(a) + " ↔ " + (label(b) or b["kind"]))
+                if _is_background_image(b, b_idx, a_idx):
+                    add("TEXT_OVER_BACKGROUND_IMAGE", "warning", a, label(a) + " ↔ " + b.get("asset", "image"))
+                else:
+                    add("TEXT_OVERLAP", "error", a, label(a) + " ↔ " + (label(b) or b["kind"]))
     floor = round(9 * cw / 1440, 1)
     sizes = {}
     for it in texts:
@@ -583,7 +976,7 @@ def lint(layout, canvas):
                 add("SMALL_TEXT", "warning", it, r["text"])
             if re.search(r"[\u2e80-\u9fff\uac00-\ud7af\uff00-\uffef]", r["text"]) and \
                     not any(CJK_HINT.search(f) for f in r["stack"]):
-                add("CJK_TEXT_WITHOUT_CJK_FONT", "error", it, r["text"])
+                add("CJK_TEXT_WITHOUT_CJK_FONT", "warning", it, r["text"])
     if sizes:
         body = max(sizes, key=sizes.get)
         if len(sizes) < 3:
@@ -600,30 +993,36 @@ def lint(layout, canvas):
             "warnings": sum(f["severity"] == "warning" for f in unique), "findings": unique[:40]}
 
 
-def coverage(source, items):
+def coverage(source, items, *, source_heading=None):
     """Source -> slide: phrases and numbers of the page segment that do not appear on the slide."""
     shown = []
+    chart_values = set()
     for c in items:
         if c["type"] == "text":
             shown.append(c["text"])
         elif c["type"] == "table":
             shown += [x for row in c["cells"] for x in row]
         else:
-            shown += c["categories"] + [s["name"] for s in c["series"]] + [f"{v:g}" for s in c["series"] for v in s["values"]]
-    joined = _norm("|".join(shown))
-    numbers_shown = set(re.findall(r"\d+(?:\.\d+)?", " ".join(shown)))
-    phrases, numbers = [], set()
-    for line in source.splitlines()[1:]:
+            shown += c["categories"] + [s["name"] for s in c["series"]] + [str(v) for s in c["series"] for v in s["values"]]
+            chart_values.update(Decimal(str(v)) for s in c["series"] for v in s["values"])
+    marked = [_numbered_text(v) for v in shown]
+    joined = "".join(text for text, _ in marked)
+    numbers_shown = {key for _, tokens in marked for key in tokens}
+    phrases, missing = [], set()
+    if source_heading:
+        source = source.lstrip().removeprefix(source_heading)
+    for line in source.splitlines():
         if not line.strip():
             continue
         for cell in line.split("\t"):
             for ph in re.split(r"[；;。\n•]|：(?=.)", cell):
-                ph = _norm(ph).strip("：:（）()、，,")
-                if len(ph) >= 2 and ph not in joined and ph != "未标注":
-                    phrases.append(ph)
-        numbers |= set(re.findall(r"\d+(?:\.\d+)?", line))
-    missing_numbers = sorted(n for n in numbers if n not in numbers_shown)
-    return {"missing_numbers": missing_numbers, "missing_phrases": sorted(set(phrases))[:200],
+                ph = ph.strip().strip("：:（）()、，,")
+                display = _norm(ph)
+                if len(display) >= 2 and display != "未标注" and _numbered_text(ph)[0] not in joined:
+                    phrases.append(display)
+        missing.update(token for key, token in _numbered_text(line)[1].items()
+                       if key not in numbers_shown and key[0] not in chart_values)
+    return {"missing_numbers": sorted(missing), "missing_phrases": sorted(set(phrases))[:200],
             "missing_phrase_count": len(set(phrases))}
 
 
@@ -671,14 +1070,37 @@ def apply(task, page_id, items, nodes, background):
     return candidate, reset, attached
 
 
-ASSET_REF = re.compile(r"""data-asset\s*=\s*["']([^"']+)["']""")
+ASSET_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,79}$")
 
 
-def _asset_css(text, asset_bytes):
+def _asset_refs(root):
+    refs = []
+    for el in root.iter():
+        if not isinstance(el.tag, str) or "data-asset" not in el.attrib:
+            continue
+        ref = (el.get("data-asset") or "").strip()
+        if not ASSET_ID.fullmatch(ref):
+            raise DesignError(f"HTML_ASSET_ID_INVALID: {ref[:80]}")
+        refs.append(ref)
+    return sorted(set(refs))
+
+
+def _asset_css(source, asset_bytes):
     """Tool-owned preview styles: show registered assets in the browser screenshot."""
     import base64
+    if isinstance(source, str):
+        try:
+            root = lxml_html.document_fromstring(source)
+        except Exception as exc:
+            raise DesignError(f"HTML_PARSE_FAILED: {exc}") from exc
+        refs = _asset_refs(root)
+    else:
+        refs = sorted(set(source))
+        for ref in refs:
+            if not ASSET_ID.fullmatch(ref):
+                raise DesignError(f"HTML_ASSET_ID_INVALID: {ref[:80]}")
     css = []
-    for ref in sorted(set(ASSET_REF.findall(text))):
+    for ref in refs:
         if ref not in asset_bytes:
             raise DesignError(f"HTML_ASSET_UNKNOWN: {ref} (register it with `engine design ingest` first)")
         uri = "data:image/png;base64," + base64.b64encode(asset_bytes[ref]).decode("ascii")
@@ -687,11 +1109,25 @@ def _asset_css(text, asset_bytes):
     return "".join(css)
 
 
+def _authored_summary(authored):
+    counts = {k: 0 for k in AUTHORED}
+    for value in authored.values():
+        if isinstance(value, str) and value in counts:
+            counts[value] += 1
+        elif isinstance(value, dict):
+            if value.get("table") in counts:
+                counts[value["table"]] += 1
+            for ck in (value.get("cells") or {}).values():
+                if ck in counts:
+                    counts[ck] += 1
+    return counts
+
+
 def import_html(task, page_id, text, *, default_source, source_text=None, browser=None, assume_checked=False,
-                source_kind="user", asset_bytes=None, page_scoped=False):
+                source_kind="user", asset_bytes=None, page_scoped=False, source_heading=None):
     """Policy check -> browser layout -> scene records; returns (candidate task, report, layout, png)."""
     policy = check_policy(text)
-    inject = _asset_css(text, asset_bytes or {})
+    inject = _asset_css(policy["assets"], asset_bytes or {})
     layout, png = render_layout(text, task["canvas"]["width"], task["canvas"]["height"], browser=browser, inject=inject)
     items, nodes, background, notes, authored = to_scene(layout, page_id, task["canvas"], default_source=default_source,
                                                          source_kind=source_kind)
@@ -700,10 +1136,12 @@ def import_html(task, page_id, text, *, default_source, source_text=None, browse
               "objects": {k: sum(n["type"] == k for n in nodes) for k in ("text", "shape", "path", "table", "chart", "image")},
               "design_lint": lint(layout, task["canvas"]),
               "browser_warnings": layout.get("warnings", [])[:50], "conversion_notes": notes[:50],
-              "authored": {k: sum(v == k for v in authored.values()) for k in AUTHORED}}
+              "authored": _authored_summary(authored)}
+    if "browser_exit_warning" in layout:
+        report["browser_exit_warning"] = layout["browser_exit_warning"]
     if source_text is not None:
         report["untraced"] = trace(items, source_text, authored)
-        report["coverage"] = coverage(source_text, items)
+        report["coverage"] = coverage(source_text, items, source_heading=source_heading)
         # A per-page manuscript defaults to complete on-slide coverage; a whole document is selectively condensed.
         report["coverage"]["scope"] = "page" if page_scoped else "document"
     elif assume_checked:
@@ -720,12 +1158,18 @@ def import_html(task, page_id, text, *, default_source, source_text=None, browse
         report["next"] = ("Correct the wording to match the source, or mark deliberate model wording with "
                           "data-authored (wording/derived/nav) and record its basis in page-plan.md; then import again.")
         return None, report, layout, png
+    lint_ = report["design_lint"]
+    if lint_["errors"]:
+        # Blocking layout defects must be fixed before mutating task.json or building.
+        report["status"] = "imported_with_lint_errors"
+        report["next"] = ("Inspect the preview and fix all design_lint errors (overlap, overflow, "
+                          "out-of-container or out-of-slide) in the HTML, then re-import.")
+        return None, report, layout, png
     candidate, reset, attached = apply(task, page_id, items, nodes, background)
     report["composition_reset"] = reset
     if attached:
         report["assets_attached_to_page"] = attached
-    lint_ = report["design_lint"]
     cov = report.get("coverage") or {}
-    if layout.get("warnings") or lint_["errors"] or lint_["warnings"] or (cov.get("scope") == "page" and cov.get("missing_numbers")):
+    if layout.get("warnings") or lint_["warnings"] or (cov.get("scope") == "page" and cov.get("missing_numbers")):
         report["status"] = "imported_with_findings"
     return candidate, report, layout, png

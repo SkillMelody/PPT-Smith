@@ -99,6 +99,19 @@ class PolicyTests(unittest.TestCase):
 
 
 class ConversionTests(unittest.TestCase):
+    def test_compact_imported_page_before_authoring_notes(self):
+        from engine.design_scene.authoring import compact, expand
+        task, *_ = compiled_task()
+        task["design"]["brief"] = ""
+        task["content"]["notes"] = []
+        doc = compact(task)
+        self.assertEqual(expand(doc, complete=False), task)
+        with self.assertRaisesRegex(DesignError, "DESIGN_BRIEF_REQUIRED"):
+            expand(doc)
+        doc["task"]["design"]["brief"] = "Compare inventory changes."
+        doc["task"]["content"]["notes"] = [{"page_id": "page-1", "text": "Values from the supplied manuscript."}]
+        self.assertEqual(validate(expand(doc), complete=True)["status"], "valid")
+
     def setUp(self):
         self.task, self.items, self.nodes, self.notes, self.untraced, self.reset = compiled_task()
 
@@ -112,15 +125,16 @@ class ConversionTests(unittest.TestCase):
         self.assertEqual(rounded["shape"], "rounded_rect")
         self.assertAlmostEqual(rounded["style"]["fill_alpha"], 0.5)
         self.assertEqual(rounded["style"]["radius"], 12)
-        # Non-uniform radius -> squared, with a left accent drawn as its own native rectangle.
-        self.assertTrue(any(n["code"] == "NONUNIFORM_RADIUS_SQUARED" for n in self.notes))
+        # Non-uniform radius compiles into a native cubic-Bezier path, with a left accent as its own native rectangle.
+        asym_path = next(p for p in by["path"] if p["box"]["x"] == 340 and p["box"]["y"] == 20)
+        self.assertIn("C", [c["op"] for c in asym_path["commands"]])
         self.assertTrue(any(s["box"]["width"] == 3 and s["style"]["fill"] == "F2804F" for s in by["shape"]))
         title = by["text"][0]
         self.assertEqual(title["font"]["ea_family"], "Noto Sans CJK SC")
         self.assertFalse(title["wrap"])
         self.assertEqual(title["spans"][0]["start"], 4)
-        self.assertEqual(by["path"][0]["style"]["fill_alpha"], 0.5)
-        self.assertEqual([c["op"] for c in by["path"][0]["commands"]], ["M", "C", "L", "C", "Z"])
+        svg_path = next(p for p in by["path"] if [c["op"] for c in p["commands"]] == ["M", "C", "L", "C", "Z"])
+        self.assertEqual(svg_path["style"]["fill_alpha"], 0.5)
         table = by["table"][0]
         self.assertEqual(sum(table["column_widths"]), table["box"]["width"])
         self.assertEqual(table["cell_styles"][1][0]["fill"], "EEF0FB")
@@ -215,6 +229,45 @@ class AuthoredAndSourceTests(unittest.TestCase):
         self.assertEqual(items[0]["provenance"]["kind"], "document")
         self.assertEqual(items[0]["provenance"]["source"], "report.md / p3")
 
+    def test_table_cell_level_derived_preserves_tracing_for_other_cells(self):
+        table = {
+            "kind": "table", "x": 10, "y": 10, "w": 300, "h": 60, "cid": "tbl-1", "src": None, "authored": None,
+            "rows": [
+                {"h": 30, "cells": [
+                    {"w": 150, "runs": [run("形态")], "font": {"size": 11, "color": "rgb(0,0,0)", "stack": ["Inter"], "weight": 400, "italic": False, "lineHeight": 14}, "align": "left", "valign": "middle", "fill": None, "borderBottom": None, "pad": [2, 4, 2, 4]},
+                    {"w": 150, "runs": [run("合计 9.6")], "font": {"size": 11, "color": "rgb(0,0,0)", "stack": ["Inter"], "weight": 400, "italic": False, "lineHeight": 14}, "align": "right", "valign": "middle", "fill": None, "borderBottom": None, "pad": [2, 4, 2, 4], "authored": "derived"},
+                ]},
+                {"h": 30, "cells": [
+                    {"w": 150, "runs": [run("4.3")], "font": {"size": 11, "color": "rgb(0,0,0)", "stack": ["Inter"], "weight": 400, "italic": False, "lineHeight": 14}, "align": "right", "valign": "middle", "fill": None, "borderBottom": None, "pad": [2, 4, 2, 4]},
+                    {"w": 150, "runs": [run("虚构999")], "font": {"size": 11, "color": "rgb(0,0,0)", "stack": ["Inter"], "weight": 400, "italic": False, "lineHeight": 14}, "align": "right", "valign": "middle", "fill": None, "borderBottom": None, "pad": [2, 4, 2, 4]},
+                ]},
+            ],
+        }
+        items, _, _, _, authored = self.scene(table)
+        untraced = hi.trace(items, SOURCE, authored)
+        self.assertEqual(len(untraced), 1)
+        self.assertEqual(untraced[0]["missing"], ["虚构999"])
+        self.assertFalse(items[0]["provenance"]["checked"])
+
+        table["rows"][1]["cells"][1]["runs"] = [run("成品")]
+        items_ok, _, _, _, authored_ok = self.scene(table)
+        self.assertEqual(hi.trace(items_ok, SOURCE, authored_ok), [])
+        self.assertTrue(items_ok[0]["provenance"]["checked"])
+        self.assertTrue(any("table cells (derived)" in u for u in items_ok[0]["provenance"]["uncertainties"]))
+
+    def test_lint_errors_block_task_mutation(self):
+        from unittest import mock
+        task = new_task("lint-block", mode="create", width=960, height=540, pages=1, author="test")
+        bad_layout = {
+            "width": 960, "height": 540, "background": "rgb(255,255,255)", "warnings": [],
+            "items": [text_item("库存周转", 10, 10), text_item("库存周转", 40, 12)],
+        }
+        with mock.patch.object(hi, "render_layout", return_value=(bad_layout, b"\x89PNG")):
+            candidate, report, *_ = hi.import_html(task, "page-1", MINIMAL, default_source="x", assume_checked=True)
+        self.assertIsNone(candidate)
+        self.assertEqual(report["status"], "imported_with_lint_errors")
+        self.assertGreater(report["design_lint"]["errors"], 0)
+
 
 class LintTests(unittest.TestCase):
     def codes(self, *items):
@@ -285,10 +338,36 @@ class ImageTests(unittest.TestCase):
         items, nodes, bg, notes, _ = self.image_scene(task)
         self.assertEqual(nodes[0]["type"], "image")
         self.assertEqual(nodes[0]["asset_id"], "logo")
-        self.assertTrue(any(n["code"] == "IMAGE_RADIUS_SQUARED" for n in notes))
+        self.assertEqual(nodes[0]["radius"], 6)
         candidate, _, attached = hi.apply(task, "page-1", items, nodes, bg)
         self.assertEqual(attached, ["logo"])
         self.assertIn("page-1", candidate["assets"]["items"][0]["page_ids"])
+        # Verify rounded image renders with transparent corners and opaque center.
+        import io as _io
+        from PIL import Image as _Image
+        from zipfile import ZipFile as _ZipFile
+        raw_buf = _io.BytesIO()
+        _Image.new("RGB", (120, 40), (30, 90, 200)).save(raw_buf, format="PNG")
+        candidate["design"]["brief"] = "Rounded photo test."
+        candidate["content"]["notes"] = [{"page_id": "page-1", "text": "Photo note."}]
+        candidate["content"]["items"].append({
+            "id": "p1-cap", "page_id": "page-1", "type": "text", "text": "Logo",
+            "required_edit": "native",
+            "provenance": {"kind": "user", "source": "x", "checked": True, "uncertainties": []},
+        })
+        candidate["scene"]["pages"][0]["nodes"].append({
+            "id": "p1-cap-node", "page_id": "page-1", "type": "text", "role": "native_text",
+            "content_id": "p1-cap", "box": {"x": 20, "y": 80, "width": 120, "height": 20}, "z": 1,
+            "font": {"family": "Inter", "size": 12, "color": "111111"},
+            "align": "left", "valign": "top", "wrap": True,
+        })
+        pptx_bytes = render(candidate, {"logo": raw_buf.getvalue()})
+        with _ZipFile(_io.BytesIO(pptx_bytes)) as zf:
+            media = [n for n in zf.namelist() if n.startswith("ppt/media/")]
+            self.assertEqual(len(media), 1)
+            out_img = _Image.open(_io.BytesIO(zf.read(media[0]))).convert("RGBA")
+            self.assertEqual(out_img.getpixel((0, 0))[3], 0)
+            self.assertEqual(out_img.getpixel((out_img.width // 2, out_img.height // 2))[3], 255)
 
     def test_reference_and_unknown_assets_rejected(self):
         task = self.task_with("reference")
@@ -300,6 +379,10 @@ class ImageTests(unittest.TestCase):
             hi.apply(task, "page-1", items, nodes, bg)
         with self.assertRaisesRegex(DesignError, "HTML_ASSET_UNKNOWN"):
             hi._asset_css('<div data-asset="ghost"></div>', {})
+        # Commented-out data-asset must be ignored, while invalid IDs are rejected.
+        self.assertEqual(hi._asset_css('<!-- <div data-asset="ghost"></div> --><div id="slide"></div>', {}), "")
+        with self.assertRaisesRegex(DesignError, "HTML_ASSET_ID_INVALID"):
+            hi._asset_css('<div id="slide"><div data-asset="bad\\"css"></div></div>', {})
 
 
 class SourceTests(unittest.TestCase):
@@ -323,8 +406,17 @@ class LegacyCompatibilityTests(unittest.TestCase):
         self.assertEqual(validate(task)["status"], "valid")
 
 
-@unittest.skipUnless(hi.find_browser(), "Chrome/Chromium/Edge not installed")
 class BrowserTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        result = hi.browser_capabilities()
+        if not result["available"]:
+            code = result["reason"]
+            if code in {"HTML_BROWSER_NOT_FOUND", "HTML_BROWSER_PERMISSION_DENIED", "HTML_BROWSER_LAUNCH_FAILED",
+                        "HTML_BROWSER_SANDBOX_BLOCKED", "HTML_BROWSER_TIMEOUT"}:
+                raise unittest.SkipTest(f"{code}: {result['detail']}")
+            raise AssertionError(result)
+
     def test_real_layout_extraction(self):
         page = ('<!DOCTYPE html><html><head><style>*{margin:0}#slide{position:relative;width:960px;height:540px;'
                 'background:#fff;font-family:"Noto Sans CJK SC",sans-serif}.c{position:absolute;left:40px;top:40px;'
@@ -342,6 +434,34 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(text["cid"], "hello")
         self.assertEqual(len(text["runs"]), 2)
         self.assertAlmostEqual(text["y"], 50, delta=6)
+
+    def test_inline_content_and_merged_table_round_trip(self):
+        page = """<!DOCTYPE html><html><head><style>
+          #slide { width:960px; height:540px; font:16px Arial; background:white }
+          table { border-collapse:collapse; width:300px } td { border:2px solid #234567 }
+          </style></head><body><div id="slide">
+          <div data-cid="kpi"><span>92</span><span hidden>draft</span><b>%</b><br><span>done</span></div>
+          <table data-cid="records"><tbody>
+          <tr><td rowspan="0" colspan="2">A<b style="color:#ab1234">B</b></td><td>C</td></tr>
+          <tr><td><p>D<span style="visibility:hidden">raft</span></p><div><b>total</b></div></td></tr></tbody>
+          <tbody><tr><td>L</td><td>M</td><td>N</td></tr></tbody>
+          </table></div></body></html>"""
+        task = new_task("rich-html", mode="create", width=960, height=540, pages=1, author="test")
+        task["design"]["brief"] = "inline and table"
+        task["content"]["notes"].append({"page_id": "page-1", "text": "n"})
+        candidate, report, *_ = hi.import_html(task, "page-1", page, default_source="fixture", assume_checked=True)
+        self.assertEqual(report["objects"]["text"], 1)
+        items = {item["id"]: item for item in candidate["content"]["items"]}
+        self.assertEqual(items["kpi"]["text"], "92%\ndone")
+        self.assertEqual(items["records"]["cells"], [["AB", "", "C"], ["", "", "D\ntotal"], ["L", "M", "N"]])
+        styles = next(n["cell_styles"] for n in candidate["scene"]["pages"][0]["nodes"] if n["type"] == "table")
+        origin = styles[0][0]
+        self.assertEqual((origin["row_span"], origin["col_span"]), (2, 2))
+        self.assertEqual(origin["spans"][0]["font"]["color"], "AB1234")
+        self.assertTrue(styles[1][2]["spans"][-1]["font"]["bold"])
+        for side in ("left", "right", "top", "bottom"):
+            self.assertEqual(origin["border_" + side]["color"], "234567")
+        inspect_objects(render(candidate, {}), candidate)
 
     def test_bundled_example_imports_cleanly(self):
         text = (Path(__file__).resolve().parents[1] / "examples/html-design/indicator-columns.html").read_text("utf-8")
@@ -379,6 +499,44 @@ class BrowserTests(unittest.TestCase):
     def test_size_mismatch_rejected(self):
         with self.assertRaisesRegex(DesignError, "HTML_SLIDE_SIZE_MISMATCH"):
             hi.render_layout(MINIMAL.replace("960px", "1000px"), 960, 540)
+
+    def test_svg_primitives_compile_with_viewbox_and_relative_commands(self):
+        markup = ('<svg data-native-svg="" width="200" height="100" viewBox="10 20 100 50">'
+                  '<g transform="translate(2 1)"><line x1="10" y1="20" x2="20" y2="25" stroke="black"/>'
+                  '<rect x="22" y="24" width="10" height="5" rx="1"/><circle cx="45" cy="35" r="5"/>'
+                  '<polygon points="55,30 60,40 65,30"/><path d="m70 30 h10 v10 h-10z"/></g></svg>')
+        page = '<div id="slide" style="width:960px;height:540px">' + markup + '<p>Geometry</p></div>'
+        hi.check_policy(page)
+        layout, _ = hi.render_layout(page, 960, 540)
+        self.assertEqual(layout["warnings"], [])
+        task = new_task("svg-fixture", mode="create", width=960, height=540, pages=1, author="test")
+        task["design"]["brief"] = "Explain the five native shapes."
+        task["content"]["notes"].append({"page_id": "page-1", "text": "The source uses one shared viewBox."})
+        items, nodes, bg, _, _ = hi.to_scene(layout, "page-1", task["canvas"], default_source="svg")
+        self.assertEqual([n["type"] for n in nodes], ["path"] * 5 + ["text"])
+        self.assertEqual(hi.trace(items, "Geometry"), [])
+        self.assertEqual(nodes[0]["box"], {"x": 4, "y": 2, "width": 20, "height": 10})
+        self.assertEqual(sum(c["op"] == "C" for c in nodes[2]["commands"]), 4)
+        candidate, *_ = hi.apply(task, "page-1", items, nodes, bg)
+        inspect_objects(render(candidate, {}), candidate)
+
+    def test_percentage_radius_and_inline_block_pill_without_false_overlap(self):
+        page = """<!DOCTYPE html><html><head><style>
+          *{margin:0;box-sizing:border-box}
+          #slide{position:relative;width:960px;height:540px;background:#fff;font:16px Arial}
+          .circle{position:absolute;left:40px;top:40px;width:200px;height:200px;background:#4B4FD6;border-radius:50%}
+          .row{position:absolute;left:280px;top:60px;width:400px;font:16px/24px Arial}
+          .pill{display:inline-block;margin-left:8px;padding:2px 8px;background:#EEF0FB;border-radius:6px}
+        </style></head><body><div id="slide">
+          <div class="circle"></div>
+          <div class="row">Status:<span class="pill">Ready</span></div>
+        </div></body></html>"""
+        task = new_task("pill-circle", mode="create", width=960, height=540, pages=1, author="test")
+        candidate, report, layout, _ = hi.import_html(task, "page-1", page, default_source="x", assume_checked=True)
+        self.assertIsNotNone(candidate)
+        self.assertEqual(report["design_lint"]["errors"], 0, report["design_lint"])
+        circle = next(n for n in candidate["scene"]["pages"][0]["nodes"] if n["type"] == "shape" and n["style"].get("fill") == "4B4FD6")
+        self.assertAlmostEqual(circle["style"]["radius"], 100.0, delta=0.5)
 
 
 if __name__ == "__main__":

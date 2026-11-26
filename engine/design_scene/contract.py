@@ -41,13 +41,17 @@ STYLE = obj({"fill": {"anyOf": [COLOR, {"type": "null"}]},
              "stroke": {"anyOf": [COLOR, {"type": "null"}]}, "stroke_width": num(0, 20),
              "fill_alpha": ALPHA, "stroke_alpha": ALPHA, "radius": num(0, 500)}, [])
 BORDER = obj({"color": COLOR, "width": num(0.1, 20), "alpha": ALPHA}, ["color", "width"])
+FONT_SPANS = arr(obj({"start": {"type": "integer", "minimum": 0},
+                      "end": {"type": "integer", "minimum": 1}, "font": FONT}), 100)
 CELL_STYLE = obj({"fill": {"anyOf": [COLOR, {"type": "null"}]}, "fill_alpha": ALPHA, "font": FONT,
                   "align": enum("left", "center", "right"), "valign": enum("top", "middle", "bottom"),
                   "margin": arr(num(0, 50), 4, 4), "line_height": num(1, 400),
-                  "border_bottom": {"anyOf": [BORDER, {"type": "null"}]}}, [])
+                  "row_span": {"type": "integer", "minimum": 1, "maximum": 200},
+                  "col_span": {"type": "integer", "minimum": 1, "maximum": 50}, "spans": FONT_SPANS,
+                  **{"border_" + side: {"anyOf": [BORDER, {"type": "null"}]} for side in ("left", "right", "top", "bottom")}}, [])
 AXIS = obj({"min": num(-1e12, 1e12), "max": num(-1e12, 1e12), "major": num(1e-9, 1e12),
             "gridline_color": COLOR, "line_color": COLOR, "label_color": COLOR, "label_size": num(5, 40),
-            "category_padding": BOOL}, [])
+            "category_padding": BOOL, "number_format": SHORT}, [])
 PROVENANCE = obj({"kind": enum("user", "visible_transcription", "document", "unknown"),
                   "source": SHORT, "checked": BOOL, "uncertainties": arr(SHORT, 30)})
 SERIES = obj({"name": SHORT, "values": arr(num(-1e12, 1e12), 200, 1)})
@@ -78,15 +82,14 @@ NODE = {"oneOf": [
                            "valign": enum("top", "middle", "bottom"), "wrap": BOOL,
                            "line_spacing": num(0.8, 3), "line_height": num(1, 400), "margin": num(0, 50),
                            "letter_spacing": num(-10, 20),
-                           "spans": arr(obj({"start": {"type": "integer", "minimum": 0},
-                                             "end": {"type": "integer", "minimum": 1}, "font": FONT}), 100)},
+                           "spans": FONT_SPANS},
             ("line_spacing", "line_height", "margin", "spans", "letter_spacing")),
     variant(BASE, "shape", {"role": {"const": "native_shape"},
                             "shape": enum("rect", "rounded_rect", "ellipse", "line", "arrow", "diamond", "triangle"),
                             "style": STYLE}),
     variant(BASE, "path", {"role": {"const": "native_shape"}, "commands": arr(PATH_COMMAND, 512, 2), "style": STYLE}),
     variant(BASE, "chart", {"role": {"const": "native_chart"}, "content_id": ID,
-                            "chart_type": enum("bar", "column", "line", "pie", "doughnut"),
+                            "chart_type": enum("bar", "column", "stacked_bar", "stacked_column", "line", "pie", "doughnut"),
                             "font": FONT, "colors": arr(COLOR, 20, 1), "legend": BOOL, "labels": BOOL,
                             "label_colors": arr(COLOR, 200, 1), "label_number_format": SHORT,
                             "legend_position": enum("bottom", "right"), "hole_size": num(10, 90),
@@ -101,7 +104,8 @@ NODE = {"oneOf": [
                             "cell_styles": arr(arr(CELL_STYLE, 50, 1), 200, 1)},
             ("column_widths", "row_heights", "cell_styles")),
     variant(BASE, "image", {"role": {"const": "replaceable_image"}, "asset_id": ID,
-                            "fit": enum("contain", "cover"), "content_id": ID}, ("content_id",)),
+                            "fit": enum("contain", "cover"), "radius": num(0, 500), "content_id": ID},
+            ("radius", "content_id")),
     variant(BASE, "group", {"role": {"const": "group"}, "children": arr({"$ref": "#/$defs/node"}, 500, 1)}),
 ]}
 ASSET = obj({"id": ID, "sha256": SHA, "original_sha256": SHA, "width": {"type": "integer", "minimum": 1},
@@ -168,6 +172,39 @@ def _unique(items, key, code):
     if len(set(keys)) != len(keys):
         raise DesignError(code)
     return {x[key]: x for x in items}
+
+
+def _check_spans(text, spans):
+    last = 0
+    for span in spans:
+        if not last <= span["start"] < span["end"] <= len(text):
+            raise DesignError("TEXT_SPAN_RANGE_INVALID")
+        last = span["end"]
+
+
+def _check_table_styles(cells, styles):
+    nrows, ncols = len(cells), len(cells[0])
+    if len(styles) != nrows or any(len(row) != ncols for row in styles):
+        raise DesignError("TABLE_CELL_STYLE_SHAPE_MISMATCH")
+    covered = set()
+    for r, row in enumerate(styles):
+        for c, style in enumerate(row):
+            if (r, c) in covered:
+                if cells[r][c] or style:
+                    raise DesignError("TABLE_MERGED_CELL_MUST_BE_EMPTY")
+                continue
+            _check_spans(cells[r][c], style.get("spans", []))
+            height, width = style.get("row_span", 1), style.get("col_span", 1)
+            if height == width == 1:
+                continue
+            if r + height > nrows or c + width > ncols:
+                raise DesignError("TABLE_MERGE_OUT_OF_BOUNDS")
+            for rr in range(r, r + height):
+                for cc in range(c, c + width):
+                    if (rr, cc) in covered:
+                        raise DesignError("TABLE_MERGE_OVERLAP")
+                    if (rr, cc) != (r, c):
+                        covered.add((rr, cc))
 
 
 def validate(task: dict, *, complete=False):
@@ -308,13 +345,10 @@ def validate(task: dict, *, complete=False):
                 elif not c["provenance"]["checked"] or c["provenance"]["kind"] == "unknown":
                     raise DesignError("CONTENT_NOT_CHECKED")
                 if node["type"] == "text":
-                    last = 0
-                    for span in node.get("spans", []):
-                        if span["start"] < last or span["end"] <= span["start"] or span["end"] > len(c["text"]):
-                            raise DesignError("TEXT_SPAN_RANGE_INVALID")
-                        last = span["end"]
+                    _check_spans(c["text"], node.get("spans", []))
                     lines = c["text"].count("\n") + 1
-                    if lines * node["font"]["size"] * node.get("line_spacing", 1.15) > b["height"]:
+                    line_h = node["line_height"] if "line_height" in node else node["font"]["size"] * node.get("line_spacing", 1.15)
+                    if lines * line_h > b["height"] + 0.5:
                         warnings.append({"code": "TEXT_HEIGHT_RISK", "node_id": node["id"]})
                 if node["type"] == "chart":
                     if c["data_basis"] == "unknown":
@@ -337,9 +371,8 @@ def validate(task: dict, *, complete=False):
                         raise DesignError("TABLE_COLUMN_WIDTH_MISMATCH")
                     if "row_heights" in node and len(node["row_heights"]) != len(c["cells"]):
                         raise DesignError("TABLE_ROW_HEIGHT_MISMATCH")
-                    if "cell_styles" in node and (len(node["cell_styles"]) != len(c["cells"]) or
-                                                  any(len(row) != cols for row in node["cell_styles"])):
-                        raise DesignError("TABLE_CELL_STYLE_SHAPE_MISMATCH")
+                    if "cell_styles" in node:
+                        _check_table_styles(c["cells"], node["cell_styles"])
     if complete and any(bindings[cid] != 1 for cid in content):
         raise DesignError("CONTENT_COVERAGE_MISMATCH: each item needs exactly one editable object or accepted raster")
     from .composition import composition_diagnostics

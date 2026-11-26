@@ -106,7 +106,7 @@ Image generation is not required. Deliver actual PPTX, previews, review results
 and material editing limitations.
 ```
 
-For reconstruction, identify approved full-page targets. For a small revision, retain the task directory and identify affected pages/objects. Review reuse follows each route's dependency checks; the new original-page tools do not automatically inherit old candidate approval.
+For reconstruction, identify approved full-page targets. For a small revision, retain the task directory and identify affected pages/objects. Review reuse follows each route's dependency checks: both routes inherit only unchanged, previously passing page observations through an explicit `review-template --inherit-from`; changed pages and whole-deck rhythm are always reviewed afresh, and old candidate approval is never carried over automatically.
 
 ## Installation and local checks
 
@@ -147,7 +147,7 @@ Quality and OS isolation are separate. Explicit isolation requirements remain bi
 
 ## Documentation and distribution
 
-Browser extension 0.1.4 fixes WeChat article collection from the side panel. To retain your local source basket, extract the ZIP over the existing extension folder and select Reload in the browser’s extension manager. [Download the Chrome / Edge extension 0.1.4](pptsmith-browser-extension-0.1.4.zip)
+Browser extension 0.1.4 fixes WeChat article collection from the side panel. To retain your local source basket, extract the ZIP over the existing extension folder and select Reload in the browser’s extension manager. [Download the Chrome / Edge extension 0.1.4 (GitHub repository)](pptsmith-browser-extension-0.1.4.zip) (lightweight registry runtime bundles exclude this archive and `assets/samples/` previews via `.clawhubignore`).
 
 - [Skill contract](SKILL.md) · [Original-page template workflow](references/native-template-workflow.md)
 - [Declarative design and acceptance](references/declarative-design.md) · [Compact authoring/revisions](references/declarative-authoring.md)

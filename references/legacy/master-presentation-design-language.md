@@ -1,6 +1,6 @@
 # Master Presentation Design Language
 
-Use this as a shared hierarchy system for serious decks. Adapt its visual treatment to the requested genre. Decorative business reports can use rich, layered compositions while retaining evidence, hierarchy and legibility; read [decorative business design](decorative-business-design.md) for that profile.
+Use this as a shared hierarchy system for serious decks. Adapt its visual treatment to the requested genre. Decorative business reports can use rich, layered compositions while retaining evidence, hierarchy and legibility; read [decorative business design](../decorative-business-design.md) for that profile.
 
 ## Order Of Design Decisions
 

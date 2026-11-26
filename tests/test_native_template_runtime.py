@@ -670,3 +670,136 @@ def test_workspace_supported_capability_matches_host_primitives():
     from engine.native_template.cli import capabilities
     assert capabilities()['workspaceSupported']==(safety.fcntl is not None and callable(getattr(safety.fcntl,'flock',None)) and hasattr(os,'O_NOFOLLOW'))
     assert capabilities()['limits']=={'maxSourcePages':100,'maxOutputPages':100}
+
+
+def test_render_caches_frozen_source_template_and_invalidates_on_tamper(fixture,monkeypatch):
+    _,work,init=fixture
+    apply(work,0,{'op':'add_page','id':'a','sourceSlideId':init['sourceSlideIds'][0]})
+    rt.export(work)
+    _mock_render(monkeypatch)
+    import engine.native_template.rendering as rendering
+    original=rendering.run_render_report;calls=[]
+    def spy(pptx_path,*args,**kwargs):
+        calls.append(Path(pptx_path).name)
+        return original(pptx_path,*args,**kwargs)
+    monkeypatch.setattr(rendering,'run_render_report',spy)
+    first=gate.render(work)
+    assert first['sourceRenderCacheHit'] is False
+    assert calls==['candidate.pptx','template.pptx']
+    # Second render after editing candidate reuses verified source render cache.
+    calls.clear()
+    title=next(o for o in rt.inspect(work)['sourceSlides'][0]['objects'] if o['name']=='Main title')
+    apply(work,1,{'op':'edit_native','pageId':'a','objectId':title['objectId'],'text':'Updated title'})
+    rt.export(work)
+    second=gate.render(work)
+    assert second['sourceRenderCacheHit'] is True
+    assert calls==['candidate.pptx']
+    # Tampering with a cached source image invalidates the cache and forces fresh source render.
+    cached_img=Path(second['sourceRender']['slides'][0]['image'])
+    cached_img.write_bytes(cached_img.read_bytes()+b'tamper')
+    calls.clear()
+    third=gate.render(work)
+    assert third['sourceRenderCacheHit'] is False
+    assert calls==['candidate.pptx','template.pptx']
+
+
+def test_review_template_generates_hash_bound_skeleton_and_rejects_placeholders(fixture,monkeypatch,tmp_path):
+    _,work,init=fixture
+    apply(work,0,{'op':'add_page','id':'a','sourceSlideId':init['sourceSlideIds'][0]})
+    rt.export(work)
+    _mock_render(monkeypatch)
+    rendered=gate.render(work)
+    draft_path=tmp_path/'review-draft.json'
+    meta=gate.review_template(work,output=draft_path)
+    assert meta['ok'] is True and meta['pages']==1
+    with pytest.raises(ValueError,match='OUTPUT_ALREADY_EXISTS'):
+        gate.review_template(work,output=draft_path)
+    draft=json.loads(draft_path.read_text(encoding='utf-8'))
+    assert draft['status']=='revise'
+    assert draft['candidateHash']==rendered['candidateHash']
+    assert draft['pages'][0]['preview_sha256']==rendered['slides'][0]['sha256']
+    assert draft['pages'][0]['reference_sha256']==rendered['slides'][0]['referenceHash']
+    # Placeholder reviewer identity must be rejected even if statuses are flipped.
+    draft['status']='approved'
+    draft['deck_rhythm']='节奏统一，单页层级清楚。'
+    for key in gate.CRITERIA:
+        draft['pages'][0][key]={'status':'pass','observation':'核对实际渲染，层级与模板一致。'}
+    with pytest.raises(ValueError,match='REVIEWER_REQUIRED'):
+        gate.review(work,draft)
+    # Filling real reviewer identity succeeds through review and verify.
+    draft['reviewer']={'provider':'human','model':'independent-reviewer','method':'external visual comparison'}
+    assert gate.review(work,draft)['ok'] is True
+    assert gate.verify(work)['status']=='final_delivery_ready'
+
+
+def test_review_template_inherits_only_unchanged_passing_pages_and_blocks_tampering(fixture,monkeypatch,tmp_path):
+    _,work,init=fixture
+    s0,s1=init['sourceSlideIds'][0],init['sourceSlideIds'][1]
+    apply(work,0,
+          {'op':'add_page','id':'p1','sourceSlideId':s0,'notes':'Page 1 verified source.'},
+          {'op':'add_page','id':'p2','sourceSlideId':s1,'notes':'Page 2 verified source.'})
+    rt.export(work)
+    _mock_render(monkeypatch)
+    gate.render(work)
+
+    # Round 1: p1 passes all 6 criteria; p2 fails readability -> overall revise.
+    rev1_path=tmp_path/'rev1.json'
+    gate.review_template(work,output=rev1_path)
+    rev1=json.loads(rev1_path.read_text(encoding='utf-8'))
+    rev1['reviewer']={'provider':'human','model':'independent-reviewer','method':'external visual comparison'}
+    rev1['deck_rhythm']='首轮复核：第1页达标，第2页待改。'
+    for key in gate.CRITERIA:
+        rev1['pages'][0][key]={'status':'pass','observation':f'p1 {key} 核对通过'}
+        rev1['pages'][1][key]={'status':'fail' if key=='readability' else 'pass','observation':f'p2 {key} 检查'}
+    rev1_path.write_text(json.dumps(rev1,ensure_ascii=False,indent=2),encoding='utf-8')
+    r1=gate.review(work,rev1)
+    assert r1['ok'] is False and r1['status']=='refinement_required'
+
+    # Reject inheriting from wrapped workspace/review.json or unrecorded external JSON.
+    apply(work,1,{'op':'set_page','pageId':'p2','notes':'Page 2 revised notes.'})
+    rt.export(work)
+    gate.render(work)
+    with pytest.raises(ValueError,match='INHERIT_INPUT_MUST_BE_RAW'):
+        gate.review_template(work,inherit_from=work/'review.json')
+    forged=tmp_path/'forged.json'
+    forged.write_text(json.dumps({**rev1,'deck_rhythm':'forged'},ensure_ascii=False),encoding='utf-8')
+    with pytest.raises(ValueError,match='INHERIT_SOURCE_NOT_RECORDED_IN_WORKSPACE'):
+        gate.review_template(work,inherit_from=forged)
+
+    # Round 2: inherit from recorded rev1 -> only unchanged passing p1 inherits; p2 & deck_rhythm stay fresh.
+    rev2_path=tmp_path/'rev2.json'
+    meta=gate.review_template(work,output=rev2_path,inherit_from=rev1_path)
+    assert meta['inheritedPageCount']==1
+    assert meta['inheritedPages']==['p1']
+    assert meta['pagesRequiringReview']==['p2']
+    rev2=json.loads(rev2_path.read_text(encoding='utf-8'))
+    assert rev2['status']=='revise' and rev2['deck_rhythm']==''
+    assert 'inherited_from' in rev2['pages'][0]
+    assert 'inherited_from' not in rev2['pages'][1]
+    assert rev2['pages'][0]['hierarchy']['observation']=='p1 hierarchy 核对通过'
+    assert rev2['pages'][1]['readability']=={'status':'fail','observation':''}
+
+    # Tampering with an inherited observation must be rejected.
+    rev2['reviewer']={'provider':'human','model':'independent-reviewer','method':'external visual comparison'}
+    rev2['status']='approved'
+    rev2['deck_rhythm']='二轮复核：第2页修正后整册节奏一致。'
+    for key in gate.CRITERIA:
+        rev2['pages'][1][key]={'status':'pass','observation':f'p2 {key} 修正后通过'}
+    tampered=json.loads(json.dumps(rev2))
+    tampered['pages'][0]['hierarchy']['observation']='篡改后的观察'
+    with pytest.raises(ValueError,match='INHERITED_OBSERVATION_TAMPERED'):
+        gate.review(work,tampered)
+
+    # Genuine completion passes review & verify, recording inheritance count.
+    rev2_path.write_text(json.dumps(rev2,ensure_ascii=False,indent=2),encoding='utf-8')
+    r2=gate.review(work,rev2)
+    assert r2['ok'] is True and r2['inheritedPageCount']==1
+    assert gate.verify(work)['status']=='final_delivery_ready'
+
+    # Round 3: editing p1's notes invalidates p1 while preserving p2 for inheritance.
+    apply(work,2,{'op':'set_page','pageId':'p1','notes':'Page 1 updated notes.'})
+    rt.export(work)
+    gate.render(work)
+    meta3=gate.review_template(work,inherit_from=rev2_path)
+    assert meta3['inheritedPages']==['p2']
+    assert meta3['pagesRequiringReview']==['p1']

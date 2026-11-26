@@ -18,9 +18,24 @@ private-pmo-pack/
 # Keep the public diagnostics regression in Git; registry packages still exclude tests/.
 tests/*
 !tests/test_composition_diagnostics.py
-!tests/test_html_import.py
+!tests/test_html_*.py
 !tests/test_native_template*.py
+!tests/test_skill_hygiene.py
 !tests/native_template_fixture.py
+
+# Local agent workspace files and run outputs (never commit to public tree).
+AGENTS.md
+IDENTITY.md
+SOUL.md
+USER.md
+memory/
+.work/
+output/
+runs/
+releases/
+data/
+author.json
+build_xiaomi.py
 # Other local development material; excluded from all public platforms.
 .github/
 docs/

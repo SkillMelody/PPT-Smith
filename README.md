@@ -101,7 +101,7 @@
 不要求生图。交付实际 PPTX、预览、审核结论和重要编辑限制。
 ```
 
-**还原或修订：**提交已批准的完整设计图并注明需忠实还原；只改少量内容时保留任务目录，指出页/对象和改动。审核复用必须满足各自路线的依赖检查；新原页工具暂不自动继承旧候选审核。
+**还原或修订：**提交已批准的完整设计图并注明需忠实还原；只改少量内容时保留任务目录，指出页/对象和改动。审核复用必须满足各自路线的依赖检查：两条路线都只通过 `review-template --inherit-from` 显式继承完全未变且已通过的单页观察，改动页与整册节奏必须重新审核，绝不自动沿用旧候选结论。
 
 ## 安装与本地自检
 
@@ -142,7 +142,7 @@ python -m engine template capabilities
 
 ## 文档与分发
 
-浏览器插件 0.1.4 修复了侧栏无法收集微信公众号文章的问题。升级时将解压后的文件覆盖到原插件目录，再在扩展管理页点击「重新加载」，即可保留本机资料篮。 [下载 Chrome / Edge 插件 0.1.4](pptsmith-browser-extension-0.1.4.zip)
+浏览器插件 0.1.4 修复了侧栏无法收集微信公众号文章的问题。升级时将解压后的文件覆盖到原插件目录，再在扩展管理页点击「重新加载」，即可保留本机资料篮。 [下载 Chrome / Edge 插件 0.1.4（GitHub 仓库）](pptsmith-browser-extension-0.1.4.zip)（轻量注册表运行包按 `.clawhubignore` 排除该压缩包与 `assets/samples/` 展示图）。
 
 - [Skill 执行规范](SKILL.md) · [原页编辑式模板流程](references/native-template-workflow.md)
 - [声明式设计与验收](references/declarative-design.md) · [紧凑输入与局部修订](references/declarative-authoring.md)
